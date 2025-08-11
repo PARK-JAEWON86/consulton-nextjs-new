@@ -1,103 +1,28 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import { useAppStore } from "@/stores/appStore";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
-export default function Home() {
+export default function LandingPage() {
   const [isToggleOn, setIsToggleOn] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
-
-  const {
-    hasEnteredService,
-    enterService,
-    exitService,
-    setCurrentPage,
-    setAuthenticated,
-    isAuthenticated,
-  } = useAppStore();
-
-  // 디버깅용 로그
-  console.log("Home component rendered", {
-    hasEnteredService,
-    isToggleOn,
-    isTransitioning,
-  });
-
-  useEffect(() => {
-    // 페이지 로드 시 현재 페이지 설정
-    console.log("Setting current page to /");
-    setCurrentPage("/");
-  }, [setCurrentPage]);
+  const router = useRouter();
 
   const handleToggleClick = () => {
-    console.log("Toggle clicked, current state:", {
-      isToggleOn,
-      isTransitioning,
-    });
     if (!isToggleOn) {
       setIsToggleOn(true);
       setIsTransitioning(true);
 
       // 2초 후 서비스로 이동
       setTimeout(() => {
-        console.log("Timeout executed, entering service");
-        enterService();
-        // 서비스 진입과 함께 인증 상태도 설정 (데모용)
-        setAuthenticated(true);
+        // 서비스 진입 시 대시보드로 이동
+        router.push("/dashboard");
       }, 2000);
     }
   };
 
-  const handleBackToLanding = () => {
-    setIsToggleOn(false);
-    setIsTransitioning(false);
-    exitService();
-    setAuthenticated(false);
-  };
-
-  // 서비스 진입 후 대시보드로 리다이렉트
-  if (hasEnteredService) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold text-gray-900 mb-6">
-              Consult 서비스에 오신 것을 환영합니다!
-            </h1>
-            <p className="text-xl text-gray-600 mb-8">
-              전문가와의 상담을 시작해보세요.
-            </p>
-            <div className="flex gap-4 justify-center">
-              <Link
-                href="/dashboard"
-                className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                대시보드로 이동
-              </Link>
-              <button
-                onClick={handleBackToLanding}
-                className="border border-gray-300 text-gray-700 px-8 py-3 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                랜딩페이지로 돌아가기
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen flex flex-col relative bg-gray-50">
-      {/* 디버깅 정보 */}
-      <div className="fixed top-4 right-4 bg-black bg-opacity-75 text-white p-2 rounded text-xs z-50">
-        <div>hasEnteredService: {String(hasEnteredService)}</div>
-        <div>isAuthenticated: {String(isAuthenticated)}</div>
-        <div>isToggleOn: {String(isToggleOn)}</div>
-        <div>isTransitioning: {String(isTransitioning)}</div>
-      </div>
-
       {/* 중앙 로고 */}
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">

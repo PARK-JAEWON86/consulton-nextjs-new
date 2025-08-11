@@ -61,7 +61,7 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
     joinDate: userData?.joinDate || "2024-01-15",
   });
 
-  const handleInputChange = (field: keyof UserData, value: any) => {
+  const handleInputChange = (field: keyof UserData, value: string) => {
     setProfileData((prev) => ({
       ...prev,
       [field]: value,

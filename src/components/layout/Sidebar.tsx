@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Home,
   MessageCircle,
@@ -27,6 +27,15 @@ interface SidebarProps {
   onToggle?: () => void;
 }
 
+interface MenuItem {
+  id: string;
+  name: string;
+  icon: React.ComponentType<{ className?: string }>;
+  path: string;
+  description: string;
+  badge?: string;
+}
+
 const Sidebar: React.FC<SidebarProps> = ({
   isOpen = false,
   onClose,
@@ -34,13 +43,11 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [activeItem, setActiveItem] = useState("dashboard");
   const [showExitWarning, setShowExitWarning] = useState(false);
-  const [pendingNavigation, setPendingNavigation] = useState<{
-    id: string;
-    path: string;
-  } | null>(null);
+  const [pendingNavigation, setPendingNavigation] = useState<MenuItem | null>(null);
   const pathname = usePathname();
+  const router = useRouter();
 
-  const menuItems = useMemo(
+  const menuItems = useMemo<MenuItem[]>(
     () => [
       {
         id: "chat",
@@ -81,7 +88,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     []
   );
 
-  const settingsItems = useMemo(
+  const settingsItems = useMemo<MenuItem[]>(
     () => [
       {
         id: "dashboard",
@@ -89,13 +96,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         icon: Home,
         path: "/dashboard",
         description: "전체 현황 보기",
-      },
-      {
-        id: "profile",
-        name: "프로필",
-        icon: User,
-        path: "/dashboard/profile",
-        description: "프로필 관리",
       },
       {
         id: "notifications",
@@ -125,16 +125,51 @@ const Sidebar: React.FC<SidebarProps> = ({
   // 현재 경로에 따라 활성 아이템 설정
   useEffect(() => {
     const currentPath = pathname;
-    const currentItem = [...menuItems, ...settingsItems].find(
-      (item) => item.path === currentPath
+
+    // 메인 메뉴에서 일치하는 항목 찾기
+    const mainMenuItem = menuItems.find((item) => {
+      if (item.id === "summary") {
+        // 상담 요약의 경우 /summary 경로와 /summary/[id] 경로 모두 처리
+        return currentPath === "/summary" || currentPath.startsWith("/summary/");
+      }
+      if (item.id === "experts") {
+        // 전문가 찾기의 경우 /experts 경로 처리
+        return currentPath === "/experts";
+      }
+      return currentPath === item.path;
+    });
+
+    if (mainMenuItem) {
+      setActiveItem(mainMenuItem.id);
+      return;
+    }
+
+    // 설정 메뉴에서 일치하는 항목 찾기
+    const settingMenuItem = settingsItems.find(
+      (item) => currentPath === item.path
     );
-    if (currentItem) {
-      setActiveItem(currentItem.id);
+    if (settingMenuItem) {
+      setActiveItem(settingMenuItem.id);
     }
   }, [pathname, menuItems, settingsItems]);
 
-  const handleItemClick = (item: { id: string; path: string }) => {
+  const handleItemClick = (item: MenuItem) => {
     setActiveItem(item.id);
+
+    // Quick AI 상담 버튼 클릭 시 현재 페이지가 /chat이면 모달을 표시하도록 sessionStorage 플래그 설정
+    if (item.id === "chat" && pathname === "/chat") {
+      sessionStorage.setItem("showQuickChatModal", "true");
+      // 현재 페이지를 다시 로드하여 모달 표시
+      window.location.reload();
+    } else if (pathname === "/chat" && item.id !== "chat") {
+      // AI 상담 화면에서 다른 메뉴 클릭 시 경고 모달 표시
+      setPendingNavigation(item);
+      setShowExitWarning(true);
+    } else {
+      // 일반적인 네비게이션 처리
+      router.push(item.path);
+    }
+
     // 모바일에서 사이드바 닫기
     if (onClose) {
       onClose();
@@ -143,7 +178,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const handleConfirmNavigation = () => {
     if (pendingNavigation) {
-      setActiveItem(pendingNavigation.id);
+      router.push(pendingNavigation.path);
       setShowExitWarning(false);
       setPendingNavigation(null);
     }
@@ -248,9 +283,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                   const isQuickAI = item.id === "chat";
 
                   return (
-                    <Link
+                    <button
                       key={item.id}
-                      href={item.path}
                       onClick={() => handleItemClick(item)}
                       className={`w-full group relative overflow-hidden rounded-xl transition-all duration-300 ${
                         isQuickAI ? "p-4" : "p-3"
@@ -314,6 +348,19 @@ const Sidebar: React.FC<SidebarProps> = ({
                         </div>
 
                         <div className="flex items-center space-x-2">
+                          {item.badge && (
+                            <span
+                              className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${
+                                isQuickAI
+                                  ? "bg-white bg-opacity-20 text-white"
+                                  : isActive
+                                  ? "bg-white bg-opacity-20 text-white"
+                                  : "bg-red-100 text-red-800"
+                              }`}
+                            >
+                              {item.badge}
+                            </span>
+                          )}
                           <ChevronRight
                             className={`h-4 w-4 transition-transform duration-300 ${
                               isQuickAI
@@ -339,7 +386,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                       {isActive && !isQuickAI && (
                         <div className="absolute inset-0 bg-gradient-to-r from-gray-300 to-gray-400 opacity-20 rounded-xl"></div>
                       )}
-                    </Link>
+                    </button>
                   );
                 })}
               </nav>
@@ -358,9 +405,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                   const isActive = activeItem === item.id;
 
                   return (
-                    <Link
+                    <button
                       key={item.id}
-                      href={item.path}
                       onClick={() => handleItemClick(item)}
                       className={`w-full group relative overflow-hidden rounded-xl transition-all duration-300 p-3 ${
                         isActive
@@ -416,7 +462,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                       {isActive && (
                         <div className="absolute inset-0 bg-gradient-to-r from-gray-300 to-gray-400 opacity-20 rounded-xl"></div>
                       )}
-                    </Link>
+                    </button>
                   );
                 })}
               </nav>
@@ -437,12 +483,12 @@ const Sidebar: React.FC<SidebarProps> = ({
                   <div className="text-xs text-blue-700">150 크레딧 보유</div>
                 </div>
               </div>
-              <Link
-                href="/credit-packages"
-                className="w-full bg-blue-600 text-white text-sm font-medium py-2 px-3 rounded-lg hover:bg-blue-700 transition-colors text-center block"
+              <button
+                onClick={() => router.push("/credit-packages")}
+                className="w-full bg-blue-600 text-white text-sm font-medium py-2 px-3 rounded-lg hover:bg-blue-700 transition-colors"
               >
                 크레딧 충전
-              </Link>
+              </button>
             </div>
           </div>
         </div>

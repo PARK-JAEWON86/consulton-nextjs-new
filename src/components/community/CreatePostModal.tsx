@@ -7,7 +7,7 @@ interface PostData {
   title: string;
   content: string;
   category: string;
-  tags: string;
+  tags: string[];
 }
 
 interface CreatePostModalProps {
@@ -25,7 +25,7 @@ const CreatePostModal = ({
     title: "",
     content: "",
     category: "",
-    tags: "",
+    tags: [],
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -38,7 +38,7 @@ const CreatePostModal = ({
     { value: "discussion", label: "토론" },
   ];
 
-  const handleInputChange = (field: keyof PostData, value: string) => {
+  const handleInputChange = (field: keyof PostData, value: string | string[]) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
@@ -81,19 +81,18 @@ const CreatePostModal = ({
     const postData = {
       ...formData,
       tags: formData.tags
-        .split(",")
         .map((tag) => tag.trim())
         .filter((tag) => tag),
     };
 
     onSubmit && onSubmit(postData);
-    setFormData({ title: "", content: "", category: "", tags: "" });
+    setFormData({ title: "", content: "", category: "", tags: [] });
     setErrors({});
     onClose();
   };
 
   const handleClose = () => {
-    setFormData({ title: "", content: "", category: "", tags: "" });
+    setFormData({ title: "", content: "", category: "", tags: [] });
     setErrors({});
     onClose();
   };
@@ -168,7 +167,7 @@ const CreatePostModal = ({
               내용 <span className="text-red-500">*</span>
             </label>
             <textarea
-              rows="8"
+              rows={8}
               value={formData.content}
               onChange={(e) => handleInputChange("content", e.target.value)}
               placeholder="게시글 내용을 입력하세요"
@@ -190,8 +189,10 @@ const CreatePostModal = ({
               <Hash className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <input
                 type="text"
-                value={formData.tags}
-                onChange={(e) => handleInputChange("tags", e.target.value)}
+                value={formData.tags.join(", ")}
+                onChange={(e) =>
+                  handleInputChange("tags", e.target.value.split(",").map((tag) => tag.trim()))
+                }
                 placeholder="태그를 쉼표로 구분하여 입력하세요 (예: 상담후기, 스트레스관리)"
                 className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />

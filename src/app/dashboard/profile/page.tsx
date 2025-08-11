@@ -1,4 +1,4 @@
-import { UserProfile } from "@/components/dashboard/UserProfile";
+import UserProfile from "@/components/dashboard/UserProfile";
 
 export default function ProfilePage() {
   return (

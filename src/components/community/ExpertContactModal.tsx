@@ -20,6 +20,9 @@ interface ConsultationPost {
   content: string;
   author: string;
   category: string;
+  urgency?: string;
+  preferredMethod?: string;
+  createdAt?: string;
 }
 
 interface FormData {
@@ -274,7 +277,7 @@ const ExpertContactModal = ({
                   상담 제안 메시지 <span className="text-red-500">*</span>
                 </label>
                 <textarea
-                  rows="4"
+                  rows={4}
                   value={formData.message}
                   onChange={(e) => handleInputChange("message", e.target.value)}
                   placeholder="상담 요청자에게 보낼 메시지를 작성해주세요. 어떤 도움을 드릴 수 있는지, 상담 접근 방식 등을 설명해주세요."
@@ -342,7 +345,7 @@ const ExpertContactModal = ({
                     제안 상담 시간 <span className="text-red-500">*</span>
                   </label>
                   <textarea
-                    rows="3"
+                    rows={3}
                     value={formData.proposedTime}
                     onChange={(e) =>
                       handleInputChange("proposedTime", e.target.value)
@@ -366,12 +369,24 @@ const ExpertContactModal = ({
                   관련 경험 및 접근 방식 (선택사항)
                 </label>
                 <textarea
-                  rows="3"
+                  rows={3}
                   value={formData.experience}
-                  onChange={(e) =>
-                    handleInputChange("experience", e.target.value)
-                  }
-                  placeholder="이와 유사한 상담 경험이나 특별한 접근 방식이 있다면 설명해주세요."
+                  onChange={(e) => handleInputChange("experience", e.target.value)}
+                  placeholder="관련 분야에서의 경험과 전문성을 간단히 설명해주세요."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                />
+              </div>
+
+              {/* 자격증 (선택사항) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  자격증 및 학력 (선택사항)
+                </label>
+                <textarea
+                  rows={3}
+                  value={formData.credentials}
+                  onChange={(e) => handleInputChange("credentials", e.target.value)}
+                  placeholder="보유한 자격증, 학위, 수료 과정 등을 간단히 설명해주세요."
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                 />
               </div>

@@ -9,15 +9,16 @@ import {
   Users,
   MessageCircle,
 } from "lucide-react";
-import Link from "next/link";
+
+interface NavbarProps {
+  onBackToLanding?: () => void;
+  onNavigate?: (route: string) => void;
+}
 
 const Navbar = ({
   onBackToLanding,
   onNavigate,
-}: {
-  onBackToLanding?: () => void;
-  onNavigate?: (route: string) => void;
-} = {}) => {
+}: NavbarProps = {}) => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isToggleOn, setIsToggleOn] = useState(true);
   const [showNavMenu, setShowNavMenu] = useState(false);
@@ -33,7 +34,11 @@ const Navbar = ({
       setIsToggleOn(false);
       // OFF로 바뀔 때 랜딩페이지로 이동
       setTimeout(() => {
-        onBackToLanding?.();
+        if (onBackToLanding) {
+          onBackToLanding();
+        } else {
+          window.location.href = "/";
+        }
       }, 500); // 애니메이션 효과를 위한 짧은 딜레이
     } else {
       setIsToggleOn(true);
@@ -41,10 +46,12 @@ const Navbar = ({
   };
 
   const handleNavigate = (route: string) => {
+    // 네비게이션 처리 로직
+    console.log("Navigate to:", route);
     if (onNavigate) {
       onNavigate(route);
     } else {
-      // 기본 네비게이션
+      // 기본 네비게이션 로직
       switch (route) {
         case "expertSearch":
           window.location.href = "/experts";
@@ -67,12 +74,9 @@ const Navbar = ({
             {/* Consult 로고와 토글 버튼 */}
             <div className="flex items-center gap-2">
               {/* Consult 텍스트 */}
-              <Link
-                href="/"
-                className="text-2xl font-bold text-blue-600 tracking-tight"
-              >
+              <h1 className="text-2xl font-bold text-blue-600 tracking-tight">
                 Consult
-              </Link>
+              </h1>
 
               {/* 토글 버튼 */}
               <button

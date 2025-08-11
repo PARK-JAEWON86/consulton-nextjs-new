@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 const SocialLoginButtons = () => {
-  const [loadingProvider, setLoadingProvider] = useState(null);
+  const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
 
   const socialProviders = [
     {
@@ -59,7 +59,7 @@ const SocialLoginButtons = () => {
     },
   ];
 
-  const handleSocialLogin = async (providerId) => {
+  const handleSocialLogin = async (providerId: string) => {
     setLoadingProvider(providerId);
 
     try {

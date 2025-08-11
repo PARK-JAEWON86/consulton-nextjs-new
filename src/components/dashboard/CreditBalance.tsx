@@ -4,14 +4,24 @@ import { useState } from "react";
 import { CreditCard, Plus, History, TrendingUp } from "lucide-react";
 
 interface CreditBalanceProps {
-  credits?: number;
+  credits: number;
 }
 
-const CreditBalance = ({ credits = 0 }: CreditBalanceProps) => {
+interface CreditHistoryItem {
+  id: number;
+  type: "used" | "purchased" | "bonus";
+  amount: number;
+  description: string;
+  date: Date;
+  expertName?: string;
+  transactionId?: string;
+}
+
+const CreditBalance = ({ credits }: CreditBalanceProps) => {
   const [showHistory, setShowHistory] = useState(false);
 
   // 더미 크레딧 히스토리 데이터
-  const creditHistory = [
+  const creditHistory: CreditHistoryItem[] = [
     {
       id: 1,
       type: "used",
@@ -51,13 +61,13 @@ const CreditBalance = ({ credits = 0 }: CreditBalanceProps) => {
     console.log("Navigate to credit purchase page");
   };
 
-  const getBalanceColor = (credits: number): string => {
+  const getBalanceColor = (credits: number) => {
     if (credits > 100) return "text-green-600";
     if (credits > 50) return "text-yellow-600";
     return "text-red-600";
   };
 
-  const getBalanceIcon = (credits: number): string => {
+  const getBalanceIcon = (credits: number) => {
     if (credits > 100) return "🟢";
     if (credits > 50) return "🟡";
     return "🔴";

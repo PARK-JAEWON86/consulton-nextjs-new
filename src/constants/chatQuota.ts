@@ -1,1 +1,1 @@
-export const MAX_FREE_MESSAGES = 20;
+export const MAX_FREE_MESSAGES = 8;

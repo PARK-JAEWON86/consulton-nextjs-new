@@ -4,53 +4,33 @@ import { useState } from "react";
 import { Check, Star, Crown, Zap, Clock, RefreshCw, Gift } from "lucide-react";
 
 interface Pack {
-  id: string;
+  id: number;
+  type: "credit" | "subscription" | "free";
   name: string;
-  type: "free" | "credit" | "subscription";
-  credits: number;
-  price: number;
-  originalPrice?: number;
   description: string;
+  price: number;
+  credits: number;
+  bonusCredits?: number;
+  totalCredits?: number;
+  payPerMinute?: number;
+  usageMinutes?: number;
+  usageTime?: string;
+  extraMinutes?: number;
   features: string[];
   isRecommended?: boolean;
-  isPopular?: boolean;
-  validityDays?: number;
-  autoRenewal?: boolean;
   duration?: number;
   sessions?: number;
-  extraMinutes?: number;
-  payPerMinute?: number;
-  totalCredits?: number;
 }
 
 interface PackCardProps {
-  pack?: Pack;
+  pack: Pack;
 }
 
 const PackCard = ({ pack }: PackCardProps) => {
-  // 기본 패키지 데이터
-  const defaultPack: Pack = {
-    id: "basic-credit",
-    name: "기본 크레딧 패키지",
-    type: "credit",
-    credits: 100,
-    price: 50000,
-    description: "상담 서비스 이용을 위한 기본 크레딧 패키지",
-    features: [
-      "100 크레딧 제공",
-      "전문가 매칭 서비스",
-      "상담 요약 제공",
-      "24시간 내 사용 가능",
-    ],
-    isRecommended: true,
-  };
-
-  const currentPack = pack || defaultPack;
-
   const [isHovered, setIsHovered] = useState(false);
   const [isLoading, setPurchaseLoading] = useState(false);
   const [subscriptionMode, setSubscriptionMode] = useState(
-    currentPack.type === "subscription"
+    pack.type === "subscription"
   );
 
   const handlePurchase = async () => {
@@ -62,21 +42,21 @@ const PackCard = ({ pack }: PackCardProps) => {
 
       console.log(
         "Package purchased:",
-        currentPack,
+        pack,
         "Subscription mode:",
         subscriptionMode
       );
 
-      if (currentPack.type === "subscription") {
+      if (pack.type === "subscription") {
         console.log(
           "구독 패키지 구매:",
-          currentPack.name,
+          pack.name,
           subscriptionMode ? "자동갱신" : "일회성"
         );
-      } else if (currentPack.type === "credit") {
-        console.log("크레딧 충전:", currentPack.credits, "크레딧");
-      } else if (currentPack.type === "free") {
-        console.log("무료 크레딧 받기:", currentPack.credits, "크레딧");
+      } else if (pack.type === "credit") {
+        console.log("크레딧 충전:", pack.credits, "크레딧");
+      } else if (pack.type === "free") {
+        console.log("무료 크레딧 받기:", pack.credits, "크레딧");
       }
     } catch (error) {
       console.error("Purchase failed:", error);
@@ -141,18 +121,18 @@ const PackCard = ({ pack }: PackCardProps) => {
     };
   };
 
-  const colors = getPackColor(currentPack);
-  const isFree = currentPack.type === "free";
-  const isSubscription = currentPack.type === "subscription";
-  const isCredit = currentPack.type === "credit";
-  const isPro = currentPack.name.includes("Pro");
+  const colors = getPackColor(pack);
+  const isFree = pack.type === "free";
+  const isSubscription = pack.type === "subscription";
+  const isCredit = pack.type === "credit";
+  const isPro = pack.name.includes("Pro");
 
   return (
     <div
       className={`relative bg-white rounded-xl shadow-sm border transition-all duration-300 overflow-hidden ${
         isHovered ? "shadow-lg transform -translate-y-1" : ""
       } ${
-        currentPack.isRecommended
+        pack.isRecommended
           ? "border-blue-300 shadow-blue-100 ring-2 ring-blue-200"
           : isPro
           ? "border-purple-200"
@@ -160,7 +140,7 @@ const PackCard = ({ pack }: PackCardProps) => {
           ? "border-green-200"
           : "border-gray-200"
       } ${
-        currentPack.isRecommended && isHovered
+        pack.isRecommended && isHovered
           ? "shadow-xl shadow-blue-200 border-blue-400"
           : isHovered
           ? "border-blue-200"
@@ -177,14 +157,14 @@ const PackCard = ({ pack }: PackCardProps) => {
       )}
 
       {/* 추천 태그 */}
-      {currentPack.isRecommended && (
+      {pack.isRecommended && (
         <div className="absolute top-0 right-0 bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-3 py-1 rounded-bl-lg text-xs font-medium shadow-md">
           ⭐ 추천
         </div>
       )}
 
       {/* 인기 태그 */}
-      {isPro && !currentPack.isRecommended && (
+      {isPro && !pack.isRecommended && (
         <div className="absolute top-0 right-0 bg-purple-600 text-white px-3 py-1 rounded-bl-lg text-xs font-medium">
           인기
         </div>
@@ -202,17 +182,15 @@ const PackCard = ({ pack }: PackCardProps) => {
         {/* 헤더 */}
         <div className="flex items-center space-x-3 mb-4">
           <div className={`p-3 rounded-lg ${colors.bg}`}>
-            <div className={colors.icon}>{getPackIcon(currentPack)}</div>
+            <div className={colors.icon}>{getPackIcon(pack)}</div>
           </div>
           <div>
-            <h3 className="text-xl font-bold text-gray-900">
-              {currentPack.name}
-            </h3>
-            <p className="text-sm text-gray-600">{currentPack.description}</p>
-            {isSubscription && currentPack.duration && currentPack.sessions && (
+            <h3 className="text-xl font-bold text-gray-900">{pack.name}</h3>
+            <p className="text-sm text-gray-600">{pack.description}</p>
+            {isSubscription && (
               <div className="flex items-center text-xs text-blue-600 mt-1">
                 <Clock className="h-3 w-3 mr-1" />
-                {currentPack.duration}분 세션 x {currentPack.sessions}회
+                {pack.duration}분 세션 x {pack.sessions}회
               </div>
             )}
           </div>
@@ -226,7 +204,7 @@ const PackCard = ({ pack }: PackCardProps) => {
             ) : (
               <>
                 <span className="text-3xl font-bold text-gray-900">
-                  {currentPack.price.toLocaleString()}원
+                  {pack.price.toLocaleString()}원
                 </span>
                 <span className="text-sm text-gray-500">
                   {isSubscription ? "/월" : "일시불"}
@@ -236,59 +214,50 @@ const PackCard = ({ pack }: PackCardProps) => {
           </div>
 
           <div className="mt-1 flex flex-wrap gap-2">
-            {isSubscription && currentPack.sessions && currentPack.duration ? (
+            {isSubscription ? (
               <span
                 className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colors.badge}`}
               >
-                {currentPack.sessions}세션 ({currentPack.duration}분)
+                {pack.sessions}세션 ({pack.duration}분)
               </span>
             ) : (
               <>
                 <span
                   className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colors.badge}`}
                 >
-                  {currentPack.credits} 크레딧 포함
+                  {pack.credits} 크레딧 포함
                 </span>
-                {currentPack.extraMinutes && (
+                {pack.extraMinutes && (
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-cyan-100 text-cyan-800">
-                    ⏰ {currentPack.extraMinutes}분 추가
+                    ⏰ {pack.extraMinutes}분 추가
                   </span>
                 )}
               </>
             )}
 
-            {currentPack.payPerMinute && (
+            {pack.payPerMinute && (
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                분당 {currentPack.payPerMinute}원
+                분당 {pack.payPerMinute}원
               </span>
             )}
           </div>
 
           {!isFree && (
             <div className="mt-2 text-sm text-gray-600">
-              {isSubscription &&
-              currentPack.sessions &&
-              currentPack.duration ? (
+              {isSubscription ? (
                 <>
                   세션당{" "}
-                  {Math.round(
-                    currentPack.price / currentPack.sessions
-                  ).toLocaleString()}
-                  원
+                  {Math.round(pack.price / (pack.sessions || 1)).toLocaleString()}원
                   <span className="ml-2 text-green-600 font-medium">
                     (분당{" "}
-                    {Math.round(
-                      currentPack.price /
-                        (currentPack.sessions * currentPack.duration)
-                    )}
+                    {Math.round(pack.price / ((pack.sessions || 1) * (pack.duration || 1)))}
                     원)
                   </span>
                 </>
               ) : isCredit ? (
                 <>
-                  크레딧당 {Math.round(currentPack.price / currentPack.credits)}
-                  원
-                  {currentPack.credits > 100 && (
+                  크레딧당 {Math.round(pack.price / pack.credits)}원
+                  {pack.credits > 100 && (
                     <span className="ml-2 text-green-600 font-medium">
                       (할인혜택)
                     </span>
@@ -305,7 +274,7 @@ const PackCard = ({ pack }: PackCardProps) => {
             포함된 기능
           </h4>
           <ul className="space-y-2">
-            {currentPack.features.map((feature, index) => (
+            {pack.features.map((feature, index) => (
               <li key={index} className="flex items-center space-x-2">
                 <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
                 <span className="text-sm text-gray-600">{feature}</span>
@@ -329,7 +298,7 @@ const PackCard = ({ pack }: PackCardProps) => {
                   <li>• 이후 크레딧/구독 선택</li>
                 </>
               )}
-              {isSubscription && currentPack.name.includes("Basic") && (
+              {isSubscription && pack.name.includes("Basic") && (
                 <>
                   <li>• 매월 3세션 보장</li>
                   <li>• 세션당 15분 상담</li>
@@ -361,7 +330,7 @@ const PackCard = ({ pack }: PackCardProps) => {
               <label className="flex items-center text-sm">
                 <input
                   type="radio"
-                  name={`subscription-${currentPack.id}`}
+                  name={`subscription-${pack.id}`}
                   checked={subscriptionMode}
                   onChange={() => setSubscriptionMode(true)}
                   className="mr-2 text-blue-600"
@@ -371,7 +340,7 @@ const PackCard = ({ pack }: PackCardProps) => {
               <label className="flex items-center text-sm">
                 <input
                   type="radio"
-                  name={`subscription-${currentPack.id}`}
+                  name={`subscription-${pack.id}`}
                   checked={!subscriptionMode}
                   onChange={() => setSubscriptionMode(false)}
                   className="mr-2 text-blue-600"
@@ -401,9 +370,9 @@ const PackCard = ({ pack }: PackCardProps) => {
               {isSubscription &&
                 (subscriptionMode ? "구독 시작하기" : "1개월 구매하기")}
               {isCredit &&
-                (currentPack.extraMinutes
-                  ? `${currentPack.totalCredits} 크레딧 충전 (+${currentPack.extraMinutes}분)`
-                  : `${currentPack.credits} 크레딧 충전`)}
+                (pack.extraMinutes
+                  ? `${pack.totalCredits} 크레딧 충전 (+${pack.extraMinutes}분)`
+                  : `${pack.credits} 크레딧 충전`)}
             </>
           )}
         </button>

@@ -109,10 +109,10 @@ export const LEVELS = [
 
 /**
  * 레벨에 따른 과금을 계산합니다.
- * @param {number} level - 전문가 레벨 (1-999)
- * @returns {number} 분당 크레딧 요금
+ * @param level - 전문가 레벨 (1-999)
+ * @returns 분당 크레딧 요금
  */
-export const calculateCreditsByLevel = (level = 1) => {
+export const calculateCreditsByLevel = (level: number = 1): number => {
   const tier = LEVELS.find(
     (l) => level >= l.levelRange.min && level <= l.levelRange.max
   );
@@ -123,10 +123,10 @@ export const calculateCreditsByLevel = (level = 1) => {
 
 /**
  * 레벨에 따른 티어 정보를 반환합니다.
- * @param {number} level - 전문가 레벨 (1-999)
- * @returns {Object} 티어 정보 객체
+ * @param level - 전문가 레벨 (1-999)
+ * @returns 티어 정보 객체
  */
-export const getTierInfo = (level = 1) => {
+export const getTierInfo = (level: number = 1) => {
   const tier = LEVELS.find(
     (l) => level >= l.levelRange.min && level <= l.levelRange.max
   );
@@ -135,19 +135,19 @@ export const getTierInfo = (level = 1) => {
 
 /**
  * 레벨명으로 티어 정보를 가져옵니다.
- * @param {string} tierName - 티어명
- * @returns {Object} 티어 정보 객체
+ * @param tierName - 티어명
+ * @returns 티어 정보 객체
  */
-export const getTierInfoByName = (tierName) => {
+export const getTierInfoByName = (tierName: string) => {
   return LEVELS.find((l) => l.name === tierName) || LEVELS[LEVELS.length - 1];
 };
 
 /**
  * 다음 티어까지의 진행률을 계산합니다.
- * @param {number} level - 현재 레벨
- * @returns {Object} 진행률 정보
+ * @param level - 현재 레벨
+ * @returns 진행률 정보
  */
-export const getNextTierProgress = (level = 1) => {
+export const getNextTierProgress = (level: number = 1) => {
   const currentTier = getTierInfo(level);
   const currentTierIndex = LEVELS.findIndex((l) => l.name === currentTier.name);
 
@@ -184,10 +184,10 @@ export const getNextTierProgress = (level = 1) => {
 
 /**
  * 티어 배지 컴포넌트에 필요한 스타일 정보를 반환합니다.
- * @param {number} level - 레벨
- * @returns {Object} 스타일 정보
+ * @param level - 레벨
+ * @returns 스타일 정보
  */
-export const getTierBadgeStyles = (level) => {
+export const getTierBadgeStyles = (level: number) => {
   const tier = getTierInfo(level);
   return {
     gradient: tier.color,
@@ -199,10 +199,10 @@ export const getTierBadgeStyles = (level) => {
 
 /**
  * 레벨별 요금 정보를 반환합니다.
- * @param {number} level - 레벨
- * @returns {Object} 요금 정보
+ * @param level - 레벨
+ * @returns 요금 정보
  */
-export const getLevelPricing = (level) => {
+export const getLevelPricing = (level: number) => {
   const tier = getTierInfo(level);
   return {
     creditsPerMinute: tier.creditsPerMinute,
@@ -213,14 +213,14 @@ export const getLevelPricing = (level) => {
 
 /**
  * 전문가 레벨 시스템의 전체 통계를 계산합니다.
- * @param {Array} experts - 전문가 목록
- * @returns {Object} 티어별 통계
+ * @param experts - 전문가 목록
+ * @returns 티어별 통계
  */
-export const calculateTierStatistics = (experts = []) => {
+export const calculateTierStatistics = (experts: any[] = []) => {
   const stats = LEVELS.reduce((acc, tier) => {
     acc[tier.name] = { count: 0, percentage: 0 };
     return acc;
-  }, {});
+  }, {} as Record<string, { count: number; percentage: number }>);
 
   experts.forEach((expert) => {
     const tier = getTierInfo(expert.level || 1);
@@ -241,11 +241,11 @@ export const calculateTierStatistics = (experts = []) => {
 
 /**
  * 한국어 티어명을 반환합니다.
- * @param {string} tierName - 영문 티어명
- * @returns {string} 한국어 티어명
+ * @param tierName - 영문 티어명
+ * @returns 한국어 티어명
  */
-export const getKoreanTierName = (tierName) => {
-  const tierMap = {
+export const getKoreanTierName = (tierName: string): string => {
+  const tierMap: Record<string, string> = {
     "Tier 10 (Lv.999)": "티어 10 (Lv.999)",
     "Tier 10 (Lv.900-998)": "티어 10 (Lv.900-998)",
     "Tier 9 (Lv.800-899)": "티어 9 (Lv.800-899)",
@@ -262,7 +262,7 @@ export const getKoreanTierName = (tierName) => {
 };
 
 // 기존 함수명과의 호환성을 위한 별칭
-export const calculateExpertLevel = (totalSessions = 0, avgRating = 0) => {
+export const calculateExpertLevel = (totalSessions: number = 0, avgRating: number = 0) => {
   // 레벨 계산 로직 (세션 수와 평점을 기반으로 레벨 계산)
   const level = Math.min(
     999,
@@ -271,16 +271,16 @@ export const calculateExpertLevel = (totalSessions = 0, avgRating = 0) => {
   return getTierInfo(level);
 };
 
-export const getLevelInfo = (levelName) => {
+export const getLevelInfo = (levelName: string) => {
   return getTierInfoByName(levelName);
 };
 
-export const calculateCreditsPerMinute = (expert) => {
+export const calculateCreditsPerMinute = (expert: any) => {
   const level = expert.level || 1;
   return calculateCreditsByLevel(level);
 };
 
-export const getNextLevelProgress = (totalSessions = 0, avgRating = 0) => {
+export const getNextLevelProgress = (totalSessions: number = 0, avgRating: number = 0) => {
   const level = Math.min(
     999,
     Math.max(1, Math.floor(totalSessions / 10) + Math.floor(avgRating * 10))
@@ -288,7 +288,7 @@ export const getNextLevelProgress = (totalSessions = 0, avgRating = 0) => {
   return getNextTierProgress(level);
 };
 
-export const getLevelBadgeStyles = (levelName) => {
+export const getLevelBadgeStyles = (levelName: string) => {
   const tier = getTierInfoByName(levelName);
   return {
     gradient: tier.color,
@@ -298,10 +298,10 @@ export const getLevelBadgeStyles = (levelName) => {
   };
 };
 
-export const calculateLevelStatistics = (experts = []) => {
+export const calculateLevelStatistics = (experts: any[] = []) => {
   return calculateTierStatistics(experts);
 };
 
-export const getKoreanLevelName = (levelName) => {
+export const getKoreanLevelName = (levelName: string) => {
   return getKoreanTierName(levelName);
 };

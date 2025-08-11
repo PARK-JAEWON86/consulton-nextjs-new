@@ -1,12 +1,12 @@
 "use client";
 
-import { MAX_FREE_MESSAGES } from "../../constants/chatQuota";
+import { MAX_FREE_MESSAGES } from "@/constants/chatQuota";
 
 interface ChatQuotaBarProps {
   usedMessages: number;
 }
 
-const ChatQuotaBar = ({ usedMessages }: ChatQuotaBarProps) => {
+const ChatQuotaBar: React.FC<ChatQuotaBarProps> = ({ usedMessages }) => {
   const percent = Math.max(
     0,
     ((MAX_FREE_MESSAGES - usedMessages) / MAX_FREE_MESSAGES) * 100

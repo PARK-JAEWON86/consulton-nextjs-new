@@ -1,10 +1,10 @@
-import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import ServiceLayout from "@/components/layout/ServiceLayout";
 import DashboardContent from "@/components/dashboard/DashboardContent";
 
 export default function DashboardPage() {
   return (
-    <ProtectedRoute>
+    <ServiceLayout>
       <DashboardContent />
-    </ProtectedRoute>
+    </ServiceLayout>
   );
 }

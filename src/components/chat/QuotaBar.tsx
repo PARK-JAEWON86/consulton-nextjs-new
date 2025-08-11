@@ -18,11 +18,11 @@ const QuotaBar = () => {
       </div>
       <div className="flex items-center space-x-2">
         <span className="text-sm text-gray-600">{remainingPercent}% 남음</span>
-        <div className="relative group">
-          <Info
-            className="w-4 h-4 text-gray-400 cursor-help"
-            title="짧은 질문/응답은 사용량이 적습니다. 장문 또는 정밀 모드 응답은 더 많이 차감돼요."
-          />
+        <div
+          className="flex items-center space-x-1"
+          title="짧은 질문/응답은 사용량이 적습니다. 장문 또는 정밀 모드 응답은 더 많이 차감돼요."
+        >
+          <Info className="w-4 h-4 text-gray-400 cursor-help" />
         </div>
       </div>
     </div>
