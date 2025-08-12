@@ -59,3 +59,12 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
 }
+
+/* AI 채팅상담 페이지 전용 스타일 */
+.chat-page {
+  background-color: #f9fafb !important;
+}
+
+.chat-page * {
+  background-color: inherit;
+}

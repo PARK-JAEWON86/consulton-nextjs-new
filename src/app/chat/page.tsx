@@ -16,7 +16,7 @@ import QuestionInput from "@/components/chat/QuestionInput";
 import ChatHistory from "@/components/chat/ChatHistory";
 import ChatBubble from "@/components/chat/ChatBubble";
 import AIChatCreditsBar from "@/components/chat/AIChatCreditsBar";
-import ServiceLayout from "@/components/layout/ServiceLayout";
+import ChatLayout from "@/components/layout/ChatLayout";
 import { useAIChatCreditsStore } from "@/stores/aiChatCreditsStore";
 
 interface Message {
@@ -269,7 +269,7 @@ export default function ChatPage() {
   };
 
   return (
-    <ServiceLayout>
+    <ChatLayout>
       {/* 크레딧 사용 모달 */}
       {showCreditModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -470,7 +470,7 @@ export default function ChatPage() {
         </div>
       )}
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-gray-50">
         {/* 헤더 */}
         <div className="mb-8">
           <div className="flex items-start justify-between">
@@ -480,7 +480,8 @@ export default function ChatPage() {
                   AI 상담 어시스턴트
                 </h1>
                 <p className="text-gray-600 mt-2">
-                  컨설트온 AI • 24시간 상담 가능
+                  AI 상담을 통해 자신의 문제를 정리하고 적절한 전문가를 찾는 데
+                  도움을 받으세요
                 </p>
               </div>
             </div>
@@ -490,13 +491,16 @@ export default function ChatPage() {
         {/* 채팅 영역 */}
         <div
           className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
-          style={{ height: "calc(100vh - 200px)" }}
+          style={{ height: "calc(100vh - 280px)" }}
         >
-          <div className="h-full flex">
+          <div className="h-full flex flex-col">
             {/* 메인 채팅 */}
-            <div className="flex-1 flex flex-col h-full">
+            <div className="flex-1 flex flex-col h-full min-h-0">
               {/* 메시지 목록 */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              <div
+                className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0"
+                style={{ maxHeight: "calc(100vh - 400px)" }}
+              >
                 {messages.map((message) => (
                   <ChatBubble key={message.id} message={message} />
                 ))}
@@ -533,7 +537,7 @@ export default function ChatPage() {
               {/* 입력 영역 - 하단 고정 */}
               <div className="border-t border-gray-200 bg-white p-4 flex-shrink-0">
                 {isConsultationComplete ? (
-                  <div className="space-y-4">
+                  <div className="space-y-4 max-h-96 overflow-y-auto">
                     <div className="text-center py-4">
                       <div className="inline-flex items-center px-4 py-2 rounded-lg bg-green-50 border border-green-200 text-green-700 mb-2">
                         <CheckCircle className="w-5 h-5 mr-2" />
@@ -599,86 +603,64 @@ export default function ChatPage() {
               </div>
             </div>
 
-            {/* 사이드바 */}
-            <div className="w-64 bg-white border-l border-gray-200 h-full overflow-hidden flex flex-col">
-              <div className="p-4 flex-1">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">
-                  AI 상담 정보
-                </h3>
+            {/* AI 상담 정보 및 액션 버튼들 - 하단에 배치 */}
+            <div className="border-t border-gray-200 bg-white p-4 flex-shrink-0">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* AI 상담 크레딧 정보 */}
+                <div className="bg-gradient-to-r from-cyan-50 via-blue-50 to-indigo-50 p-4 rounded-lg border border-cyan-200">
+                  <h4 className="font-medium text-cyan-900 mb-2">
+                    AI 상담 크레딧
+                  </h4>
+                  <p className="text-xs text-cyan-700 mb-3">
+                    매월 {300}크레딧을 무료로 제공합니다
+                  </p>
+                  <AIChatCreditsBar isExtended={isExtendedWithCredits} />
+                </div>
 
-                <div className="space-y-4">
-                  <div className="bg-gradient-to-r from-cyan-50 via-blue-50 to-indigo-50 p-4 rounded-lg border border-cyan-200">
-                    <h4 className="font-medium text-cyan-900">
-                      AI 상담 크레딧
+                {/* AI 어시스턴트 팁 */}
+                <div className="bg-gradient-to-r from-amber-50 via-orange-50 to-yellow-50 p-4 rounded-lg border border-amber-200">
+                  <div className="flex items-center mb-3">
+                    <div className="w-6 h-6 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center mr-2">
+                      <Sparkles className="w-3 h-3 text-white" />
+                    </div>
+                    <h4 className="font-medium text-amber-900">
+                      {isConsultationComplete
+                        ? "다음 단계 안내"
+                        : "AI 어시스턴트 팁"}
                     </h4>
-                    <p className="text-xs text-cyan-700 mb-3">
-                      매월 {300}크레딧을 무료로 제공합니다
-                    </p>
-                    <div className="mt-3">
-                      <AIChatCreditsBar isExtended={isExtendedWithCredits} />
-                    </div>
                   </div>
-
-                  {/* AI 어시스턴트 팁 */}
-                  <div className="bg-gradient-to-r from-amber-50 via-orange-50 to-yellow-50 p-4 rounded-lg border border-amber-200">
-                    <div className="flex items-center mb-3">
-                      <div className="w-6 h-6 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center mr-2">
-                        <Sparkles className="w-3 h-3 text-white" />
-                      </div>
-                      <h4 className="font-medium text-amber-900">
-                        {isConsultationComplete
-                          ? "다음 단계 안내"
-                          : "AI 어시스턴트 팁"}
-                      </h4>
-                    </div>
-                    <div className="space-y-2 text-sm text-amber-800">
-                      {isConsultationComplete ? (
-                        <>
-                          <div className="flex items-start">
-                            <span className="text-amber-600 mr-2">•</span>
-                            <span>
-                              전문가 매칭으로 구체적인 솔루션을 받아보세요
-                            </span>
-                          </div>
-                          <div className="flex items-start">
-                            <span className="text-amber-600 mr-2">•</span>
-                            <span>
-                              커뮤니티에 상담 요청글을 올려 추가 조언을 받으세요
-                            </span>
-                          </div>
-                          <div className="flex items-start">
-                            <span className="text-amber-600 mr-2">•</span>
-                            <span>
-                              새로운 AI 상담을 시작하여 다른 관점에서
-                              접근해보세요
-                            </span>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="flex items-start">
-                            <span className="text-amber-600 mr-2">•</span>
-                            <span>구체적인 상황을 설명해주세요</span>
-                          </div>
-                          <div className="flex items-start">
-                            <span className="text-amber-600 mr-2">•</span>
-                            <span>
-                              예산이나 시간 제약이 있다면 언급해주세요
-                            </span>
-                          </div>
-                          <div className="flex items-start">
-                            <span className="text-amber-600 mr-2">•</span>
-                            <span>이미 시도해본 방법이 있다면 알려주세요</span>
-                          </div>
-                        </>
-                      )}
-                    </div>
+                  <div className="space-y-2 text-sm text-amber-800">
+                    {isConsultationComplete ? (
+                      <>
+                        <div className="flex items-start">
+                          <span className="text-amber-600 mr-2">•</span>
+                          <span>
+                            전문가 매칭으로 구체적인 솔루션을 받아보세요
+                          </span>
+                        </div>
+                        <div className="flex items-start">
+                          <span className="text-amber-600 mr-2">•</span>
+                          <span>
+                            커뮤니티에 상담 요청글을 올려 추가 조언을 받으세요
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-start">
+                          <span className="text-amber-600 mr-2">•</span>
+                          <span>구체적인 상황을 설명해주세요</span>
+                        </div>
+                        <div className="flex items-start">
+                          <span className="text-amber-600 mr-2">•</span>
+                          <span>예산이나 시간 제약이 있다면 언급해주세요</span>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
-              </div>
 
-              {/* 액션 버튼들 - 하단 고정 */}
-              <div className="p-4 border-t border-gray-200 bg-white">
+                {/* 액션 버튼들 */}
                 <div className="space-y-3">
                   <button
                     onClick={handleQuickChat}
@@ -694,7 +676,7 @@ export default function ChatPage() {
 
                   <button
                     onClick={handleContinueWithCredits}
-                    className="w-full bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-600 text-white py-3 px-4 rounded-lg font-medium hover:from-cyan-500 hover:via-blue-600 hover:to-indigo-700 transition-all duration-200 shadow-sm hover:shadow-md"
+                    className="w-full bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600 text-white py-3 px-4 rounded-lg font-medium hover:from-cyan-500 hover:via-blue-600 hover:to-indigo-700 transition-all duration-200 shadow-sm hover:shadow-md"
                   >
                     <div className="text-center">
                       <div>대화 연장하기</div>
@@ -731,6 +713,6 @@ export default function ChatPage() {
           </div>
         </div>
       </div>
-    </ServiceLayout>
+    </ChatLayout>
   );
 }
