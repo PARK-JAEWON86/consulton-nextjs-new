@@ -141,8 +141,8 @@ const ParticipantVideo = ({
           participant.connectionStatus === "good"
             ? "bg-green-500"
             : participant.connectionStatus === "poor"
-            ? "bg-yellow-500"
-            : "bg-red-500"
+              ? "bg-yellow-500"
+              : "bg-red-500"
         }`}
       />
     </div>

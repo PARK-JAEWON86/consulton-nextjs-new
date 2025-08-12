@@ -323,15 +323,15 @@ export default function ConsultationSummaryPage() {
                           rec.priority === "high"
                             ? "bg-red-100 text-red-800"
                             : rec.priority === "medium"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-green-100 text-green-800"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-green-100 text-green-800"
                         }`}
                       >
                         {rec.priority === "high"
                           ? "높음"
                           : rec.priority === "medium"
-                          ? "보통"
-                          : "낮음"}
+                            ? "보통"
+                            : "낮음"}
                       </span>
                     </div>
                     <p className="text-gray-600 text-sm mb-1">
@@ -386,7 +386,7 @@ export default function ConsultationSummaryPage() {
                     summary: {
                       ...prev.summary,
                       actionItems: prev.summary.actionItems.map((item) =>
-                        item.id === id ? { ...item, ...updates } : item
+                        item.id === id ? { ...item, ...updates } : item,
                       ),
                     },
                   };

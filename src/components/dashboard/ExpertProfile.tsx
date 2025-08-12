@@ -70,11 +70,11 @@ const ExpertProfile = ({ expertData, onSave }) => {
   // 현재 전문가의 레벨 정보 계산 (안전한 기본값 사용)
   const currentLevel = calculateExpertLevel(
     profileData.totalSessions || 0,
-    profileData.avgRating || 0
+    profileData.avgRating || 0,
   );
   const nextLevelProgress = getNextLevelProgress(
     profileData.totalSessions || 0,
-    profileData.avgRating || 0
+    profileData.avgRating || 0,
   );
   const levelBadgeStyles = getLevelBadgeStyles(currentLevel?.name || "Bronze");
   const creditsPerMinute = calculateCreditsPerMinute(profileData);
@@ -227,7 +227,7 @@ const ExpertProfile = ({ expertData, onSave }) => {
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFileUpload(
         { target: { files: e.dataTransfer.files } },
-        "portfolio"
+        "portfolio",
       );
     }
   };
@@ -435,7 +435,7 @@ const ExpertProfile = ({ expertData, onSave }) => {
                 <div className="flex flex-wrap gap-2">
                   {profileData.consultationTypes.map((typeId) => {
                     const type = consultationTypeOptions.find(
-                      (t) => t.id === typeId
+                      (t) => t.id === typeId,
                     );
 
                     // 아이콘 결정
@@ -763,7 +763,7 @@ const ExpertProfile = ({ expertData, onSave }) => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {consultationTypeOptions.map((option) => {
                 const isSelected = profileData.consultationTypes.includes(
-                  option.id
+                  option.id,
                 );
 
                 // 아이콘 결정

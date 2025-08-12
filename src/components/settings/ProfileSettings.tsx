@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from 'react';
-import { User, Camera, Save, AlertCircle, Check } from 'lucide-react';
+import { useState } from "react";
+import { User, Camera, Save, AlertCircle, Check } from "lucide-react";
 
 interface Profile {
   firstName: string;
@@ -15,45 +15,46 @@ interface Profile {
   profileImage: File | null;
 }
 
-type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 const ProfileSettings = () => {
   const [profile, setProfile] = useState<Profile>({
-    firstName: '철수',
-    lastName: '김',
-    displayName: '김철수',
-    email: 'user@example.com',
-    phone: '010-1234-5678',
-    bio: '안녕하세요! 다양한 분야의 전문가와 상담을 통해 문제를 해결하고 있습니다.',
-    location: '서울, 대한민국',
-    timezone: 'Asia/Seoul',
-    profileImage: null
+    firstName: "철수",
+    lastName: "김",
+    displayName: "김철수",
+    email: "user@example.com",
+    phone: "010-1234-5678",
+    bio: "안녕하세요! 다양한 분야의 전문가와 상담을 통해 문제를 해결하고 있습니다.",
+    location: "서울, 대한민국",
+    timezone: "Asia/Seoul",
+    profileImage: null,
   });
 
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const handleInputChange = (field: keyof Profile, value: string) => {
-    setProfile(prev => ({
+    setProfile((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) { // 2MB 제한
-        alert('이미지 크기는 2MB 이하여야 합니다.');
+      if (file.size > 2 * 1024 * 1024) {
+        // 2MB 제한
+        alert("이미지 크기는 2MB 이하여야 합니다.");
         return;
       }
 
       const reader = new FileReader();
       reader.onload = (e) => {
         setImagePreview(e.target?.result as string);
-        setProfile(prev => ({
+        setProfile((prev) => ({
           ...prev,
-          profileImage: file
+          profileImage: file,
         }));
       };
       reader.readAsDataURL(file);
@@ -61,37 +62,41 @@ const ProfileSettings = () => {
   };
 
   const handleSave = async () => {
-    setSaveStatus('saving');
-    
+    setSaveStatus("saving");
+
     try {
       // API 호출 시뮬레이션
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      setSaveStatus('saved');
-      
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      setSaveStatus("saved");
+
       setTimeout(() => {
-        setSaveStatus('idle');
+        setSaveStatus("idle");
       }, 2000);
     } catch (error) {
-      setSaveStatus('error');
+      setSaveStatus("error");
       setTimeout(() => {
-        setSaveStatus('idle');
+        setSaveStatus("idle");
       }, 3000);
     }
   };
 
   const timezones = [
-    { value: 'Asia/Seoul', label: '서울 (GMT+9)' },
-    { value: 'Asia/Tokyo', label: '도쿄 (GMT+9)' },
-    { value: 'America/New_York', label: '뉴욕 (GMT-5)' },
-    { value: 'Europe/London', label: '런던 (GMT+0)' },
-    { value: 'Asia/Shanghai', label: '상하이 (GMT+8)' }
+    { value: "Asia/Seoul", label: "서울 (GMT+9)" },
+    { value: "Asia/Tokyo", label: "도쿄 (GMT+9)" },
+    { value: "America/New_York", label: "뉴욕 (GMT-5)" },
+    { value: "Europe/London", label: "런던 (GMT+0)" },
+    { value: "Asia/Shanghai", label: "상하이 (GMT+8)" },
   ];
 
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">프로필 설정</h2>
-        <p className="text-gray-600 mb-6">개인 정보를 관리하고 업데이트하세요</p>
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">
+          프로필 설정
+        </h2>
+        <p className="text-gray-600 mb-6">
+          개인 정보를 관리하고 업데이트하세요
+        </p>
       </div>
 
       <div className="space-y-6">
@@ -101,9 +106,9 @@ const ProfileSettings = () => {
             <div className="relative">
               <div className="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center overflow-hidden">
                 {imagePreview ? (
-                  <img 
-                    src={imagePreview} 
-                    alt="프로필" 
+                  <img
+                    src={imagePreview}
+                    alt="프로필"
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -123,12 +128,16 @@ const ProfileSettings = () => {
               </label>
             </div>
             <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">프로필 사진</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                프로필 사진
+              </h3>
               <p className="text-sm text-gray-600 mb-3">
                 JPG, PNG 파일만 업로드 가능합니다. (최대 2MB)
               </p>
               <button
-                onClick={() => document.querySelector('input[type="file"]')?.click()}
+                onClick={() =>
+                  document.querySelector('input[type="file"]')?.click()
+                }
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
               >
                 사진 변경
@@ -148,7 +157,7 @@ const ProfileSettings = () => {
               <input
                 type="text"
                 value={profile.lastName}
-                onChange={(e) => handleInputChange('lastName', e.target.value)}
+                onChange={(e) => handleInputChange("lastName", e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -159,7 +168,7 @@ const ProfileSettings = () => {
               <input
                 type="text"
                 value={profile.firstName}
-                onChange={(e) => handleInputChange('firstName', e.target.value)}
+                onChange={(e) => handleInputChange("firstName", e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -170,7 +179,9 @@ const ProfileSettings = () => {
               <input
                 type="text"
                 value={profile.displayName}
-                onChange={(e) => handleInputChange('displayName', e.target.value)}
+                onChange={(e) =>
+                  handleInputChange("displayName", e.target.value)
+                }
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -192,7 +203,7 @@ const ProfileSettings = () => {
               <input
                 type="tel"
                 value={profile.phone}
-                onChange={(e) => handleInputChange('phone', e.target.value)}
+                onChange={(e) => handleInputChange("phone", e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -203,7 +214,7 @@ const ProfileSettings = () => {
               <input
                 type="text"
                 value={profile.location}
-                onChange={(e) => handleInputChange('location', e.target.value)}
+                onChange={(e) => handleInputChange("location", e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -219,7 +230,7 @@ const ProfileSettings = () => {
             </label>
             <textarea
               value={profile.bio}
-              onChange={(e) => handleInputChange('bio', e.target.value)}
+              onChange={(e) => handleInputChange("bio", e.target.value)}
               rows={4}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="자신에 대해 간단히 소개해주세요"
@@ -229,14 +240,16 @@ const ProfileSettings = () => {
 
         {/* 시간대 설정 */}
         <div className="bg-gray-50 rounded-lg p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">시간대 설정</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">
+            시간대 설정
+          </h3>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               시간대
             </label>
             <select
               value={profile.timezone}
-              onChange={(e) => handleInputChange('timezone', e.target.value)}
+              onChange={(e) => handleInputChange("timezone", e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               {timezones.map((tz) => (
@@ -252,10 +265,10 @@ const ProfileSettings = () => {
         <div className="flex justify-end">
           <button
             onClick={handleSave}
-            disabled={saveStatus === 'saving'}
+            disabled={saveStatus === "saving"}
             className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
           >
-            {saveStatus === 'saving' ? (
+            {saveStatus === "saving" ? (
               <>
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                 <span>저장 중...</span>
@@ -270,7 +283,7 @@ const ProfileSettings = () => {
         </div>
 
         {/* 상태 메시지 */}
-        {saveStatus === 'saved' && (
+        {saveStatus === "saved" && (
           <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
             <div className="flex items-center space-x-2 text-green-800">
               <Check className="h-5 w-5" />
@@ -279,7 +292,7 @@ const ProfileSettings = () => {
           </div>
         )}
 
-        {saveStatus === 'error' && (
+        {saveStatus === "error" && (
           <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
             <div className="flex items-center space-x-2 text-red-800">
               <AlertCircle className="h-5 w-5" />

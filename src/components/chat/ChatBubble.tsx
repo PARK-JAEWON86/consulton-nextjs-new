@@ -148,8 +148,8 @@ const ChatBubble = ({ message }: ChatBubbleProps) => {
                 isUser
                   ? "bg-blue-600 text-white"
                   : isAI
-                  ? "bg-gradient-to-r from-cyan-50 via-blue-50 to-indigo-50 text-gray-900 border border-cyan-200"
-                  : "bg-white text-gray-900 border border-gray-200"
+                    ? "bg-gradient-to-r from-cyan-50 via-blue-50 to-indigo-50 text-gray-900 border border-cyan-200"
+                    : "bg-white text-gray-900 border border-gray-200"
               }`}
             >
               <p className="text-sm whitespace-pre-wrap break-words">

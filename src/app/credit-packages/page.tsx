@@ -6,9 +6,19 @@ import ServiceLayout from "@/components/layout/ServiceLayout";
 import PackCard from "@/components/dashboard/PackCard";
 import CreditBalance from "@/components/dashboard/CreditBalance";
 import { LEVELS, getKoreanTierName } from "@/utils/expertLevels";
+import { useAIChatCreditsStore } from "@/stores/aiChatCreditsStore";
+import React from "react"; // Added missing import for React
 
 export default function CreditPackagesPage() {
-  const [user] = useState({ name: "김철수", credits: 150 });
+  // AI 채팅 크레딧 스토어에서 실제 크레딧 정보 가져오기
+  const { remainingAIChatCredits, checkAndResetMonthly, setCreditsTo7300 } =
+    useAIChatCreditsStore();
+
+  // 컴포넌트 마운트 시 월간 리셋 체크 및 크레딧을 7300으로 설정
+  React.useEffect(() => {
+    checkAndResetMonthly();
+    setCreditsTo7300(); // 크레딧을 7300으로 설정
+  }, [checkAndResetMonthly, setCreditsTo7300]);
 
   // 새로운 과금 체계 기반 평균 요금 계산
   const calculateAverageRatePerMinute = () => {
@@ -44,68 +54,65 @@ export default function CreditPackagesPage() {
       id: 1,
       type: "credit" as const,
       name: "베이직 충전",
-      description: "시작하기 좋은 기본 충전 + 5분 추가",
+      description: "시작하기 좋은 기본 충전 + 추가크레딧",
       price: 30000,
       credits: 3000,
-      bonusCredits: 1050, // 150 (5% 보너스) + 900 (5분 추가)
+      bonusCredits: 1050, // 150 (5% 보너스) + 900 (추가 크레딧)
       totalCredits: 4050,
       payPerMinute: averageRatePerMinute,
       usageMinutes: Math.floor((4050 / creditsPerMinute) * 100) / 100, // 13.5분
       usageTime: "약 13분 30초",
-      extraMinutes: 5, // 추가 분 정보
       features: [
         "3,000 + 1,050 보너스 크레딧",
-        "약 13분 30초 상담 가능",
-        `분당 ₩${averageRatePerMinute.toLocaleString()} (${creditsPerMinute}크레딧)`,
-        "5% 보너스 + 5분 추가 혜택",
-        "분 단위 자동 차감",
+        "총 4,050 크레딧 제공",
+        "AI 상담 및 전문가 상담에 사용 가능",
+        "5% 보너스 + 추가 크레딧 혜택",
         "사용기한 없음",
+        "언제든지 사용 가능",
       ],
     },
     {
       id: 2,
       type: "credit" as const,
       name: "스탠다드 충전",
-      description: "가장 인기있는 추천 패키지 + 10분 추가",
+      description: "가장 인기있는 추천 패키지 + 추가크레딧",
       price: 50000,
       credits: 5000,
-      bonusCredits: 2300, // 500 (10% 보너스) + 1800 (10분 추가)
+      bonusCredits: 2300, // 500 (10% 보너스) + 1800 (추가 크레딧)
       totalCredits: 7300,
       payPerMinute: averageRatePerMinute,
       usageMinutes: Math.floor((7300 / creditsPerMinute) * 100) / 100, // 24.33분
       usageTime: "약 24분 20초",
       isRecommended: true,
-      extraMinutes: 10, // 추가 분 정보
       features: [
         "5,000 + 2,300 보너스 크레딧",
-        "약 24분 20초 상담 가능",
-        `분당 ₩${averageRatePerMinute.toLocaleString()} (${creditsPerMinute}크레딧)`,
-        "10% 보너스 + 10분 추가 혜택",
-        "분 단위 자동 차감",
+        "총 7,300 크레딧 제공",
+        "AI 상담 및 전문가 상담에 사용 가능",
+        "10% 보너스 + 추가 크레딧 혜택",
         "우선 고객지원",
+        "사용기한 없음",
       ],
     },
     {
       id: 3,
       type: "credit" as const,
       name: "프리미엄 충전",
-      description: "대용량 충전으로 최대 혜택 + 20분 추가",
+      description: "대용량 충전으로 최대 혜택 + 추가크레딧",
       price: 100000,
       credits: 10000,
-      bonusCredits: 5100, // 1500 (15% 보너스) + 3600 (20분 추가)
+      bonusCredits: 5100, // 1500 (15% 보너스) + 3600 (추가 크레딧)
       totalCredits: 15100,
       payPerMinute: averageRatePerMinute,
       usageMinutes: Math.floor((15100 / creditsPerMinute) * 100) / 100, // 50.33분
       usageTime: "약 50분 20초",
-      extraMinutes: 20, // 추가 분 정보
       features: [
         "10,000 + 5,100 보너스 크레딧",
-        "약 50분 20초 상담 가능",
-        `분당 ₩${averageRatePerMinute.toLocaleString()} (${creditsPerMinute}크레딧)`,
-        "15% 보너스 + 20분 추가 혜택",
-        "분 단위 자동 차감",
+        "총 15,100 크레딧 제공",
+        "AI 상담 및 전문가 상담에 사용 가능",
+        "15% 보너스 + 추가 크레딧 혜택",
         "VIP 고객지원",
         "전문가 우선 매칭",
+        "사용기한 없음",
       ],
     },
   ];
@@ -161,7 +168,7 @@ export default function CreditPackagesPage() {
 
           {/* 크레딧 잔액 */}
           <div className="mb-6 sm:mb-8">
-            <CreditBalance credits={user.credits} />
+            <CreditBalance credits={remainingAIChatCredits} />
           </div>
 
           {/* 패키지 카드들 */}
@@ -252,7 +259,8 @@ export default function CreditPackagesPage() {
                           {pack.usageTime}
                         </div>
                         <div className="text-xs text-gray-500">
-                          (평균 ₩{averageRatePerMinute.toLocaleString()}/분 기준)
+                          (평균 ₩{averageRatePerMinute.toLocaleString()}/분
+                          기준)
                         </div>
                       </td>
                     </tr>
@@ -302,7 +310,9 @@ export default function CreditPackagesPage() {
                           </div>
                         </div>
                         <div className="bg-gray-50 p-3 rounded">
-                          <div className="text-gray-500 text-xs">기본 크레딧</div>
+                          <div className="text-gray-500 text-xs">
+                            기본 크레딧
+                          </div>
                           <div className="font-medium text-gray-900">
                             {pack.credits} 크레딧
                           </div>

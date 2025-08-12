@@ -135,16 +135,16 @@ const PackCard = ({ pack }: PackCardProps) => {
         pack.isRecommended
           ? "border-blue-300 shadow-blue-100 ring-2 ring-blue-200"
           : isPro
-          ? "border-purple-200"
-          : isFree
-          ? "border-green-200"
-          : "border-gray-200"
+            ? "border-purple-200"
+            : isFree
+              ? "border-green-200"
+              : "border-gray-200"
       } ${
         pack.isRecommended && isHovered
           ? "shadow-xl shadow-blue-200 border-blue-400"
           : isHovered
-          ? "border-blue-200"
-          : ""
+            ? "border-blue-200"
+            : ""
       }`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -227,18 +227,12 @@ const PackCard = ({ pack }: PackCardProps) => {
                 >
                   {pack.credits} 크레딧 포함
                 </span>
-                {pack.extraMinutes && (
+                {pack.bonusCredits && (
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-cyan-100 text-cyan-800">
-                    ⏰ {pack.extraMinutes}분 추가
+                    +{pack.bonusCredits} 추가크레딧
                   </span>
                 )}
               </>
-            )}
-
-            {pack.payPerMinute && (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                분당 {pack.payPerMinute}원
-              </span>
             )}
           </div>
 
@@ -247,10 +241,15 @@ const PackCard = ({ pack }: PackCardProps) => {
               {isSubscription ? (
                 <>
                   세션당{" "}
-                  {Math.round(pack.price / (pack.sessions || 1)).toLocaleString()}원
+                  {Math.round(
+                    pack.price / (pack.sessions || 1)
+                  ).toLocaleString()}
+                  원
                   <span className="ml-2 text-green-600 font-medium">
                     (분당{" "}
-                    {Math.round(pack.price / ((pack.sessions || 1) * (pack.duration || 1)))}
+                    {Math.round(
+                      pack.price / ((pack.sessions || 1) * (pack.duration || 1))
+                    )}
                     원)
                   </span>
                 </>
@@ -370,9 +369,15 @@ const PackCard = ({ pack }: PackCardProps) => {
               {isSubscription &&
                 (subscriptionMode ? "구독 시작하기" : "1개월 구매하기")}
               {isCredit &&
-                (pack.extraMinutes
-                  ? `${pack.totalCredits} 크레딧 충전 (+${pack.extraMinutes}분)`
-                  : `${pack.credits} 크레딧 충전`)}
+                (pack.bonusCredits ? (
+                  <>
+                    {pack.credits} 크레딧
+                    <br />
+                    (+{pack.bonusCredits} 추가)
+                  </>
+                ) : (
+                  `${pack.credits} 크레딧 충전`
+                ))}
             </>
           )}
         </button>

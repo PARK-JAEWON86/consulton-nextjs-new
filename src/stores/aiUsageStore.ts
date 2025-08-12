@@ -34,7 +34,7 @@ export const useAIUsageStore = create<AIUsageStore>((set, get) => ({
       const newUsedCredits = state.usedCredits + spentCredits;
       const newRemainingPercent = calcRemainingPercent(
         newUsedCredits,
-        state.purchasedCredits
+        state.purchasedCredits,
       );
 
       return {
@@ -52,7 +52,7 @@ export const useAIUsageStore = create<AIUsageStore>((set, get) => ({
       const newPurchasedCredits = state.purchasedCredits + n;
       const newRemainingPercent = calcRemainingPercent(
         state.usedCredits,
-        newPurchasedCredits
+        newPurchasedCredits,
       );
 
       return {
@@ -73,7 +73,7 @@ export const useAIUsageStore = create<AIUsageStore>((set, get) => ({
     set((state) => {
       const newRemainingPercent = calcRemainingPercent(
         state.usedCredits,
-        state.purchasedCredits
+        state.purchasedCredits,
       );
 
       return {

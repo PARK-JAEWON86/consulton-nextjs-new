@@ -8,14 +8,14 @@ const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
   display: "swap", // 폰트 로딩 최적화
-  preload: true,   // 프리로드 활성화
+  preload: true, // 프리로드 활성화
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
   display: "swap", // 폰트 로딩 최적화
-  preload: true,   // 프리로드 활성화
+  preload: true, // 프리로드 활성화
 });
 
 export const metadata: Metadata = {

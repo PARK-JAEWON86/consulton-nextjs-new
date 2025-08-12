@@ -101,6 +101,6 @@ export const useAppStore = create<AppState>()(
         isAuthenticated: state.isAuthenticated,
         user: state.user,
       }),
-    }
-  )
+    },
+  ),
 );

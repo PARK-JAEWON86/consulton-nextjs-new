@@ -1,11 +1,21 @@
 "use client";
 
-import { useState } from 'react';
-import { Lock, Eye, Download, Trash2, AlertTriangle, Shield, Save, Check, X } from 'lucide-react';
-import NotificationToggle from './NotificationToggle';
+import { useState } from "react";
+import {
+  Lock,
+  Eye,
+  Download,
+  Trash2,
+  AlertTriangle,
+  Shield,
+  Save,
+  Check,
+  X,
+} from "lucide-react";
+import NotificationToggle from "./NotificationToggle";
 
 interface PrivacySettings {
-  profileVisibility: 'public' | 'experts' | 'private';
+  profileVisibility: "public" | "experts" | "private";
   consultationHistory: boolean;
   dataCollection: {
     analytics: boolean;
@@ -17,57 +27,60 @@ interface PrivacySettings {
   activityStatus: boolean;
 }
 
-type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 const PrivacySettings = () => {
   const [privacySettings, setPrivacySettings] = useState<PrivacySettings>({
-    profileVisibility: 'experts',
+    profileVisibility: "experts",
     consultationHistory: true,
     dataCollection: {
       analytics: true,
       personalization: true,
       marketing: false,
-      thirdParty: false
+      thirdParty: false,
     },
     searchVisibility: true,
-    activityStatus: true
+    activityStatus: true,
   });
 
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handlePrivacyChange = (key: keyof PrivacySettings, value: any) => {
-    setPrivacySettings(prev => ({
+    setPrivacySettings((prev) => ({
       ...prev,
-      [key]: value
+      [key]: value,
     }));
   };
 
-  const handleDataCollectionChange = (key: keyof PrivacySettings['dataCollection'], value: boolean) => {
-    setPrivacySettings(prev => ({
+  const handleDataCollectionChange = (
+    key: keyof PrivacySettings["dataCollection"],
+    value: boolean,
+  ) => {
+    setPrivacySettings((prev) => ({
       ...prev,
       dataCollection: {
         ...prev.dataCollection,
-        [key]: value
-      }
+        [key]: value,
+      },
     }));
   };
 
   const handleSaveSettings = async () => {
-    setSaveStatus('saving');
-    
+    setSaveStatus("saving");
+
     try {
       // API 호출 시뮬레이션
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      setSaveStatus('saved');
-      
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      setSaveStatus("saved");
+
       setTimeout(() => {
-        setSaveStatus('idle');
+        setSaveStatus("idle");
       }, 2000);
     } catch (error) {
-      setSaveStatus('error');
+      setSaveStatus("error");
       setTimeout(() => {
-        setSaveStatus('idle');
+        setSaveStatus("idle");
       }, 3000);
     }
   };
@@ -75,57 +88,65 @@ const PrivacySettings = () => {
   const handleDataExport = async () => {
     try {
       // 데이터 내보내기 API 호출 시뮬레이션
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
       // 파일 다운로드 시뮬레이션
       const data = {
-        profile: '사용자 프로필 데이터',
-        consultations: '상담 기록 데이터',
-        preferences: '설정 및 선호도 데이터',
-        exportDate: new Date().toISOString()
+        profile: "사용자 프로필 데이터",
+        consultations: "상담 기록 데이터",
+        preferences: "설정 및 선호도 데이터",
+        exportDate: new Date().toISOString(),
       };
-      
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: "application/json",
+      });
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = `consultOn-data-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `consultOn-data-${new Date().toISOString().split("T")[0]}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-      
-      alert('데이터 내보내기가 완료되었습니다.');
+
+      alert("데이터 내보내기가 완료되었습니다.");
     } catch (error) {
-      alert('데이터 내보내기에 실패했습니다.');
+      alert("데이터 내보내기에 실패했습니다.");
     }
   };
 
   const handleDeleteAccount = async () => {
     try {
       // 계정 삭제 API 호출 시뮬레이션
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      alert('계정 삭제 요청이 처리되었습니다. 7일 후 영구 삭제됩니다.');
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      alert("계정 삭제 요청이 처리되었습니다. 7일 후 영구 삭제됩니다.");
       setShowDeleteConfirm(false);
     } catch (error) {
-      alert('계정 삭제 요청에 실패했습니다.');
+      alert("계정 삭제 요청에 실패했습니다.");
     }
   };
 
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">개인정보 보호</h2>
-        <p className="text-gray-600 mb-6">개인정보 공개 범위와 데이터 사용을 관리하세요.</p>
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">
+          개인정보 보호
+        </h2>
+        <p className="text-gray-600 mb-6">
+          개인정보 공개 범위와 데이터 사용을 관리하세요.
+        </p>
       </div>
 
       {/* 프로필 공개 설정 */}
       <div className="bg-gray-50 rounded-lg p-6">
         <div className="flex items-center space-x-3 mb-4">
           <Eye className="h-5 w-5 text-blue-600" />
-          <h3 className="text-lg font-medium text-gray-900">프로필 공개 설정</h3>
+          <h3 className="text-lg font-medium text-gray-900">
+            프로필 공개 설정
+          </h3>
         </div>
-        
+
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-3">
@@ -133,26 +154,45 @@ const PrivacySettings = () => {
             </label>
             <div className="space-y-3">
               {[
-                { value: 'public', label: '전체 공개', description: '모든 사용자가 프로필을 볼 수 있습니다' },
-                { value: 'experts', label: '전문가만', description: '전문가와 매칭 시에만 프로필이 공개됩니다' },
-                { value: 'private', label: '비공개', description: '프로필이 공개되지 않습니다' }
+                {
+                  value: "public",
+                  label: "전체 공개",
+                  description: "모든 사용자가 프로필을 볼 수 있습니다",
+                },
+                {
+                  value: "experts",
+                  label: "전문가만",
+                  description: "전문가와 매칭 시에만 프로필이 공개됩니다",
+                },
+                {
+                  value: "private",
+                  label: "비공개",
+                  description: "프로필이 공개되지 않습니다",
+                },
               ].map((option) => {
-                const isActive = privacySettings.profileVisibility === option.value;
-                
+                const isActive =
+                  privacySettings.profileVisibility === option.value;
+
                 return (
                   <button
                     key={option.value}
-                    onClick={() => handlePrivacyChange('profileVisibility', option.value)}
+                    onClick={() =>
+                      handlePrivacyChange("profileVisibility", option.value)
+                    }
                     className={`w-full p-4 rounded-lg border-2 transition-all duration-200 text-left ${
                       isActive
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
                     }`}
                   >
-                    <div className={`font-medium ${isActive ? 'text-blue-900' : 'text-gray-900'}`}>
+                    <div
+                      className={`font-medium ${isActive ? "text-blue-900" : "text-gray-900"}`}
+                    >
                       {option.label}
                     </div>
-                    <div className={`text-sm ${isActive ? 'text-blue-700' : 'text-gray-600'}`}>
+                    <div
+                      className={`text-sm ${isActive ? "text-blue-700" : "text-gray-600"}`}
+                    >
                       {option.description}
                     </div>
                     {isActive && (
@@ -177,7 +217,9 @@ const PrivacySettings = () => {
               label=""
               description=""
               checked={privacySettings.consultationHistory}
-              onChange={(value) => handlePrivacyChange('consultationHistory', value)}
+              onChange={(value) =>
+                handlePrivacyChange("consultationHistory", value)
+              }
             />
           </div>
 
@@ -192,7 +234,9 @@ const PrivacySettings = () => {
               label=""
               description=""
               checked={privacySettings.searchVisibility}
-              onChange={(value) => handlePrivacyChange('searchVisibility', value)}
+              onChange={(value) =>
+                handlePrivacyChange("searchVisibility", value)
+              }
             />
           </div>
 
@@ -207,7 +251,7 @@ const PrivacySettings = () => {
               label=""
               description=""
               checked={privacySettings.activityStatus}
-              onChange={(value) => handlePrivacyChange('activityStatus', value)}
+              onChange={(value) => handlePrivacyChange("activityStatus", value)}
             />
           </div>
         </div>
@@ -217,13 +261,17 @@ const PrivacySettings = () => {
       <div className="bg-gray-50 rounded-lg p-6">
         <div className="flex items-center space-x-3 mb-4">
           <Shield className="h-5 w-5 text-blue-600" />
-          <h3 className="text-lg font-medium text-gray-900">데이터 수집 설정</h3>
+          <h3 className="text-lg font-medium text-gray-900">
+            데이터 수집 설정
+          </h3>
         </div>
-        
+
         <div className="space-y-3">
           <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
             <div>
-              <div className="font-medium text-gray-900">서비스 개선을 위한 분석</div>
+              <div className="font-medium text-gray-900">
+                서비스 개선을 위한 분석
+              </div>
               <div className="text-sm text-gray-600">
                 서비스 사용 패턴을 분석하여 개선에 활용합니다
               </div>
@@ -232,7 +280,9 @@ const PrivacySettings = () => {
               label=""
               description=""
               checked={privacySettings.dataCollection.analytics}
-              onChange={(value) => handleDataCollectionChange('analytics', value)}
+              onChange={(value) =>
+                handleDataCollectionChange("analytics", value)
+              }
             />
           </div>
 
@@ -247,7 +297,9 @@ const PrivacySettings = () => {
               label=""
               description=""
               checked={privacySettings.dataCollection.personalization}
-              onChange={(value) => handleDataCollectionChange('personalization', value)}
+              onChange={(value) =>
+                handleDataCollectionChange("personalization", value)
+              }
             />
           </div>
 
@@ -262,7 +314,9 @@ const PrivacySettings = () => {
               label=""
               description=""
               checked={privacySettings.dataCollection.marketing}
-              onChange={(value) => handleDataCollectionChange('marketing', value)}
+              onChange={(value) =>
+                handleDataCollectionChange("marketing", value)
+              }
             />
           </div>
 
@@ -277,7 +331,9 @@ const PrivacySettings = () => {
               label=""
               description=""
               checked={privacySettings.dataCollection.thirdParty}
-              onChange={(value) => handleDataCollectionChange('thirdParty', value)}
+              onChange={(value) =>
+                handleDataCollectionChange("thirdParty", value)
+              }
             />
           </div>
         </div>
@@ -286,7 +342,7 @@ const PrivacySettings = () => {
       {/* 데이터 관리 */}
       <div className="bg-gray-50 rounded-lg p-6">
         <h3 className="text-lg font-medium text-gray-900 mb-4">데이터 관리</h3>
-        
+
         <div className="space-y-4">
           <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
             <div>
@@ -326,10 +382,10 @@ const PrivacySettings = () => {
       <div className="flex justify-end">
         <button
           onClick={handleSaveSettings}
-          disabled={saveStatus === 'saving'}
+          disabled={saveStatus === "saving"}
           className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
         >
-          {saveStatus === 'saving' ? (
+          {saveStatus === "saving" ? (
             <>
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
               <span>저장 중...</span>
@@ -344,7 +400,7 @@ const PrivacySettings = () => {
       </div>
 
       {/* 상태 메시지 */}
-      {saveStatus === 'saved' && (
+      {saveStatus === "saved" && (
         <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
           <div className="flex items-center space-x-2 text-green-800">
             <Check className="h-5 w-5" />
@@ -353,7 +409,7 @@ const PrivacySettings = () => {
         </div>
       )}
 
-      {saveStatus === 'error' && (
+      {saveStatus === "error" && (
         <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
           <div className="flex items-center space-x-2 text-red-800">
             <X className="h-5 w-5" />
@@ -375,7 +431,8 @@ const PrivacySettings = () => {
                   계정을 삭제하시겠습니까?
                 </h2>
                 <p className="text-gray-600">
-                  이 작업은 되돌릴 수 없습니다. 모든 데이터가 영구적으로 삭제됩니다.
+                  이 작업은 되돌릴 수 없습니다. 모든 데이터가 영구적으로
+                  삭제됩니다.
                 </p>
               </div>
 

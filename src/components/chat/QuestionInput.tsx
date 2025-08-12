@@ -164,8 +164,8 @@ const QuestionInput = ({
               disabled
                 ? "text-gray-300 cursor-not-allowed"
                 : isRecording
-                ? "text-red-600 bg-red-50 hover:bg-red-100"
-                : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                  ? "text-red-600 bg-red-50 hover:bg-red-100"
+                  : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
             }`}
             title={isRecording ? "녹음 중지" : "음성 녹음"}
           >

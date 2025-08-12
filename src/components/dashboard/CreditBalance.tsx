@@ -158,15 +158,15 @@ const CreditBalance = ({ credits }: CreditBalanceProps) => {
                         item.type === "used"
                           ? "text-red-600"
                           : item.type === "purchased"
-                          ? "text-blue-600"
-                          : "text-green-600"
+                            ? "text-blue-600"
+                            : "text-green-600"
                       }`}
                     >
                       {item.type === "used"
                         ? "사용"
                         : item.type === "purchased"
-                        ? "구매"
-                        : "보너스"}
+                          ? "구매"
+                          : "보너스"}
                     </span>
                     <span className="text-sm text-gray-600">
                       {item.description}

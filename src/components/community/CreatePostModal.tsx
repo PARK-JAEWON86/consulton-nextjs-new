@@ -38,7 +38,10 @@ const CreatePostModal = ({
     { value: "discussion", label: "토론" },
   ];
 
-  const handleInputChange = (field: keyof PostData, value: string | string[]) => {
+  const handleInputChange = (
+    field: keyof PostData,
+    value: string | string[],
+  ) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
@@ -80,9 +83,7 @@ const CreatePostModal = ({
 
     const postData = {
       ...formData,
-      tags: formData.tags
-        .map((tag) => tag.trim())
-        .filter((tag) => tag),
+      tags: formData.tags.map((tag) => tag.trim()).filter((tag) => tag),
     };
 
     onSubmit && onSubmit(postData);
@@ -191,7 +192,10 @@ const CreatePostModal = ({
                 type="text"
                 value={formData.tags.join(", ")}
                 onChange={(e) =>
-                  handleInputChange("tags", e.target.value.split(",").map((tag) => tag.trim()))
+                  handleInputChange(
+                    "tags",
+                    e.target.value.split(",").map((tag) => tag.trim()),
+                  )
                 }
                 placeholder="태그를 쉼표로 구분하여 입력하세요 (예: 상담후기, 스트레스관리)"
                 className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"

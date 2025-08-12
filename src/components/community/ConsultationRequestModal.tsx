@@ -87,7 +87,7 @@ const ConsultationRequestModal = ({
 
   const handleInputChange = (
     field: keyof FormData,
-    value: string | boolean | string[]
+    value: string | boolean | string[],
   ) => {
     setFormData((prev) => ({
       ...prev,
@@ -136,9 +136,7 @@ const ConsultationRequestModal = ({
       ...formData,
       category: "상담요청",
       isConsultationRequest: true,
-      tags: formData.tags
-        .filter((tag) => tag)
-        .concat(["상담요청"]), // 자동으로 상담요청 태그 추가
+      tags: formData.tags.filter((tag) => tag).concat(["상담요청"]), // 자동으로 상담요청 태그 추가
     };
 
     onSubmit && onSubmit(requestData);
@@ -269,7 +267,7 @@ const ConsultationRequestModal = ({
                         formData.urgency === option.value
                           ? `${option.color.replace(
                               "text",
-                              "border"
+                              "border",
                             )} ${option.color.replace("text", "bg")}`
                           : "border-gray-300"
                       }`}
@@ -364,7 +362,12 @@ const ConsultationRequestModal = ({
             <input
               type="text"
               value={formData.tags.join(", ")}
-              onChange={(e) => handleInputChange("tags", e.target.value.split(",").map(tag => tag.trim()))}
+              onChange={(e) =>
+                handleInputChange(
+                  "tags",
+                  e.target.value.split(",").map((tag) => tag.trim()),
+                )
+              }
               placeholder="예: 스트레스, 불안감, 직장생활 (쉼표로 구분)"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />

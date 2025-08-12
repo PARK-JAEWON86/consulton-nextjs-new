@@ -15,8 +15,9 @@ import {
 import QuestionInput from "@/components/chat/QuestionInput";
 import ChatHistory from "@/components/chat/ChatHistory";
 import ChatBubble from "@/components/chat/ChatBubble";
-import ChatQuotaBar from "@/components/chat/ChatQuotaBar";
+import AIChatCreditsBar from "@/components/chat/AIChatCreditsBar";
 import ServiceLayout from "@/components/layout/ServiceLayout";
+import { useAIChatCreditsStore } from "@/stores/aiChatCreditsStore";
 
 interface Message {
   id: string;
@@ -43,8 +44,17 @@ export default function ChatPage() {
   const [showCreditModal, setShowCreditModal] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [showQuickChatModal, setShowQuickChatModal] = useState(false);
-  const [messageCount, setMessageCount] = useState(1);
+  const [messageCount, setMessageCount] = useState(0);
+  const [isExtendedWithCredits, setIsExtendedWithCredits] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // AI 상담 전용 크레딧 시스템 사용
+  const {
+    remainingAIChatCredits,
+    remainingPercent,
+    usedAIChatCredits,
+    useAIChatCredits,
+  } = useAIChatCreditsStore();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -65,21 +75,28 @@ export default function ChatPage() {
       setShowQuickChatModal(true);
       sessionStorage.removeItem("showQuickChatModal");
     }
-  }, []);
+  }, [setShowQuickChatModal]);
+
+  // 크레딧 상태 변경 감지
+  useEffect(() => {
+    // 크레딧 상태가 변경될 때마다 컴포넌트 리렌더링
+  }, [usedAIChatCredits, remainingPercent]);
 
   const generateAIResponse = (
     userMessage: string,
-    currentMessageCount: number
+    currentMessageCount: number,
+    currentRemainingPercent: number
   ) => {
     // AI 응답 시나리오 (실제로는 AI API를 호출)
     const responses = [
       "말씀해주신 상황을 잘 이해했습니다. 더 구체적인 정보를 알려주시면 더 정확한 조언을 드릴 수 있어요.",
       "흥미로운 케이스네요! 이런 상황에서는 몇 가지 접근 방법이 있습니다. 어떤 부분이 가장 우선순위인지 알려주세요.",
       "지금까지 말씀해주신 내용을 종합해보면, 핵심 이슈가 명확해지고 있습니다. 추가로 궁금한 점이 있으실까요?",
-      "네, 충분한 정보를 주셨습니다. 이제 구체적인 해결책과 실행 방안을 제시해드릴 수 있을 것 같습니다.",
+      "네, 충분한 정보를 주셨습니다. 이제 구체적인 솔루션과 실행 방안을 제시해드릴 수 있을 것 같습니다.",
     ];
 
-    if (currentMessageCount >= 7) {
+    // 크레딧이 부족하면 상담 완료 처리
+    if (currentRemainingPercent <= 10) {
       return {
         content:
           "지금까지의 상담 내용을 바탕으로 종합적인 분석과 조언을 정리해드렸습니다. 더 전문적인 도움이 필요하시다면 전문가 매칭을 받으시거나, 커뮤니티에 상세한 상담 내용을 공유하여 전문가들의 추가 조언을 받아보시는 것을 추천드립니다.",
@@ -113,31 +130,44 @@ export default function ChatPage() {
       timestamp: new Date(),
     };
 
-    const newMessageCount = messageCount + 1;
     setMessages((prev) => [...prev, userMessage]);
     setNewMessage("");
-    setMessageCount(newMessageCount);
 
     // AI 응답 시뮬레이션
     setIsTyping(true);
-    setTimeout(() => {
-      const aiResponseData = generateAIResponse(message, newMessageCount);
-      const aiResponse: Message = {
-        id: Date.now().toString() + 1,
-        type: "ai",
-        content: aiResponseData.content,
-        timestamp: new Date(),
-      };
+    setTimeout(
+      () => {
+        const newMessageCount = messageCount + 1;
+        const aiResponseData = generateAIResponse(
+          message,
+          newMessageCount,
+          remainingPercent
+        );
+        const aiResponse: Message = {
+          id: Date.now().toString() + 1,
+          type: "ai",
+          content: aiResponseData.content,
+          timestamp: new Date(),
+        };
 
-      setMessages((prev) => [...prev, aiResponse]);
-      setIsTyping(false);
+        setMessages((prev) => [...prev, aiResponse]);
+        setMessageCount(newMessageCount);
 
-      if (aiResponseData.isComplete) {
-        setIsConsultationComplete(true);
-        const summary = generateConsultationSummary();
-        setConsultationSummary(summary);
-      }
-    }, 800 + Math.random() * 400);
+        // AI 응답에 대한 AI 상담 크레딧 차감 (토큰 길이 기반)
+        const estimatedTokens = aiResponse.content.length * 1.3; // 대략적인 토큰 추정
+        const estimatedCredits = Math.ceil(estimatedTokens / 100); // 토큰을 크레딧으로 변환
+        useAIChatCredits(estimatedCredits);
+
+        setIsTyping(false);
+
+        if (aiResponseData.isComplete) {
+          setIsConsultationComplete(true);
+          const summary = generateConsultationSummary();
+          setConsultationSummary(summary);
+        }
+      },
+      800 + Math.random() * 400
+    );
   };
 
   const handleExpertMatching = () => {
@@ -185,9 +215,21 @@ export default function ChatPage() {
   };
 
   const handleUseCredits = () => {
-    // 크레딧 사용 처리
-    alert("50크레딧을 사용하여 대화를 연장합니다.");
-    setShowCreditModal(false);
+    // AI 상담 크레딧 사용 처리
+    if (remainingAIChatCredits >= 50) {
+      // 대화연장 상태를 먼저 설정 (크레딧 차감 전)
+      setIsExtendedWithCredits(true);
+
+      // 50크레딧 사용 - 대화연장을 위한 크레딧 차감
+      useAIChatCredits(50);
+
+      alert("50크레딧을 사용하여 대화를 연장합니다.");
+      setShowCreditModal(false);
+      setIsConsultationComplete(false); // 상담 완료 상태 해제
+      setMessageCount(0); // 메시지 카운트 리셋
+    } else {
+      alert("AI 상담 크레딧이 부족합니다. 다음달에 300크레딧이 제공됩니다.");
+    }
   };
 
   const handleChargeCredits = () => {
@@ -214,14 +256,14 @@ export default function ChatPage() {
   };
 
   const handleResumeChat = () => {
-    // 무료 채팅이 남아있으면 채팅창으로 돌아가기
-    if (messageCount < 8) {
+    // AI 상담 크레딧이 남아있으면 채팅창으로 돌아가기
+    if (remainingAIChatCredits > 0) {
       setShowSummary(false);
       setIsConsultationComplete(false);
     } else {
-      // 무료 채팅을 모두 사용한 경우 완료 상태 유지
+      // AI 상담 크레딧을 모두 사용한 경우 완료 상태 유지
       alert(
-        "무료 채팅을 모두 사용하셨습니다. 크레딧을 사용하여 대화를 연장하거나 새로운 상담을 시작해주세요."
+        "AI 상담 크레딧을 모두 사용하셨습니다. 다음달에 300크레딧이 제공되거나, 대화연장을 위해 크레딧을 사용해주세요."
       );
     }
   };
@@ -254,18 +296,37 @@ export default function ChatPage() {
                   </div>
                   <div className="text-right">
                     <h3 className="font-medium text-cyan-900">보유 크레딧</h3>
-                    <p className="text-sm text-cyan-700">30크레딧</p>
+                    <p className="text-sm text-cyan-700">
+                      {remainingAIChatCredits}크레딧
+                    </p>
                   </div>
                 </div>
                 <div className="mt-3">
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div
-                      className="bg-red-500 h-2 rounded-full"
-                      style={{ width: "60%" }}
+                      className={`h-2 rounded-full transition-all duration-300 ${
+                        remainingAIChatCredits >= 50
+                          ? "bg-green-500"
+                          : "bg-red-500"
+                      }`}
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          (remainingAIChatCredits / 50) * 100
+                        )}%`,
+                      }}
                     ></div>
                   </div>
-                  <p className="text-xs text-red-600 mt-1">
-                    크레딧이 부족합니다
+                  <p
+                    className={`text-xs mt-1 ${
+                      remainingAIChatCredits >= 50
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    {remainingAIChatCredits >= 50
+                      ? "크레딧이 충분합니다"
+                      : "크레딧이 부족합니다"}
                   </p>
                 </div>
               </div>
@@ -274,8 +335,12 @@ export default function ChatPage() {
               <div className="space-y-3">
                 <button
                   onClick={handleUseCredits}
-                  disabled={true}
-                  className="w-full bg-gray-300 text-gray-500 py-3 px-4 rounded-lg font-medium cursor-not-allowed"
+                  disabled={remainingAIChatCredits < 50}
+                  className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
+                    remainingAIChatCredits >= 50
+                      ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:from-cyan-600 hover:to-blue-700 shadow-sm hover:shadow-md"
+                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  }`}
                 >
                   크레딧 사용하기 (50크레딧)
                 </button>
@@ -323,31 +388,43 @@ export default function ChatPage() {
               <div className="bg-gradient-to-r from-cyan-50 via-blue-50 to-indigo-50 p-4 rounded-lg border border-cyan-200 mb-6">
                 <h3 className="font-medium text-cyan-900 mb-3">현재 상태</h3>
                 <div className="space-y-3 text-sm text-cyan-700">
+                  {/* AI 상담 전용 크레딧 정보 */}
+                  <div className="text-center">
+                    <span className="text-4xl font-bold text-cyan-800">
+                      {isExtendedWithCredits
+                        ? remainingAIChatCredits + 50
+                        : remainingAIChatCredits}
+                    </span>
+                    <p className="text-xs text-cyan-600 mt-1">
+                      매월 자동으로 리셋됩니다
+                    </p>
+                  </div>
+
                   <div>
                     <div className="flex justify-between mb-2">
-                      <span>무료 채팅 사용량</span>
+                      <span>AI 상담 크레딧 사용량</span>
                       <span className="font-medium">
-                        {Math.round((messageCount / 8) * 100)}%
+                        {100 - remainingPercent}%
                       </span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div
                         className={`h-2 rounded-full transition-all duration-300 ${
-                          messageCount <= 4
+                          remainingPercent >= 60
                             ? "bg-green-500"
-                            : messageCount <= 6
-                            ? "bg-yellow-500"
-                            : "bg-red-500"
+                            : remainingPercent >= 30
+                              ? "bg-yellow-500"
+                              : "bg-red-500"
                         }`}
-                        style={{ width: `${(messageCount / 8) * 100}%` }}
+                        style={{ width: `${100 - remainingPercent}%` }}
                       ></div>
                     </div>
                     <div className="flex justify-between text-xs mt-1">
                       <span className="text-green-600">
-                        사용: {Math.round((messageCount / 8) * 100)}%
+                        사용: {100 - remainingPercent}%
                       </span>
                       <span className="text-blue-600">
-                        남음: {Math.round(((8 - messageCount) / 8) * 100)}%
+                        남음: {remainingPercent}%
                       </span>
                     </div>
                   </div>
@@ -362,7 +439,8 @@ export default function ChatPage() {
                   <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                     <p className="text-xs text-yellow-800">
                       ⚠️ 현재 상담이 진행 중입니다. 새로운 채팅을 시작하면 현재
-                      사용량({messageCount}/8)이 그대로 적용됩니다.
+                      AI 상담 크레딧 사용량({100 - remainingPercent}%)이 그대로
+                      적용됩니다.
                     </p>
                   </div>
                 )}
@@ -412,7 +490,7 @@ export default function ChatPage() {
         {/* 채팅 영역 */}
         <div
           className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
-          style={{ height: "calc(100vh - 300px)" }}
+          style={{ height: "calc(100vh - 200px)" }}
         >
           <div className="h-full flex">
             {/* 메인 채팅 */}
@@ -530,9 +608,14 @@ export default function ChatPage() {
 
                 <div className="space-y-4">
                   <div className="bg-gradient-to-r from-cyan-50 via-blue-50 to-indigo-50 p-4 rounded-lg border border-cyan-200">
-                    <h4 className="font-medium text-cyan-900">상담 상태</h4>
+                    <h4 className="font-medium text-cyan-900">
+                      AI 상담 크레딧
+                    </h4>
+                    <p className="text-xs text-cyan-700 mb-3">
+                      매월 {300}크레딧을 무료로 제공합니다
+                    </p>
                     <div className="mt-3">
-                      <ChatQuotaBar usedMessages={messageCount} />
+                      <AIChatCreditsBar isExtended={isExtendedWithCredits} />
                     </div>
                   </div>
 

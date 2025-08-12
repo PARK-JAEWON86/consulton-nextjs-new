@@ -110,7 +110,7 @@ const ChatHistory = () => {
           session.expert.name
             .toLowerCase()
             .includes(searchTerm.toLowerCase()) ||
-          session.lastMessage.toLowerCase().includes(searchTerm.toLowerCase())
+          session.lastMessage.toLowerCase().includes(searchTerm.toLowerCase()),
       );
     }
 
@@ -136,7 +136,8 @@ const ChatHistory = () => {
     }
 
     return filtered.sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      (a, b) =>
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
     );
   };
 
@@ -256,7 +257,7 @@ const ChatHistory = () => {
                 </div>
                 <span
                   className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                    session.status
+                    session.status,
                   )}`}
                 >
                   {getStatusText(session.status)}

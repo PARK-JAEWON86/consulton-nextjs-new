@@ -75,7 +75,7 @@ const ExpertCard = ({
                 >
                   {specialty}
                 </span>
-              )
+              ),
             )}
           </div>
         </div>

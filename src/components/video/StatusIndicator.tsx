@@ -50,10 +50,10 @@ const StatusIndicator = ({
       quality === "excellent"
         ? 4
         : quality === "good"
-        ? 3
-        : quality === "poor"
-        ? 2
-        : 1;
+          ? 3
+          : quality === "poor"
+            ? 2
+            : 1;
 
     for (let i = 0; i < 4; i++) {
       bars.push(
@@ -63,7 +63,7 @@ const StatusIndicator = ({
             i < barCount ? "bg-current" : "bg-gray-300"
           }`}
           style={{ height: `${(i + 1) * 3 + 2}px` }}
-        />
+        />,
       );
     }
 

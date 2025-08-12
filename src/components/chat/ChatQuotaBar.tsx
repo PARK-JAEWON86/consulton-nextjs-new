@@ -9,7 +9,7 @@ interface ChatQuotaBarProps {
 const ChatQuotaBar: React.FC<ChatQuotaBarProps> = ({ usedMessages }) => {
   const percent = Math.max(
     0,
-    ((MAX_FREE_MESSAGES - usedMessages) / MAX_FREE_MESSAGES) * 100
+    ((MAX_FREE_MESSAGES - usedMessages) / MAX_FREE_MESSAGES) * 100,
   );
 
   return (

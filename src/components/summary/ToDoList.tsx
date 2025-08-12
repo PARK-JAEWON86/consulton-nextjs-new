@@ -47,7 +47,7 @@ const ToDoList = ({ items, onUpdateItem }: ToDoListProps) => {
 
   const handleUpdatePriority = (
     id: number,
-    priority: "high" | "medium" | "low"
+    priority: "high" | "medium" | "low",
   ) => {
     onUpdateItem(id, { priority });
   };
@@ -284,7 +284,7 @@ const ToDoList = ({ items, onUpdateItem }: ToDoListProps) => {
                           {/* 우선순위 */}
                           <span
                             className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(
-                              item.priority
+                              item.priority,
                             )}`}
                           >
                             <AlertCircle className="h-3 w-3 mr-1" />
@@ -340,7 +340,7 @@ const ToDoList = ({ items, onUpdateItem }: ToDoListProps) => {
                 {Math.round(
                   (items.filter((item) => item.status === "completed").length /
                     items.length) *
-                    100
+                    100,
                 )}
                 %
               </span>

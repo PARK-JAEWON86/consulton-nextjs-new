@@ -139,7 +139,7 @@ const ExpertList = ({
       setSortBy(e.target.value);
       setDisplayCount(itemsPerPage); // 정렬 변경 시 표시 개수 초기화
     },
-    [itemsPerPage]
+    [itemsPerPage],
   );
 
   const getSortLabel = (sortBy) => {

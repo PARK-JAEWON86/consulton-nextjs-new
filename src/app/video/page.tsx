@@ -20,7 +20,7 @@ import ServiceLayout from "@/components/layout/ServiceLayout";
 export default function VideoPage() {
   // 상담 모드 상태
   const [consultationMode, setConsultationMode] = useState("video"); // "chat", "voice", "video"
-  const [showModeSelection, setShowModeSelection] = useState(true);
+  const [showModeSelection, setShowModeSelection] = useState(false);
 
   // 사용자 개별 컨트롤 상태
   const [userControls, setUserControls] = useState({
@@ -47,8 +47,6 @@ export default function VideoPage() {
   const chatMessagesEndRef = useRef<HTMLDivElement>(null);
 
   // 상담 시작 관련 상태
-  const [showConsultationStartModal, setShowConsultationStartModal] =
-    useState(false);
   const [expertConfirmed, setExpertConfirmed] = useState(false);
   const [userConfirmed, setUserConfirmed] = useState(false);
 
@@ -106,12 +104,7 @@ export default function VideoPage() {
 
   // 전문가와 사용자 모두 입장 완료시 상담 시작 확인 메시지 추가
   useEffect(() => {
-    if (
-      expertJoined &&
-      userJoined &&
-      !showConsultationStartModal &&
-      !isConsultationStarted
-    ) {
+    if (expertJoined && userJoined && !isConsultationStarted) {
       const startConfirmMessage = {
         id: Date.now() + Math.random(),
         message: "상담을 시작하시겠습니까?",
@@ -120,20 +113,13 @@ export default function VideoPage() {
         systemType: "startConfirm",
       };
       setChatMessages((prev) => [...prev, startConfirmMessage]);
-      setShowConsultationStartModal(true);
     }
-  }, [
-    expertJoined,
-    userJoined,
-    showConsultationStartModal,
-    isConsultationStarted,
-  ]);
+  }, [expertJoined, userJoined, isConsultationStarted]);
 
   // 전문가와 사용자 모두 확인시 상담 시작
   useEffect(() => {
     if (expertConfirmed && userConfirmed && !isConsultationStarted) {
       setIsConsultationStarted(true);
-      setShowConsultationStartModal(false);
 
       // 상담 시작 메시지 추가
       const startMessage = {
@@ -248,125 +234,25 @@ export default function VideoPage() {
 
   return (
     <ServiceLayout>
-      {/* 상담 모드 선택 모달 */}
-      {showModeSelection && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-8 max-w-2xl w-full mx-4 shadow-xl border border-gray-200">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                상담 모드 선택
-              </h2>
-              <p className="text-gray-600">
-                전문가와 어떤 방식으로 상담하시겠습니까?
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              {/* 채팅 상담 */}
-              <button
-                onClick={() => {
-                  setConsultationMode("chat");
-                  setShowModeSelection(false);
-                }}
-                className="group p-6 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:shadow-lg transition-all duration-300 text-left"
-              >
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-blue-200 transition-colors">
-                  <MessageCircle className="w-6 h-6 text-blue-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  채팅 상담
-                </h3>
-                <p className="text-sm text-gray-600">
-                  텍스트 기반으로 전문가와 실시간 상담을 진행합니다.
-                </p>
-              </button>
-
-              {/* 음성 상담 */}
-              <button
-                onClick={() => {
-                  setConsultationMode("voice");
-                  setShowModeSelection(false);
-                }}
-                className="group p-6 border-2 border-gray-200 rounded-xl hover:border-green-500 hover:shadow-lg transition-all duration-300 text-left"
-              >
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-green-200 transition-colors">
-                  <Mic className="w-6 h-6 text-green-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  음성 상담
-                </h3>
-                <p className="text-sm text-gray-600">
-                  음성만으로 전문가와 실시간 상담을 진행합니다.
-                </p>
-              </button>
-
-              {/* 화상 상담 */}
-              <button
-                onClick={() => {
-                  setConsultationMode("video");
-                  setShowModeSelection(false);
-                }}
-                className="group p-6 border-2 border-gray-200 rounded-xl hover:border-purple-500 hover:shadow-lg transition-all duration-300 text-left"
-              >
-                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-purple-200 transition-colors">
-                  <div className="w-6 h-6 bg-purple-600 rounded"></div>
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  화상 상담
-                </h3>
-                <p className="text-sm text-gray-600">
-                  화상과 음성으로 전문가와 실시간 상담을 진행합니다.
-                </p>
-              </button>
-            </div>
-
-            <div className="text-center">
-              <button
-                onClick={() => setShowModeSelection(false)}
-                className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-              >
-                나중에 선택
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 상담 시작 확인 모달 */}
-      {showConsultationStartModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
-            <div className="p-6">
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Video className="w-8 h-8 text-blue-600" />
-                </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                  상담 시작 확인
-                </h2>
-                <p className="text-gray-600">상담을 시작하시겠습니까?</p>
-              </div>
-
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => setShowConsultationStartModal(false)}
-                  className="flex-1 bg-gray-200 text-gray-800 py-3 px-4 rounded-lg font-medium hover:bg-gray-300 transition-colors"
-                >
-                  취소
-                </button>
-                <button
-                  onClick={handleUserConfirm}
-                  className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-                >
-                  상담 시작
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* 헤더 */}
+        <div className="mb-8">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex-1">
+                <h1 className="text-3xl font-bold text-gray-900">
+                  전문가 상담
+                </h1>
+                <p className="text-gray-600 mt-2">
+                  전문가와 실시간으로 상담을 진행할 수 있습니다. 화상, 음성,
+                  채팅 중 원하는 방식으로 상담을 시작하세요.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 상담 화면 */}
         <div className="min-h-screen bg-gray-900">
           <div className="h-screen flex flex-col">
             {/* Header */}
@@ -403,20 +289,6 @@ export default function VideoPage() {
                 )}
               </div>
 
-              {/* 상담 모드 변경 버튼 */}
-              <button
-                onClick={() => setShowModeSelection(true)}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium flex items-center space-x-2"
-                title="상담 모드 변경"
-              >
-                {consultationMode === "chat" && (
-                  <MessageCircle className="w-4 h-4" />
-                )}
-                {consultationMode === "voice" && <Mic className="w-4 h-4" />}
-                {consultationMode === "video" && <Video className="w-4 h-4" />}
-                <span>상담모드 변경</span>
-              </button>
-
               <div className="flex items-center space-x-4">
                 {(userControls.isRecording || expertControls.isRecording) && (
                   <div className="flex items-center space-x-2 bg-red-50 border border-red-200 text-red-700 px-3 py-1 rounded-lg">
@@ -425,8 +297,8 @@ export default function VideoPage() {
                       {userControls.isRecording && expertControls.isRecording
                         ? "녹화 중 (양쪽)"
                         : userControls.isRecording
-                        ? "김철수님 녹화 중"
-                        : "이민수 전문가님 녹화 중"}
+                          ? "김철수님 녹화 중"
+                          : "이민수 전문가님 녹화 중"}
                     </span>
                   </div>
                 )}

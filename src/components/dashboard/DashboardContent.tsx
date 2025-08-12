@@ -227,7 +227,7 @@ export default function DashboardContent() {
   const getConsultationsByDate = (date: Date) => {
     const dateStr = formatDate(date);
     return upcomingConsultations.filter(
-      (consultation) => consultation.date === dateStr
+      (consultation) => consultation.date === dateStr,
     );
   };
 
@@ -274,7 +274,7 @@ export default function DashboardContent() {
       const date = new Date(
         currentDate.getFullYear(),
         currentDate.getMonth(),
-        day
+        day,
       );
       days.push(date);
     }
@@ -733,8 +733,8 @@ export default function DashboardContent() {
                     {(isExpertMode
                       ? expertConsultations
                       : selectedDate
-                      ? getConsultationsByDate(selectedDate)
-                      : upcomingConsultations
+                        ? getConsultationsByDate(selectedDate)
+                        : upcomingConsultations
                     ).map((consultation) => (
                       <div
                         key={consultation.id}

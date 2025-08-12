@@ -112,7 +112,7 @@ export default function SummaryPage() {
       summary.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       summary.expert.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       summary.tags.some((tag) =>
-        tag.toLowerCase().includes(searchTerm.toLowerCase())
+        tag.toLowerCase().includes(searchTerm.toLowerCase()),
       );
 
     const matchesStatus =
@@ -231,7 +231,7 @@ export default function SummaryPage() {
                     <div className="flex items-center space-x-2 mb-3">
                       <span
                         className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                          summary.status
+                          summary.status,
                         )}`}
                       >
                         {getStatusText(summary.status)}

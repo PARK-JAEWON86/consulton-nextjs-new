@@ -84,7 +84,7 @@ const PaymentModal = ({ expert, onClose }: PaymentModalProps) => {
   ];
 
   const selectedType = consultationTypes.find(
-    (type) => type.id === consultationType
+    (type) => type.id === consultationType,
   );
   const baseCredits = expert.creditsPerMinute * estimatedDuration;
   const finalCredits = Math.round(baseCredits * selectedType!.creditRate);
@@ -139,8 +139,8 @@ const PaymentModal = ({ expert, onClose }: PaymentModalProps) => {
               {currentStep === 1
                 ? "상담 방법 선택"
                 : currentStep === 2
-                ? "결제 정보"
-                : "크레딧 사용 확인"}
+                  ? "결제 정보"
+                  : "크레딧 사용 확인"}
             </h2>
             <p className="text-sm text-gray-600 mt-1">
               {expert.name} 전문가와의 상담

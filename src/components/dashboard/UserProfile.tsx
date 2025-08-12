@@ -467,8 +467,8 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
                   {profileData.totalConsultations >= 20
                     ? "골드"
                     : profileData.totalConsultations >= 10
-                    ? "실버"
-                    : "브론즈"}
+                      ? "실버"
+                      : "브론즈"}
                 </div>
                 <div className="text-xs opacity-90">
                   {profileData.totalConsultations >= 20
@@ -487,7 +487,7 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
                         (profileData.totalConsultations /
                           (profileData.totalConsultations >= 10 ? 20 : 10)) *
                           100,
-                        100
+                        100,
                       )}%`,
                     }}
                   ></div>

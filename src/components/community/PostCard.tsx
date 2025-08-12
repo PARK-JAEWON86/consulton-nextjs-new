@@ -92,7 +92,7 @@ const PostCard = ({
             {post.isConsultationRequest && post.urgency && (
               <span
                 className={`px-2 py-0.5 text-xs rounded-full border ${getUrgencyColor(
-                  post.urgency
+                  post.urgency,
                 )}`}
               >
                 {post.urgency}

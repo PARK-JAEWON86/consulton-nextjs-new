@@ -41,7 +41,7 @@ const SessionTimer = ({
           // 크레딧 부족 경고 (10분 전)
           const remainingCredits = userCredits - newCredits;
           const remainingMinutes = Math.floor(
-            remainingCredits / creditsPerMinute
+            remainingCredits / creditsPerMinute,
           );
 
           if (
@@ -200,8 +200,8 @@ const SessionTimer = ({
               usedCredits / userCredits > 0.8
                 ? "bg-red-500"
                 : usedCredits / userCredits > 0.6
-                ? "bg-yellow-500"
-                : "bg-blue-500"
+                  ? "bg-yellow-500"
+                  : "bg-blue-500"
             }`}
             style={{
               width: `${Math.min((usedCredits / userCredits) * 100, 100)}%`,

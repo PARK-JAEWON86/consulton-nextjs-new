@@ -316,7 +316,7 @@ const ExpertContactModal = ({
                             onChange={(e) =>
                               handleInputChange(
                                 "proposedMethod",
-                                e.target.value
+                                e.target.value,
                               )
                             }
                             className="sr-only"
@@ -371,7 +371,9 @@ const ExpertContactModal = ({
                 <textarea
                   rows={3}
                   value={formData.experience}
-                  onChange={(e) => handleInputChange("experience", e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("experience", e.target.value)
+                  }
                   placeholder="관련 분야에서의 경험과 전문성을 간단히 설명해주세요."
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                 />
@@ -385,7 +387,9 @@ const ExpertContactModal = ({
                 <textarea
                   rows={3}
                   value={formData.credentials}
-                  onChange={(e) => handleInputChange("credentials", e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("credentials", e.target.value)
+                  }
                   placeholder="보유한 자격증, 학위, 수료 과정 등을 간단히 설명해주세요."
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                 />

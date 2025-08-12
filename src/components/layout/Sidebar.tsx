@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useAIChatCreditsStore } from "../../stores/aiChatCreditsStore";
 import {
   Home,
   MessageCircle,
@@ -48,6 +49,16 @@ const Sidebar: React.FC<SidebarProps> = ({
   );
   const pathname = usePathname();
   const router = useRouter();
+
+  // AI 채팅 크레딧 스토어에서 크레딧 정보 가져오기
+  const { remainingAIChatCredits, checkAndResetMonthly, setCreditsTo7300 } =
+    useAIChatCreditsStore();
+
+  // 컴포넌트 마운트 시 월간 리셋 체크 및 크레딧을 7300으로 설정
+  useEffect(() => {
+    checkAndResetMonthly();
+    setCreditsTo7300(); // 크레딧을 7300으로 설정
+  }, [checkAndResetMonthly, setCreditsTo7300]);
 
   const menuItems = useMemo<MenuItem[]>(
     () => [
@@ -308,8 +319,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                         isQuickAI
                           ? "bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-600 text-white shadow-lg hover:shadow-xl hover:scale-105"
                           : isActive
-                          ? "bg-gradient-to-r from-gray-200 to-gray-300 text-gray-800 shadow-lg transform scale-105"
-                          : "bg-white hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 text-gray-700 hover:shadow-md hover:transform hover:scale-102 border border-gray-200"
+                            ? "bg-gradient-to-r from-gray-200 to-gray-300 text-gray-800 shadow-lg transform scale-105"
+                            : "bg-white hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 text-gray-700 hover:shadow-md hover:transform hover:scale-102 border border-gray-200"
                       }`}
                     >
                       <div className="flex items-center justify-between">
@@ -319,8 +330,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                               isQuickAI
                                 ? "bg-white bg-opacity-20"
                                 : isActive
-                                ? "bg-gray-100"
-                                : "bg-gray-100 group-hover:bg-blue-100"
+                                  ? "bg-gray-100"
+                                  : "bg-gray-100 group-hover:bg-blue-100"
                             }`}
                           >
                             <IconComponent
@@ -328,8 +339,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 isQuickAI
                                   ? "text-white"
                                   : isActive
-                                  ? "text-gray-700"
-                                  : "text-gray-600 group-hover:text-blue-600"
+                                    ? "text-gray-700"
+                                    : "text-gray-600 group-hover:text-blue-600"
                               } ${item.id === "chat" ? "animate-pulse" : ""}`}
                             />
                           </div>
@@ -343,8 +354,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 isQuickAI
                                   ? "text-white"
                                   : isActive
-                                  ? "text-gray-800"
-                                  : "text-gray-900"
+                                    ? "text-gray-800"
+                                    : "text-gray-900"
                               }`}
                             >
                               {item.name}
@@ -354,8 +365,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 isQuickAI
                                   ? "text-blue-100"
                                   : isActive
-                                  ? "text-gray-600"
-                                  : "text-gray-500"
+                                    ? "text-gray-600"
+                                    : "text-gray-500"
                               }`}
                             >
                               {item.description}
@@ -370,8 +381,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 isQuickAI
                                   ? "bg-white bg-opacity-20 text-white"
                                   : isActive
-                                  ? "bg-white bg-opacity-20 text-white"
-                                  : "bg-red-100 text-red-800"
+                                    ? "bg-white bg-opacity-20 text-white"
+                                    : "bg-red-100 text-red-800"
                               }`}
                             >
                               {item.badge}
@@ -382,8 +393,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                               isQuickAI
                                 ? "text-white"
                                 : isActive
-                                ? "text-gray-600"
-                                : "text-gray-400 group-hover:text-blue-600"
+                                  ? "text-gray-600"
+                                  : "text-gray-400 group-hover:text-blue-600"
                             } ${
                               isQuickAI || isActive
                                 ? "transform translate-x-1"
@@ -496,7 +507,9 @@ const Sidebar: React.FC<SidebarProps> = ({
                   <div className="text-sm font-medium text-blue-900">
                     크레딧 잔액
                   </div>
-                  <div className="text-xs text-blue-700">150 크레딧 보유</div>
+                  <div className="text-xs text-blue-700">
+                    {remainingAIChatCredits} 크레딧 보유
+                  </div>
                 </div>
               </div>
               <button
