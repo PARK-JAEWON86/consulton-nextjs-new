@@ -16,6 +16,7 @@ import QuestionInput from "@/components/chat/QuestionInput";
 import ChatHistory from "@/components/chat/ChatHistory";
 import ChatBubble from "@/components/chat/ChatBubble";
 import ChatQuotaBar from "@/components/chat/ChatQuotaBar";
+import ServiceLayout from "@/components/layout/ServiceLayout";
 
 interface Message {
   id: string;
@@ -66,7 +67,10 @@ export default function ChatPage() {
     }
   }, []);
 
-  const generateAIResponse = (userMessage: string, currentMessageCount: number) => {
+  const generateAIResponse = (
+    userMessage: string,
+    currentMessageCount: number
+  ) => {
     // AI 응답 시나리오 (실제로는 AI API를 호출)
     const responses = [
       "말씀해주신 상황을 잘 이해했습니다. 더 구체적인 정보를 알려주시면 더 정확한 조언을 드릴 수 있어요.",
@@ -223,7 +227,7 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <ServiceLayout>
       {/* 크레딧 사용 모달 */}
       {showCreditModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -388,7 +392,7 @@ export default function ChatPage() {
         </div>
       )}
 
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 헤더 */}
         <div className="mb-8">
           <div className="flex items-start justify-between">
@@ -644,6 +648,6 @@ export default function ChatPage() {
           </div>
         </div>
       </div>
-    </div>
+    </ServiceLayout>
   );
 }

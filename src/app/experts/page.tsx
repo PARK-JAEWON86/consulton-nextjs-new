@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import ServiceLayout from "@/components/layout/ServiceLayout";
 import {
   Search,
   Star,
@@ -42,7 +43,7 @@ const calculateExpertLevel = (expert) => {
   const experienceScore = expert.experience * 10;
   const ratingScore = expert.rating * 20;
   const consultationScore = (expert.totalConsultations || 0) * 0.5;
-  
+
   return Math.floor((experienceScore + ratingScore + consultationScore) / 10);
 };
 
@@ -88,8 +89,9 @@ const ExpertSearch = () => {
   const [itemsPerPage] = useState(9);
   const [consultationTopic, setConsultationTopic] = useState("");
   const [consultationSummary, setConsultationSummary] = useState("");
-  const [showRecommendation, setShowRecommendation] = useState(false);
-  const [isRecommendationCollapsed, setIsRecommendationCollapsed] = useState(false);
+  const [showRecommendation, setShowRecommendation] = useState(true);
+  const [isRecommendationCollapsed, setIsRecommendationCollapsed] =
+    useState(false);
   const [showAllCategories, setShowAllCategories] = useState(false);
 
   // 샘플 전문가 데이터
@@ -103,7 +105,8 @@ const ExpertSearch = () => {
       reviewCount: 245,
       totalSessions: 245,
       avgRating: 4.9,
-      description: "8년간의 임상 경험을 바탕으로 다양한 심리적 어려움을 겪고 계신 분들에게 도움을 드리고 있습니다.",
+      description:
+        "8년간의 임상 경험을 바탕으로 다양한 심리적 어려움을 겪고 계신 분들에게 도움을 드리고 있습니다.",
       specialties: ["스트레스 관리", "우울증", "불안장애", "관계상담"],
       consultationTypes: ["video", "chat"],
       languages: ["한국어", "영어"],
@@ -123,7 +126,8 @@ const ExpertSearch = () => {
       reviewCount: 189,
       totalSessions: 189,
       avgRating: 4.8,
-      description: "12년간 다양한 법률 분야에서 활동하며 개인과 기업의 법적 문제 해결에 도움을 드리고 있습니다.",
+      description:
+        "12년간 다양한 법률 분야에서 활동하며 개인과 기업의 법적 문제 해결에 도움을 드리고 있습니다.",
       specialties: ["계약법", "부동산법", "가족법", "노동법"],
       consultationTypes: ["video", "chat"],
       languages: ["한국어"],
@@ -143,7 +147,8 @@ const ExpertSearch = () => {
       reviewCount: 156,
       totalSessions: 156,
       avgRating: 4.7,
-      description: "개인 자산관리와 투자 전략 수립을 통해 고객의 재정 목표 달성을 도와드립니다.",
+      description:
+        "개인 자산관리와 투자 전략 수립을 통해 고객의 재정 목표 달성을 도와드립니다.",
       specialties: ["투자", "자산관리", "세무", "보험"],
       consultationTypes: ["video", "chat"],
       languages: ["한국어", "영어"],
@@ -163,7 +168,8 @@ const ExpertSearch = () => {
       reviewCount: 203,
       totalSessions: 203,
       avgRating: 4.6,
-      description: "10년간의 임상 경험을 바탕으로 건강한 생활습관과 질병 예방에 대한 전문적인 조언을 제공합니다.",
+      description:
+        "10년간의 임상 경험을 바탕으로 건강한 생활습관과 질병 예방에 대한 전문적인 조언을 제공합니다.",
       specialties: ["영양", "운동", "건강관리", "질병예방"],
       consultationTypes: ["video", "chat"],
       languages: ["한국어"],
@@ -183,7 +189,8 @@ const ExpertSearch = () => {
       reviewCount: 134,
       totalSessions: 134,
       avgRating: 4.9,
-      description: "다양한 산업 경험을 바탕으로 개인의 적성과 역량에 맞는 진로 설계를 도와드립니다.",
+      description:
+        "다양한 산업 경험을 바탕으로 개인의 적성과 역량에 맞는 진로 설계를 도와드립니다.",
       specialties: ["취업", "이직", "커리어", "직업상담"],
       consultationTypes: ["video", "chat"],
       languages: ["한국어", "영어"],
@@ -203,7 +210,8 @@ const ExpertSearch = () => {
       reviewCount: 298,
       totalSessions: 298,
       avgRating: 4.8,
-      description: "15년간 부동산 투자와 거래 경험을 바탕으로 안전하고 수익성 있는 부동산 투자를 도와드립니다.",
+      description:
+        "15년간 부동산 투자와 거래 경험을 바탕으로 안전하고 수익성 있는 부동산 투자를 도와드립니다.",
       specialties: ["부동산투자", "매매", "임대차", "세무"],
       consultationTypes: ["video", "chat"],
       languages: ["한국어"],
@@ -223,7 +231,8 @@ const ExpertSearch = () => {
       reviewCount: 167,
       totalSessions: 167,
       avgRating: 4.8,
-      description: "9년간 교육 현장에서 학습자의 성장을 도와온 경험을 바탕으로 맞춤형 교육 솔루션을 제공합니다.",
+      description:
+        "9년간 교육 현장에서 학습자의 성장을 도와온 경험을 바탕으로 맞춤형 교육 솔루션을 제공합니다.",
       specialties: ["학습코칭", "진학상담", "교육과정", "학습법"],
       consultationTypes: ["video", "chat"],
       languages: ["한국어", "영어"],
@@ -243,7 +252,8 @@ const ExpertSearch = () => {
       reviewCount: 223,
       totalSessions: 223,
       avgRating: 4.9,
-      description: "11년간 IT 업계에서 다양한 프로젝트를 경험하며 기술 컨설팅과 디지털 전환을 도와드리고 있습니다.",
+      description:
+        "11년간 IT 업계에서 다양한 프로젝트를 경험하며 기술 컨설팅과 디지털 전환을 도와드리고 있습니다.",
       specialties: ["웹개발", "앱개발", "데이터분석", "AI/ML"],
       consultationTypes: ["video", "chat"],
       languages: ["한국어", "영어"],
@@ -257,9 +267,22 @@ const ExpertSearch = () => {
   ];
 
   const specialtyOptions = [
-    "심리상담", "법률상담", "재무상담", "건강상담", "진로상담",
-    "부동산상담", "IT상담", "교육상담", "유튜브상담", "인플루언서상담",
-    "창업상담", "투자상담", "디자인상담", "마케팅상담", "언어상담", "쇼핑몰상담",
+    "심리상담",
+    "법률상담",
+    "재무상담",
+    "건강상담",
+    "진로상담",
+    "부동산상담",
+    "IT상담",
+    "교육상담",
+    "유튜브상담",
+    "인플루언서상담",
+    "창업상담",
+    "투자상담",
+    "디자인상담",
+    "마케팅상담",
+    "언어상담",
+    "쇼핑몰상담",
   ];
 
   // 필터링 로직
@@ -358,8 +381,8 @@ const ExpertSearch = () => {
 
   const getResponseTimeText = (responseTime) => {
     if (!responseTime) return "답변 시간 정보 없음";
-    
-    if (typeof responseTime === 'number') {
+
+    if (typeof responseTime === "number") {
       if (responseTime < 60) {
         return `${responseTime}분 내`;
       } else if (responseTime < 1440) {
@@ -370,14 +393,14 @@ const ExpertSearch = () => {
         return `${days}일 내`;
       }
     }
-    
+
     return "답변 시간 정보 없음";
   };
 
   const getResponseTimeColor = (responseTime) => {
     if (!responseTime) return "text-gray-400";
-    
-    if (typeof responseTime === 'number') {
+
+    if (typeof responseTime === "number") {
       if (responseTime < 60) {
         return "text-green-500";
       } else if (responseTime < 1440) {
@@ -386,7 +409,7 @@ const ExpertSearch = () => {
         return "text-red-500";
       }
     }
-    
+
     return "text-gray-400";
   };
 
@@ -418,8 +441,8 @@ const ExpertSearch = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <ServiceLayout>
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 헤더 */}
         <div className="mb-8">
           <div className="flex items-start justify-between">
@@ -501,14 +524,46 @@ const ExpertSearch = () => {
             </div>
             <div className="flex flex-wrap gap-3">
               {[
-                { name: "심리상담", icon: Brain, color: "bg-purple-100 text-purple-700 hover:bg-purple-200" },
-                { name: "법률상담", icon: Scale, color: "bg-blue-100 text-blue-700 hover:bg-blue-200" },
-                { name: "재무상담", icon: DollarSign, color: "bg-green-100 text-green-700 hover:bg-green-200" },
-                { name: "건강상담", icon: HeartIcon, color: "bg-red-100 text-red-700 hover:bg-red-200" },
-                { name: "진로상담", icon: Target, color: "bg-orange-100 text-orange-700 hover:bg-orange-200" },
-                { name: "부동산상담", icon: Home, color: "bg-indigo-100 text-indigo-700 hover:bg-indigo-200" },
-                { name: "IT상담", icon: Monitor, color: "bg-gray-100 text-gray-700 hover:bg-gray-200" },
-                { name: "교육상담", icon: BookOpen, color: "bg-yellow-100 text-yellow-700 hover:bg-yellow-200" },
+                {
+                  name: "심리상담",
+                  icon: Brain,
+                  color: "bg-purple-100 text-purple-700 hover:bg-purple-200",
+                },
+                {
+                  name: "법률상담",
+                  icon: Scale,
+                  color: "bg-blue-100 text-blue-700 hover:bg-blue-200",
+                },
+                {
+                  name: "재무상담",
+                  icon: DollarSign,
+                  color: "bg-green-100 text-green-700 hover:bg-green-200",
+                },
+                {
+                  name: "건강상담",
+                  icon: HeartIcon,
+                  color: "bg-red-100 text-red-700 hover:bg-red-200",
+                },
+                {
+                  name: "진로상담",
+                  icon: Target,
+                  color: "bg-orange-100 text-orange-700 hover:bg-orange-200",
+                },
+                {
+                  name: "부동산상담",
+                  icon: Home,
+                  color: "bg-indigo-100 text-indigo-700 hover:bg-indigo-200",
+                },
+                {
+                  name: "IT상담",
+                  icon: Monitor,
+                  color: "bg-gray-100 text-gray-700 hover:bg-gray-200",
+                },
+                {
+                  name: "교육상담",
+                  icon: BookOpen,
+                  color: "bg-yellow-100 text-yellow-700 hover:bg-yellow-200",
+                },
               ]
                 .slice(0, showAllCategories ? undefined : 7)
                 .map((category) => {
@@ -684,16 +739,25 @@ const ExpertSearch = () => {
                           )}
                         </div>
                         {/* 전문가 레벨 표시 */}
-                        <div className={`absolute -bottom-1 -right-1 border-2 border-white rounded-full shadow-sm flex items-center justify-center ${
-                          expert.level >= 100 ? 'w-12 h-6 px-2' : 'w-10 h-6 px-1'
-                        } ${
-                          expert.level >= 800 ? 'bg-purple-500' :
-                          expert.level >= 600 ? 'bg-red-500' :
-                          expert.level >= 400 ? 'bg-orange-500' :
-                          expert.level >= 200 ? 'bg-yellow-500' :
-                          expert.level >= 100 ? 'bg-green-500' :
-                          'bg-blue-500'
-                        }`}>
+                        <div
+                          className={`absolute -bottom-1 -right-1 border-2 border-white rounded-full shadow-sm flex items-center justify-center ${
+                            expert.level >= 100
+                              ? "w-12 h-6 px-2"
+                              : "w-10 h-6 px-1"
+                          } ${
+                            expert.level >= 800
+                              ? "bg-purple-500"
+                              : expert.level >= 600
+                              ? "bg-red-500"
+                              : expert.level >= 400
+                              ? "bg-orange-500"
+                              : expert.level >= 200
+                              ? "bg-yellow-500"
+                              : expert.level >= 100
+                              ? "bg-green-500"
+                              : "bg-blue-500"
+                          }`}
+                        >
                           <span className="text-[10px] font-bold text-white">
                             Lv.{expert.level}
                           </span>
@@ -783,10 +847,14 @@ const ExpertSearch = () => {
                         );
                       })}
                     </div>
-                    
+
                     {/* 답변 시간 표시 */}
                     <div className="flex items-center space-x-1 text-xs text-gray-600">
-                      <Clock className={`h-3 w-3 ${getResponseTimeColor(expert.responseTime)}`} />
+                      <Clock
+                        className={`h-3 w-3 ${getResponseTimeColor(
+                          expert.responseTime
+                        )}`}
+                      />
                       <span>{getResponseTimeText(expert.responseTime)}</span>
                     </div>
                   </div>
@@ -935,7 +1003,7 @@ const ExpertSearch = () => {
           </div>
         )}
       </div>
-    </div>
+    </ServiceLayout>
   );
 };
 

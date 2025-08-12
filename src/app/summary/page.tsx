@@ -14,6 +14,7 @@ import {
   Download,
   Share2,
 } from "lucide-react";
+import ServiceLayout from "@/components/layout/ServiceLayout";
 
 interface ConsultationSummary {
   id: string;
@@ -107,9 +108,8 @@ export default function SummaryPage() {
   }, []);
 
   const filteredSummaries = summaries.filter((summary) => {
-    const matchesSearch = summary.title
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase()) ||
+    const matchesSearch =
+      summary.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       summary.expert.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       summary.tags.some((tag) =>
         tag.toLowerCase().includes(searchTerm.toLowerCase())
@@ -153,18 +153,24 @@ export default function SummaryPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">상담 요약을 불러오고 있습니다...</p>
+      <ServiceLayout>
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center py-24">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600">
+                상담 요약을 불러오고 있습니다...
+              </p>
+            </div>
+          </div>
         </div>
-      </div>
+      </ServiceLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
+    <ServiceLayout>
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 헤더 */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
@@ -258,9 +264,7 @@ export default function SummaryPage() {
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center space-x-2 text-sm text-gray-600">
                     <Calendar className="h-4 w-4" />
-                    <span>
-                      {summary.date.toLocaleDateString("ko-KR")}
-                    </span>
+                    <span>{summary.date.toLocaleDateString("ko-KR")}</span>
                   </div>
                   <div className="flex items-center space-x-2 text-sm text-gray-600">
                     <Clock className="h-4 w-4" />
@@ -334,6 +338,6 @@ export default function SummaryPage() {
           </div>
         )}
       </div>
-    </div>
+    </ServiceLayout>
   );
 }

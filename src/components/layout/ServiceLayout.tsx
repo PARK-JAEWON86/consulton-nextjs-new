@@ -23,19 +23,17 @@ const ServiceLayout = ({ children }: ServiceLayoutProps) => {
     <>
       {/* 네비게이션바 */}
       <Navbar />
-      
+
       {/* 사이드바 */}
-      <Sidebar 
+      <Sidebar
         isOpen={isSidebarOpen}
         onClose={closeSidebar}
         onToggle={toggleSidebar}
       />
-      
+
       {/* 메인 콘텐츠 영역 */}
-      <main className="pt-16 lg:pl-64">
-        <div className="min-h-screen bg-gray-50">
-          {children}
-        </div>
+      <main className="pt-16 lg:ml-64">
+        <div className="min-h-screen bg-gray-50">{children}</div>
       </main>
     </>
   );

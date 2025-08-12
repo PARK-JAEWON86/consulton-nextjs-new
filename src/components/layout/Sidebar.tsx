@@ -43,7 +43,9 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [activeItem, setActiveItem] = useState("dashboard");
   const [showExitWarning, setShowExitWarning] = useState(false);
-  const [pendingNavigation, setPendingNavigation] = useState<MenuItem | null>(null);
+  const [pendingNavigation, setPendingNavigation] = useState<MenuItem | null>(
+    null
+  );
   const pathname = usePathname();
   const router = useRouter();
 
@@ -101,7 +103,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         id: "notifications",
         name: "알림 설정",
         icon: Bell,
-        path: "/notifications",
+        path: "/dashboard/notifications",
         description: "알림 관리",
       },
       {
@@ -130,7 +132,9 @@ const Sidebar: React.FC<SidebarProps> = ({
     const mainMenuItem = menuItems.find((item) => {
       if (item.id === "summary") {
         // 상담 요약의 경우 /summary 경로와 /summary/[id] 경로 모두 처리
-        return currentPath === "/summary" || currentPath.startsWith("/summary/");
+        return (
+          currentPath === "/summary" || currentPath.startsWith("/summary/")
+        );
       }
       if (item.id === "experts") {
         // 전문가 찾기의 경우 /experts 경로 처리
@@ -150,6 +154,18 @@ const Sidebar: React.FC<SidebarProps> = ({
     );
     if (settingMenuItem) {
       setActiveItem(settingMenuItem.id);
+      return;
+    }
+
+    // 대시보드 하위 경로들 처리
+    if (currentPath.startsWith("/dashboard/")) {
+      const dashboardSubPath = currentPath.replace("/dashboard/", "");
+      const subMenuItem = settingsItems.find(
+        (item) => item.path === `/dashboard/${dashboardSubPath}`
+      );
+      if (subMenuItem) {
+        setActiveItem(subMenuItem.id);
+      }
     }
   }, [pathname, menuItems, settingsItems]);
 

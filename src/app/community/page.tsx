@@ -1,12 +1,47 @@
+"use client";
+
+import { useState } from "react";
+import ServiceLayout from "@/components/layout/ServiceLayout";
 import CategorySidebar from "@/components/community/CategorySidebar";
 import PostCard from "@/components/community/PostCard";
 import SearchAndFilter from "@/components/community/SearchAndFilter";
 import CreatePostModal from "@/components/community/CreatePostModal";
 
 export default function CommunityPage() {
+  const [activeTab, setActiveTab] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState("latest");
+
+  const handleTabChange = (categoryId: string) => {
+    setActiveTab(categoryId);
+  };
+
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+  };
+
+  const handleSortChange = (sort: string) => {
+    setSortBy(sort);
+  };
+
+  const handleFilterClick = () => {
+    // 필터 로직 구현
+  };
+
+  const handleLike = (postId: string) => {
+    // 좋아요 로직 구현
+  };
+
+  const handleComment = (postId: string) => {
+    // 댓글 로직 구현
+  };
+
+  const handleTagClick = (tag: string) => {
+    // 태그 클릭 로직 구현
+  };
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
+    <ServiceLayout>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">커뮤니티</h1>
           <p className="text-gray-600">
@@ -22,23 +57,23 @@ export default function CommunityPage() {
                 { id: "career", name: "진로상담", count: 156 },
                 { id: "psychology", name: "심리상담", count: 89 },
                 { id: "finance", name: "재무상담", count: 234 },
-                { id: "legal", name: "법률상담", count: 67 }
+                { id: "legal", name: "법률상담", count: 67 },
               ]}
-              activeTab="all"
-              onTabChange={() => {}}
+              activeTab={activeTab}
+              onTabChange={handleTabChange}
               popularTags={["상담후기", "전문가추천", "진로고민", "투자조언"]}
-              onTagClick={() => {}}
+              onTagClick={handleTagClick}
             />
           </div>
 
           <div className="flex-1">
             <div className="mb-6">
               <SearchAndFilter
-                searchQuery=""
-                onSearchChange={() => {}}
-                sortBy="latest"
-                onSortChange={() => {}}
-                onFilterClick={() => {}}
+                searchQuery={searchQuery}
+                onSearchChange={handleSearchChange}
+                sortBy={sortBy}
+                onSortChange={handleSortChange}
+                onFilterClick={handleFilterClick}
               />
             </div>
 
@@ -54,10 +89,10 @@ export default function CommunityPage() {
                   category: "진로상담",
                   tags: ["진로", "상담후기"],
                   likes: 12,
-                  comments: 5
+                  comments: 5,
                 }}
-                onLike={() => {}}
-                onComment={() => {}}
+                onLike={handleLike}
+                onComment={handleComment}
               />
               <PostCard
                 post={{
@@ -70,10 +105,10 @@ export default function CommunityPage() {
                   category: "심리상담",
                   tags: ["심리", "치유"],
                   likes: 8,
-                  comments: 3
+                  comments: 3,
                 }}
-                onLike={() => {}}
-                onComment={() => {}}
+                onLike={handleLike}
+                onComment={handleComment}
               />
               <PostCard
                 post={{
@@ -86,15 +121,15 @@ export default function CommunityPage() {
                   category: "재무상담",
                   tags: ["투자", "재무"],
                   likes: 15,
-                  comments: 7
+                  comments: 7,
                 }}
-                onLike={() => {}}
-                onComment={() => {}}
+                onLike={handleLike}
+                onComment={handleComment}
               />
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </ServiceLayout>
   );
 }

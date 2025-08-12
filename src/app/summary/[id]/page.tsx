@@ -17,6 +17,7 @@ import RecordingStatus from "@/components/summary/RecordingStatus";
 import RecordingPlayer from "@/components/summary/RecordingPlayer";
 import SummaryCard from "@/components/summary/SummaryCard";
 import ToDoList from "@/components/summary/ToDoList";
+import ServiceLayout from "@/components/layout/ServiceLayout";
 
 interface Recommendation {
   title: string;
@@ -174,34 +175,42 @@ export default function ConsultationSummaryPage() {
   };
 
   const handleRating = (rating: number) => {
-    setSummaryData((prev) => prev ? { ...prev, rating } : null);
+    setSummaryData((prev) => (prev ? { ...prev, rating } : null));
     // API로 평점 전송
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">상담 요약을 생성하고 있습니다...</p>
+      <ServiceLayout>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-center justify-center py-24">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600">
+                상담 요약을 생성하고 있습니다...
+              </p>
+            </div>
+          </div>
         </div>
-      </div>
+      </ServiceLayout>
     );
   }
 
   if (!summaryData) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            상담 요약을 찾을 수 없습니다
-          </h2>
-          <p className="text-gray-600">
-            요청하신 상담 요약이 존재하지 않거나 아직 처리 중입니다.
-          </p>
+      <ServiceLayout>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center py-24">
+            <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">
+              상담 요약을 찾을 수 없습니다
+            </h2>
+            <p className="text-gray-600">
+              요청하신 상담 요약이 존재하지 않거나 아직 처리 중입니다.
+            </p>
+          </div>
         </div>
-      </div>
+      </ServiceLayout>
     );
   }
 
@@ -212,7 +221,7 @@ export default function ConsultationSummaryPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <ServiceLayout>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 헤더 */}
         <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 mb-8">
@@ -408,6 +417,6 @@ export default function ConsultationSummaryPage() {
           </div>
         )}
       </div>
-    </div>
+    </ServiceLayout>
   );
 }
