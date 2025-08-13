@@ -13,17 +13,17 @@ export default function Footer() {
             <h4 className="font-medium mb-4">서비스</h4>
             <ul className="space-y-2 text-sm text-gray-400">
               <li>
-                <a href="#" className="hover:text-white">
+                <a href="/experts" className="hover:text-white">
                   상담 찾기
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:text-white">
+                <a href="/experts/become" className="hover:text-white">
                   전문가 등록
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:text-white">
+                <a href="/community" className="hover:text-white">
                   커뮤니티
                 </a>
               </li>

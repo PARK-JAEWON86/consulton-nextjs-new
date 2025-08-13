@@ -20,6 +20,7 @@ interface Participant {
   isPresenting?: boolean;
   isScreenSharing?: boolean;
   stream?: MediaStream;
+  connectionStatus?: "good" | "poor" | "bad";
 }
 
 interface ParticipantVideoProps {

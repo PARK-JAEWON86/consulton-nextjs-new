@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import type React from "react";
 import { Grid, List } from "lucide-react";
 import ExpertCard from "./ExpertCard";
 
@@ -9,7 +10,18 @@ import ExpertCard from "./ExpertCard";
  * @param {Object} expert - 검사할 전문가 객체
  * @returns {boolean} 유효한 전문가 데이터인지 여부
  */
-const validateExpert = (expert) => {
+type ExpertItem = {
+  id: string | number;
+  name: string;
+  rating: number;
+  pricePerHour?: number;
+  creditsPerMinute?: number;
+  experience: string;
+  availability: "available" | "busy" | "offline" | string;
+  [key: string]: unknown;
+};
+
+const validateExpert = (expert: ExpertItem) => {
   return (
     expert &&
     typeof expert.id !== "undefined" &&
@@ -53,16 +65,27 @@ const validateExpert = (expert) => {
  *   itemsPerPage={8}
  * />
  */
+interface ExpertListProps {
+  experts?: ExpertItem[];
+  onExpertSelect?: (expert: ExpertItem) => void;
+  loading?: boolean;
+  defaultViewMode?: string;
+  defaultSortBy?: string;
+  showViewModeToggle?: boolean;
+  showSortOptions?: boolean;
+  itemsPerPage?: number;
+}
+
 const ExpertList = ({
   experts = [],
-  onExpertSelect = () => {},
+  onExpertSelect = (_e: ExpertItem) => {},
   loading = false,
   defaultViewMode = "grid",
   defaultSortBy = "rating",
   showViewModeToggle = true,
   showSortOptions = true,
   itemsPerPage = 12,
-}) => {
+}: ExpertListProps) => {
   const [viewMode, setViewMode] = useState(defaultViewMode);
   const [sortBy, setSortBy] = useState(defaultSortBy);
   const [displayCount, setDisplayCount] = useState(itemsPerPage);
@@ -73,7 +96,7 @@ const ExpertList = ({
       console.warn("ExpertList: experts prop should be an array");
       return [];
     }
-    return experts.filter((expert) => {
+    return experts.filter((expert: ExpertItem) => {
       const isValid = validateExpert(expert);
       if (!isValid) {
         console.warn("ExpertList: Invalid expert data:", expert);
@@ -83,8 +106,8 @@ const ExpertList = ({
   }, [experts]);
 
   // 정렬 함수 최적화
-  const sortExperts = useCallback((experts, sortBy) => {
-    return [...experts].sort((a, b) => {
+  const sortExperts = useCallback((experts: ExpertItem[], sortBy: string) => {
+    return [...experts].sort((a: ExpertItem, b: ExpertItem) => {
       try {
         switch (sortBy) {
           case "rating":
@@ -98,10 +121,14 @@ const ExpertList = ({
             const bExp = parseInt(b.experience?.replace(/[^0-9]/g, "") || "0");
             return bExp - aExp;
           case "availability":
-            const availabilityOrder = { available: 3, busy: 2, offline: 1 };
+            const availabilityOrder: Record<string, number> = {
+              available: 3,
+              busy: 2,
+              offline: 1,
+            };
             return (
-              (availabilityOrder[b.availability] || 0) -
-              (availabilityOrder[a.availability] || 0)
+              (availabilityOrder[b.availability as string] || 0) -
+              (availabilityOrder[a.availability as string] || 0)
             );
           default:
             return 0;
@@ -114,12 +141,12 @@ const ExpertList = ({
   }, []);
 
   // 정렬된 전문가 목록 (메모화)
-  const sortedExperts = useMemo(() => {
+  const sortedExperts = useMemo<ExpertItem[]>(() => {
     return sortExperts(validExperts, sortBy);
   }, [validExperts, sortBy, sortExperts]);
 
   // 표시할 전문가 목록 (페이지네이션)
-  const displayedExperts = useMemo(() => {
+  const displayedExperts = useMemo<ExpertItem[]>(() => {
     return sortedExperts.slice(0, displayCount);
   }, [sortedExperts, displayCount]);
 
@@ -129,20 +156,20 @@ const ExpertList = ({
   }, [itemsPerPage]);
 
   // 뷰 모드 변경 핸들러
-  const handleViewModeChange = useCallback((mode) => {
+  const handleViewModeChange = useCallback((mode: string) => {
     setViewMode(mode);
   }, []);
 
   // 정렬 변경 핸들러
   const handleSortChange = useCallback(
-    (e) => {
+    (e: React.ChangeEvent<HTMLSelectElement>) => {
       setSortBy(e.target.value);
       setDisplayCount(itemsPerPage); // 정렬 변경 시 표시 개수 초기화
     },
     [itemsPerPage],
   );
 
-  const getSortLabel = (sortBy) => {
+  const getSortLabel = (sortBy: string) => {
     switch (sortBy) {
       case "rating":
         return "평점순";

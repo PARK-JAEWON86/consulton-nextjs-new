@@ -90,11 +90,16 @@ export default function SearchFields(props: SearchFieldsProps) {
             })
           : "날짜 선택";
       case "duration": {
+        if (value === "decide_after_matching") {
+          return "전문가와 매칭 후 결정";
+        }
         const duration = durations.find((d) => d.id === value);
         return duration ? duration.name : "상담시간 선택";
       }
       case "ageGroup": {
-        const ageGroup = ageGroups.find((a) => a.id === value);
+        const ageGroup = ageGroups
+          .filter((a) => !a.name.includes("어린이"))
+          .find((a) => a.id === value);
         return ageGroup ? ageGroup.name : "연령대 선택";
       }
       default:
@@ -224,23 +229,12 @@ export default function SearchFields(props: SearchFieldsProps) {
                 <input
                   type="date"
                   value={searchStartDate}
-                  onChange={(e) => setSearchStartDate(e.target.value)}
+                  onChange={(e) => {
+                    setSearchStartDate(e.target.value);
+                    closeDropdown();
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
-              </div>
-              <div className="flex justify-end space-x-2">
-                <button
-                  onClick={closeDropdown}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
-                >
-                  취소
-                </button>
-                <button
-                  onClick={closeDropdown}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  확인
-                </button>
               </div>
             </div>
           )}
@@ -281,6 +275,18 @@ export default function SearchFields(props: SearchFieldsProps) {
           {activeDropdown === "duration" && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-2xl shadow-lg z-50 max-h-80 overflow-y-auto">
               <div className="p-2">
+                <button
+                  key="decide_after_matching"
+                  onClick={() => {
+                    setSearchEndDate("decide_after_matching");
+                    closeDropdown();
+                  }}
+                  className="w-full p-3 text-left hover:bg-gray-50 rounded-lg transition-colors"
+                >
+                  <div className="font-medium text-gray-900">전문가와 매칭 후 결정</div>
+                  <div className="text-sm text-gray-500">상담 시간은 전문가와 상의하여 정합니다</div>
+                </button>
+                <div className="my-1 border-t border-gray-100" />
                 {durations.map((duration) => (
                   <button
                     key={duration.id}
@@ -319,9 +325,11 @@ export default function SearchFields(props: SearchFieldsProps) {
               {searchAgeGroup ? (
                 <>
                   {(() => {
-                    const ageGroup = ageGroups.find(
+                    const ageGroup = ageGroups
+                      .filter((a) => !a.name.includes("어린이"))
+                      .find(
                       (a) => a.id === searchAgeGroup
-                    );
+                      );
                     const IconComponent = ageGroup?.icon as
                       | IconType
                       | undefined;
@@ -353,7 +361,9 @@ export default function SearchFields(props: SearchFieldsProps) {
           {activeDropdown === "ageGroup" && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-2xl shadow-lg z-50 max-h-50 overflow-y-auto">
               <div className="p-2">
-                {ageGroups.map((ageGroup) => {
+                {ageGroups
+                  .filter((ageGroup) => !ageGroup.name.includes("어린이"))
+                  .map((ageGroup) => {
                   const IconComponent = ageGroup.icon as IconType;
                   return (
                     <button
@@ -382,7 +392,7 @@ export default function SearchFields(props: SearchFieldsProps) {
             aria-label="전문가 검색"
             onClick={onSearch}
             disabled={isSearching}
-            className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white flex items-center justify-center shadow-sm hover:from-indigo-700 hover:to-violet-700 disabled:from-indigo-400 disabled:to-violet-400"
+            className="w-12 h-12 md:w-14 md:h-14 rounded-2xl border border-transparent bg-blue-600 text-white flex items-center justify-center shadow-sm hover:bg-blue-700 disabled:bg-blue-400"
           >
             {isSearching ? (
               <div className="animate-spin rounded-full h-4 w-4 md:h-5 md:w-5 border-b-2 border-white"></div>

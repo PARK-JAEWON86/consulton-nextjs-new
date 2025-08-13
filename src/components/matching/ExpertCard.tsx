@@ -17,9 +17,11 @@ interface Expert {
 const ExpertCard = ({
   expert = {} as Expert,
   viewMode = "grid",
+  onProfileView,
 }: {
   expert?: Expert;
   viewMode?: string;
+  onProfileView?: () => void;
 }) => {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -103,7 +105,7 @@ const ExpertCard = ({
           </div>
 
           {/* 프로필 보기 버튼 */}
-          <button className="px-4 py-2 rounded-lg font-medium transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 shadow-sm">
+          <button onClick={onProfileView} className="px-4 py-2 rounded-lg font-medium transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 shadow-sm">
             프로필 보기
           </button>
         </div>

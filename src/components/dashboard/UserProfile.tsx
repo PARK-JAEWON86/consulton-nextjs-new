@@ -464,19 +464,19 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
                   <Award className="h-5 w-5" />
                 </div>
                 <div className="text-2xl font-bold mb-1">
-                  {profileData.totalConsultations >= 20
+                  {(profileData.totalConsultations || 0) >= 20
                     ? "골드"
-                    : profileData.totalConsultations >= 10
+                    : (profileData.totalConsultations || 0) >= 10
                       ? "실버"
                       : "브론즈"}
                 </div>
                 <div className="text-xs opacity-90">
-                  {profileData.totalConsultations >= 20
+                  {(profileData.totalConsultations || 0) >= 20
                     ? "최고 레벨입니다!"
                     : `다음 레벨까지 ${
-                        profileData.totalConsultations >= 10
-                          ? 20 - profileData.totalConsultations
-                          : 10 - profileData.totalConsultations
+                        (profileData.totalConsultations || 0) >= 10
+                          ? 20 - (profileData.totalConsultations || 0)
+                          : 10 - (profileData.totalConsultations || 0)
                       }회 남음`}
                 </div>
                 <div className="w-full bg-white bg-opacity-30 rounded-full h-2 mt-2">
@@ -484,8 +484,8 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
                     className="bg-white h-2 rounded-full transition-all duration-300"
                     style={{
                       width: `${Math.min(
-                        (profileData.totalConsultations /
-                          (profileData.totalConsultations >= 10 ? 20 : 10)) *
+                        ((profileData.totalConsultations || 0) /
+                          ((profileData.totalConsultations || 0) >= 10 ? 20 : 10)) *
                           100,
                         100,
                       )}%`,

@@ -44,7 +44,10 @@ const VideoControls = ({
 }: VideoControlsProps) => {
   const [showMoreOptions, setShowMoreOptions] = useState(false);
 
-  const controlButtons = [
+  const controlButtons: Array<{
+    component: React.ComponentType<any>;
+    props: Record<string, unknown>;
+  }> = [
     // 오디오 컨트롤
     {
       component: MuteButton,

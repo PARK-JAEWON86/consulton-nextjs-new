@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
 
 interface ServiceLayoutProps {
@@ -21,9 +20,6 @@ const ServiceLayout = ({ children }: ServiceLayoutProps) => {
 
   return (
     <>
-      {/* 네비게이션바 */}
-      <Navbar />
-
       {/* 사이드바 */}
       <Sidebar
         isOpen={isSidebarOpen}

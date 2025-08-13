@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
+import { useAppStore } from "@/stores/appStore";
+import { useRouter } from "next/navigation";
 
 interface FormData {
   email: string;
@@ -16,6 +18,8 @@ interface FormErrors {
 }
 
 const LoginForm = () => {
+  const router = useRouter();
+  const { setAuthenticated, setUser, enterService } = useAppStore();
   const [formData, setFormData] = useState<FormData>({
     email: "",
     password: "",
@@ -73,9 +77,17 @@ const LoginForm = () => {
       // 로그인 API 호출 시뮬레이션
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
-      // 로그인 성공 시 대시보드로 리다이렉트
-      console.log("Login successful:", formData);
-      // window.location.href = '/dashboard';
+      // 로그인 성공 처리: 전역 스토어 업데이트 및 리다이렉트
+      setAuthenticated(true);
+      setUser({
+        id: "demo-user",
+        email: formData.email,
+        name: formData.email?.split("@")[0] || "사용자",
+        credits: 0,
+        expertLevel: null,
+      });
+      enterService();
+      router.push("/dashboard");
     } catch (error) {
       setErrors({
         general: "로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.",
