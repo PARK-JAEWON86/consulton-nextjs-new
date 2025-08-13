@@ -296,30 +296,30 @@ const ExpertSearch = () => {
           expert.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           expert.specialty.toLowerCase().includes(searchQuery.toLowerCase()) ||
           expert.specialties.some((s) =>
-            s.toLowerCase().includes(searchQuery.toLowerCase()),
+            s.toLowerCase().includes(searchQuery.toLowerCase())
           ) ||
-          expert.description.toLowerCase().includes(searchQuery.toLowerCase()),
+          expert.description.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
     // 전문분야 필터
     if (selectedFilters.specialty) {
       filtered = filtered.filter(
-        (expert) => expert.specialty === selectedFilters.specialty,
+        (expert) => expert.specialty === selectedFilters.specialty
       );
     }
 
     // 평점 필터
     if (selectedFilters.minRating > 0) {
       filtered = filtered.filter(
-        (expert) => expert.rating >= selectedFilters.minRating,
+        (expert) => expert.rating >= selectedFilters.minRating
       );
     }
 
     // 경력 필터
     if (selectedFilters.experience > 0) {
       filtered = filtered.filter(
-        (expert) => expert.experience >= selectedFilters.experience,
+        (expert) => expert.experience >= selectedFilters.experience
       );
     }
 
@@ -353,7 +353,7 @@ const ExpertSearch = () => {
     setFavorites((prev) =>
       prev.includes(expertId)
         ? prev.filter((id) => id !== expertId)
-        : [...prev, expertId],
+        : [...prev, expertId]
     );
   };
 
@@ -623,7 +623,7 @@ const ExpertSearch = () => {
                     onChange={(e) =>
                       handleFilterChange(
                         "minRating",
-                        parseFloat(e.target.value),
+                        parseFloat(e.target.value)
                       )
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -852,7 +852,7 @@ const ExpertSearch = () => {
                     <div className="flex items-center space-x-1 text-xs text-gray-600">
                       <Clock
                         className={`h-3 w-3 ${getResponseTimeColor(
-                          expert.responseTime,
+                          expert.responseTime
                         )}`}
                       />
                       <span>{getResponseTimeText(expert.responseTime)}</span>
@@ -926,7 +926,7 @@ const ExpertSearch = () => {
                 Object.values(selectedFilters).some((filter) =>
                   Array.isArray(filter)
                     ? filter.length > 0
-                    : filter !== "" && filter !== 0,
+                    : filter !== "" && filter !== 0
                 )
                   ? "검색 조건에 맞는 전문가가 없습니다"
                   : "전문가를 검색해보세요"}
@@ -936,7 +936,7 @@ const ExpertSearch = () => {
                 Object.values(selectedFilters).some((filter) =>
                   Array.isArray(filter)
                     ? filter.length > 0
-                    : filter !== "" && filter !== 0,
+                    : filter !== "" && filter !== 0
                 ) ? (
                   <>
                     현재 검색 조건에 맞는 전문가를 찾을 수 없습니다.
@@ -956,7 +956,7 @@ const ExpertSearch = () => {
                   Object.values(selectedFilters).some((filter) =>
                     Array.isArray(filter)
                       ? filter.length > 0
-                      : filter !== "" && filter !== 0,
+                      : filter !== "" && filter !== 0
                   )) && (
                   <button
                     onClick={clearAllFilters}
