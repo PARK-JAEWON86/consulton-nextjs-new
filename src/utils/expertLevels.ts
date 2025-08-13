@@ -4,8 +4,23 @@
  * 1크레딧 = 10원 기준
  */
 
+// 타입 정의
+export interface LevelTier {
+  name: string;
+  levelRange: { min: number; max: number };
+  creditsPerMinute: number;
+  color: string;
+  bgColor: string;
+  textColor: string;
+  borderColor: string;
+}
+
+export interface ExpertLevelLike {
+  level?: number;
+}
+
 // 레벨별 과금 체계 정의
-export const LEVELS = [
+export const LEVELS: LevelTier[] = [
   {
     name: "Tier 10 (Lv.999)",
     levelRange: { min: 999, max: 999 },
@@ -114,7 +129,7 @@ export const LEVELS = [
  */
 export const calculateCreditsByLevel = (level: number = 1): number => {
   const tier = LEVELS.find(
-    (l) => level >= l.levelRange.min && level <= l.levelRange.max,
+    (l) => level >= l.levelRange.min && level <= l.levelRange.max
   );
   return tier
     ? tier.creditsPerMinute
@@ -128,7 +143,7 @@ export const calculateCreditsByLevel = (level: number = 1): number => {
  */
 export const getTierInfo = (level: number = 1) => {
   const tier = LEVELS.find(
-    (l) => level >= l.levelRange.min && level <= l.levelRange.max,
+    (l) => level >= l.levelRange.min && level <= l.levelRange.max
   );
   return tier || LEVELS[LEVELS.length - 1];
 };
@@ -169,7 +184,7 @@ export const getNextTierProgress = (level: number = 1) => {
     100,
     ((level - currentTier.levelRange.min) /
       (currentTierMaxLevel - currentTier.levelRange.min)) *
-      100,
+      100
   );
 
   return {
@@ -216,16 +231,16 @@ export const getLevelPricing = (level: number) => {
  * @param experts - 전문가 목록
  * @returns 티어별 통계
  */
-export const calculateTierStatistics = (experts: any[] = []) => {
+export const calculateTierStatistics = (experts: ExpertLevelLike[] = []) => {
   const stats = LEVELS.reduce(
     (acc, tier) => {
       acc[tier.name] = { count: 0, percentage: 0 };
       return acc;
     },
-    {} as Record<string, { count: number; percentage: number }>,
+    {} as Record<string, { count: number; percentage: number }>
   );
 
-  experts.forEach((expert) => {
+  experts.forEach((expert: ExpertLevelLike) => {
     const tier = getTierInfo(expert.level || 1);
     stats[tier.name].count++;
   });
@@ -234,7 +249,7 @@ export const calculateTierStatistics = (experts: any[] = []) => {
   if (total > 0) {
     Object.keys(stats).forEach((tierName) => {
       stats[tierName].percentage = Math.round(
-        (stats[tierName].count / total) * 100,
+        (stats[tierName].count / total) * 100
       );
     });
   }
@@ -267,12 +282,12 @@ export const getKoreanTierName = (tierName: string): string => {
 // 기존 함수명과의 호환성을 위한 별칭
 export const calculateExpertLevel = (
   totalSessions: number = 0,
-  avgRating: number = 0,
+  avgRating: number = 0
 ) => {
   // 레벨 계산 로직 (세션 수와 평점을 기반으로 레벨 계산)
   const level = Math.min(
     999,
-    Math.max(1, Math.floor(totalSessions / 10) + Math.floor(avgRating * 10)),
+    Math.max(1, Math.floor(totalSessions / 10) + Math.floor(avgRating * 10))
   );
   return getTierInfo(level);
 };
@@ -281,18 +296,18 @@ export const getLevelInfo = (levelName: string) => {
   return getTierInfoByName(levelName);
 };
 
-export const calculateCreditsPerMinute = (expert: any) => {
+export const calculateCreditsPerMinute = (expert: ExpertLevelLike) => {
   const level = expert.level || 1;
   return calculateCreditsByLevel(level);
 };
 
 export const getNextLevelProgress = (
   totalSessions: number = 0,
-  avgRating: number = 0,
+  avgRating: number = 0
 ) => {
   const level = Math.min(
     999,
-    Math.max(1, Math.floor(totalSessions / 10) + Math.floor(avgRating * 10)),
+    Math.max(1, Math.floor(totalSessions / 10) + Math.floor(avgRating * 10))
   );
   return getNextTierProgress(level);
 };
@@ -307,7 +322,7 @@ export const getLevelBadgeStyles = (levelName: string) => {
   };
 };
 
-export const calculateLevelStatistics = (experts: any[] = []) => {
+export const calculateLevelStatistics = (experts: ExpertLevelLike[] = []) => {
   return calculateTierStatistics(experts);
 };
 
