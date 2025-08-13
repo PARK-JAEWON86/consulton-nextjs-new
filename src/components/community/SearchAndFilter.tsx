@@ -3,13 +3,21 @@
 import { Search, Filter, SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
 
+interface SearchAndFilterProps {
+  searchQuery: string;
+  onSearchChange: (value: string) => void;
+  sortBy: "latest" | "popular" | "comments" | "views";
+  onSortChange: (value: "latest" | "popular" | "comments" | "views") => void;
+  onFilterClick: () => void;
+}
+
 const SearchAndFilter = ({
   searchQuery,
   onSearchChange,
   sortBy,
   onSortChange,
   onFilterClick,
-}) => {
+}: SearchAndFilterProps) => {
   const [showAdvancedFilter, setShowAdvancedFilter] = useState(false);
 
   const sortOptions = [
@@ -37,7 +45,11 @@ const SearchAndFilter = ({
         {/* 정렬 옵션 */}
         <select
           value={sortBy}
-          onChange={(e) => onSortChange(e.target.value)}
+          onChange={(e) =>
+            onSortChange(
+              e.target.value as "latest" | "popular" | "comments" | "views",
+            )
+          }
           className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         >
           {sortOptions.map((option) => (

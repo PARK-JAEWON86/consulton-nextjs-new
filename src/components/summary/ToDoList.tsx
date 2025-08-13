@@ -29,10 +29,15 @@ interface ToDoListProps {
 
 const ToDoList = ({ items, onUpdateItem }: ToDoListProps) => {
   const [editingItem, setEditingItem] = useState<number | null>(null);
-  const [newItem, setNewItem] = useState({
+  type Priority = "high" | "medium" | "low";
+  const [newItem, setNewItem] = useState<{
+    task: string;
+    dueDate: string;
+    priority: Priority;
+  }>({
     task: "",
     dueDate: "",
-    priority: "medium" as const,
+    priority: "medium",
   });
   const [showAddForm, setShowAddForm] = useState(false);
 
@@ -136,7 +141,8 @@ const ToDoList = ({ items, onUpdateItem }: ToDoListProps) => {
     // 마감일별 정렬
     if (!a.dueDate && b.dueDate) return 1;
     if (a.dueDate && !b.dueDate) return -1;
-    if (a.dueDate && b.dueDate) return a.dueDate - b.dueDate;
+    if (a.dueDate && b.dueDate)
+      return a.dueDate.getTime() - b.dueDate.getTime();
 
     return 0;
   });
@@ -304,9 +310,7 @@ const ToDoList = ({ items, onUpdateItem }: ToDoListProps) => {
                         </button>
 
                         <button
-                          onClick={() =>
-                            onUpdateItem(item.id, { deleted: true })
-                          }
+                          onClick={() => onUpdateItem(item.id, { status: "completed" })}
                           className="p-1 text-gray-400 hover:text-red-600 rounded"
                           title="삭제"
                         >

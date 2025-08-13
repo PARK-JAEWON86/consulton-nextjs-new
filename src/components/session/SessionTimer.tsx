@@ -24,7 +24,7 @@ const SessionTimer = ({
   const [isPaused, setIsPaused] = useState(false);
   const [usedCredits, setUsedCredits] = useState(0);
   const [showWarning, setShowWarning] = useState(false);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const warningShownRef = useRef(false);
 
   // 타이머 시작/정지
@@ -56,7 +56,7 @@ const SessionTimer = ({
 
           // 크레딧 소진 시 세션 종료
           if (remainingCredits <= 0) {
-            clearInterval(intervalRef.current);
+            if (intervalRef.current) clearInterval(intervalRef.current);
             onSessionEnd?.("credits_exhausted");
             return prev;
           }

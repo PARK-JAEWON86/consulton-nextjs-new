@@ -1,12 +1,19 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useAppStore } from "@/stores/appStore";
 
 interface MainNavigationProps {}
 
 const MainNavigation = ({}: MainNavigationProps) => {
   const router = useRouter();
   const isToggleOn = true; // 항상 ON 상태로 고정
+  const { isAuthenticated, user, logout } = useAppStore();
+
+  const handleLogout = () => {
+    logout();
+    router.push("/auth/login");
+  };
 
   return (
     <header className="border-b border-gray-200 bg-white sticky top-0 z-50">
@@ -63,7 +70,7 @@ const MainNavigation = ({}: MainNavigationProps) => {
               상담 찾기
             </button>
             <button
-              onClick={() => router.push("/experts")}
+              onClick={() => router.push("/experts/become")}
               className="text-gray-900 hover:text-blue-600 px-3 py-2 text-sm font-medium transition-colors"
             >
               전문가 되기
@@ -98,18 +105,37 @@ const MainNavigation = ({}: MainNavigationProps) => {
 
           {/* 오른쪽 메뉴 */}
           <div className="flex items-center space-x-4">
-            <button
-              onClick={() => router.push("/experts")}
-              className="text-gray-900 hover:text-blue-600 px-3 py-2 text-sm font-medium transition-colors"
-            >
-              전문가 등록
-            </button>
-            <button
-              onClick={() => router.push("/auth/login")}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-            >
-              로그인
-            </button>
+            {isAuthenticated ? (
+              <>
+                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-sm font-semibold">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    className="w-4 h-4"
+                  >
+                    <path d="M12 1.5a.75.75 0 0 1 .53.22l9.75 9.75a.75.75 0 1 1-1.06 1.06L12 3.31 2.78 12.53a.75.75 0 1 1-1.06-1.06L11.47 1.72A.75.75 0 0 1 12 1.5z" />
+                    <path d="M3.75 13.5h16.5v6A2.25 2.25 0 0 1 18 21.75H6A2.25 2.25 0 0 1 3.75 19.5v-6z" />
+                  </svg>
+                  <span>보유 크레딧: {user?.credits ?? 0}</span>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-900 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                >
+                  로그아웃
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => router.push("/auth/login")}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                >
+                  로그인
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>

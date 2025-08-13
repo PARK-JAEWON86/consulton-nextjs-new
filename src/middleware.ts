@@ -16,6 +16,11 @@ const protectedRoutes = [
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // 공개 예외 라우트: 전문가 등록 페이지는 누구나 접근 가능
+  if (pathname.startsWith("/experts/become")) {
+    return NextResponse.next();
+  }
+
   // 보호된 라우트에 접근하려는 경우
   if (protectedRoutes.some((route) => pathname.startsWith(route))) {
     // 서비스 진입 상태는 클라이언트 사이드에서 관리

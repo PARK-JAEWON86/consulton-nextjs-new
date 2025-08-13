@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type React from "react";
 import {
   User,
   Users,
@@ -32,7 +33,54 @@ import {
   calculateCreditsPerMinute,
 } from "../../utils/expertLevels";
 
-const ExpertProfile = ({ expertData, onSave }) => {
+type ConsultationType = "video" | "chat" | "voice";
+
+interface ExpertProfileData {
+  isProfileComplete?: boolean;
+  name: string;
+  specialty: string;
+  experience: number | string;
+  description: string;
+  education: string[];
+  certifications: string[];
+  specialties: string[];
+  consultationTypes: ConsultationType[];
+  languages: string[];
+  hourlyRate: number | string;
+  totalSessions: number;
+  avgRating: number;
+  availability: Record<
+    | "monday"
+    | "tuesday"
+    | "wednesday"
+    | "thursday"
+    | "friday"
+    | "saturday"
+    | "sunday",
+    { available: boolean; hours: string }
+  >;
+  contactInfo: {
+    phone: string;
+    email: string;
+    location: string;
+    website: string;
+  };
+  profileImage: string | null;
+  portfolioFiles: Array<{
+    id: number;
+    name: string;
+    type: string;
+    size: number;
+    data: string;
+  }>;
+}
+
+interface ExpertProfileProps {
+  expertData?: Partial<ExpertProfileData> & { isProfileComplete?: boolean };
+  onSave: (updated: ExpertProfileData & { isProfileComplete: boolean }) => void;
+}
+
+const ExpertProfile = ({ expertData, onSave }: ExpertProfileProps) => {
   const [isEditing, setIsEditing] = useState(!expertData?.isProfileComplete);
   const [profileData, setProfileData] = useState({
     name: expertData?.name || "",
@@ -77,7 +125,7 @@ const ExpertProfile = ({ expertData, onSave }) => {
     profileData.avgRating || 0,
   );
   const levelBadgeStyles = getLevelBadgeStyles(currentLevel?.name || "Bronze");
-  const creditsPerMinute = calculateCreditsPerMinute(profileData);
+  const creditsPerMinute = currentLevel.creditsPerMinute;
 
   const [dragActive, setDragActive] = useState(false);
 
@@ -91,23 +139,45 @@ const ExpertProfile = ({ expertData, onSave }) => {
     sunday: "일요일",
   };
 
+  const daysOrder: (
+    | "monday"
+    | "tuesday"
+    | "wednesday"
+    | "thursday"
+    | "friday"
+    | "saturday"
+    | "sunday"
+  )[] = [
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+  ];
+
   const consultationTypeOptions = [
     { id: "video", label: "화상 상담", emoji: "📹" },
     { id: "chat", label: "채팅 상담", emoji: "💬" },
     { id: "voice", label: "음성 상담", emoji: "🎙️" },
   ];
 
-  const handleInputChange = (field, value) => {
+  const handleInputChange = (field: string, value: unknown) => {
     if (field.includes(".")) {
-      const [parent, child] = field.split(".");
-      setProfileData((prev) => ({
-        ...prev,
-        [parent]: {
-          ...prev[parent],
-          [child]: value,
-        },
-      }));
-    } else {
+      const [parent, child] = field.split(".") as ["contactInfo", keyof ExpertProfileData["contactInfo"] & string];
+      if (parent === "contactInfo") {
+        setProfileData((prev) => ({
+          ...prev,
+          contactInfo: {
+            ...prev.contactInfo,
+            [child]: value as string,
+          },
+        }));
+        return;
+      }
+    }
+    {
       setProfileData((prev) => ({
         ...prev,
         [field]: value,
@@ -115,28 +185,35 @@ const ExpertProfile = ({ expertData, onSave }) => {
     }
   };
 
-  const handleArrayChange = (field, index, value) => {
+  const handleArrayChange = (
+    field: "education" | "certifications" | "specialties",
+    index: number,
+    value: string,
+  ) => {
     setProfileData((prev) => ({
       ...prev,
       [field]: prev[field].map((item, i) => (i === index ? value : item)),
     }));
   };
 
-  const addArrayItem = (field) => {
+  const addArrayItem = (field: "education" | "certifications" | "specialties") => {
     setProfileData((prev) => ({
       ...prev,
       [field]: [...prev[field], ""],
     }));
   };
 
-  const removeArrayItem = (field, index) => {
+  const removeArrayItem = (
+    field: "education" | "certifications" | "specialties",
+    index: number,
+  ) => {
     setProfileData((prev) => ({
       ...prev,
       [field]: prev[field].filter((_, i) => i !== index),
     }));
   };
 
-  const handleConsultationTypeToggle = (typeId) => {
+  const handleConsultationTypeToggle = (typeId: ConsultationType) => {
     setProfileData((prev) => ({
       ...prev,
       consultationTypes: prev.consultationTypes.includes(typeId)
@@ -145,7 +222,18 @@ const ExpertProfile = ({ expertData, onSave }) => {
     }));
   };
 
-  const handleAvailabilityChange = (day, field, value) => {
+  const handleAvailabilityChange = (
+    day:
+      | "monday"
+      | "tuesday"
+      | "wednesday"
+      | "thursday"
+      | "friday"
+      | "saturday"
+      | "sunday",
+    field: "available" | "hours",
+    value: boolean | string,
+  ) => {
     setProfileData((prev) => ({
       ...prev,
       availability: {
@@ -158,17 +246,22 @@ const ExpertProfile = ({ expertData, onSave }) => {
     }));
   };
 
-  const handleFileUpload = (event, type) => {
-    const files = Array.from(event.target.files);
+  const handleFileUpload = (
+    event: { target: { files: FileList | null } },
+    type: "profile" | "portfolio",
+  ) => {
+    const files = Array.from(event.target.files ?? []);
 
     if (type === "profile") {
       const file = files[0];
       if (file && file.type.startsWith("image/")) {
         const reader = new FileReader();
         reader.onload = (e) => {
+          const result = e.target?.result;
+          const dataUrl = typeof result === "string" ? result : null;
           setProfileData((prev) => ({
             ...prev,
-            profileImage: e.target.result,
+            profileImage: dataUrl,
           }));
         };
         reader.readAsDataURL(file);
@@ -182,6 +275,8 @@ const ExpertProfile = ({ expertData, onSave }) => {
         ) {
           const reader = new FileReader();
           reader.onload = (e) => {
+            const result = e.target?.result;
+            const dataUrl = typeof result === "string" ? result : "";
             setProfileData((prev) => ({
               ...prev,
               portfolioFiles: [
@@ -191,7 +286,7 @@ const ExpertProfile = ({ expertData, onSave }) => {
                   name: file.name,
                   type: file.type,
                   size: file.size,
-                  data: e.target.result,
+                  data: dataUrl,
                 },
               ],
             }));
@@ -202,14 +297,14 @@ const ExpertProfile = ({ expertData, onSave }) => {
     }
   };
 
-  const removePortfolioFile = (fileId) => {
+  const removePortfolioFile = (fileId: number) => {
     setProfileData((prev) => ({
       ...prev,
       portfolioFiles: prev.portfolioFiles.filter((file) => file.id !== fileId),
     }));
   };
 
-  const handleDrag = (e) => {
+  const handleDrag = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     if (e.type === "dragenter" || e.type === "dragover") {
@@ -219,7 +314,7 @@ const ExpertProfile = ({ expertData, onSave }) => {
     }
   };
 
-  const handleDrop = (e) => {
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
@@ -241,7 +336,7 @@ const ExpertProfile = ({ expertData, onSave }) => {
     setIsEditing(false);
   };
 
-  const formatFileSize = (bytes) => {
+  const formatFileSize = (bytes: number) => {
     if (bytes === 0) return "0 Bytes";
     const k = 1024;
     const sizes = ["Bytes", "KB", "MB", "GB"];
@@ -293,7 +388,7 @@ const ExpertProfile = ({ expertData, onSave }) => {
                 <div
                   className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium self-center lg:self-auto ${levelBadgeStyles.background} ${levelBadgeStyles.textColor}`}
                 >
-                  <span>{levelBadgeStyles.icon}</span>
+                  <span>★</span>
                   <span>{getKoreanLevelName(currentLevel.name)}</span>
                 </div>
               </div>
@@ -347,7 +442,7 @@ const ExpertProfile = ({ expertData, onSave }) => {
           </div>
 
           {/* 레벨 진행률 정보 */}
-          {!nextLevelProgress.isMaxLevel && nextLevelProgress.nextLevel && (
+          {!nextLevelProgress.isMaxTier && nextLevelProgress.nextTier && (
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 mb-6">
               <h5 className="font-semibold text-gray-900 mb-3 flex items-center">
                 <TrendingUp className="h-5 w-5 text-blue-600 mr-2" />
@@ -357,7 +452,7 @@ const ExpertProfile = ({ expertData, onSave }) => {
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-600">
                     다음 레벨:{" "}
-                    {getKoreanLevelName(nextLevelProgress.nextLevel.name)}
+                    {getKoreanLevelName(nextLevelProgress.nextTier.name)}
                   </span>
                   <span className="font-medium text-blue-600">
                     {Math.round(nextLevelProgress.progress)}%
@@ -373,15 +468,12 @@ const ExpertProfile = ({ expertData, onSave }) => {
                   <div className="flex items-center">
                     <Target className="h-4 w-4 text-green-600 mr-1" />
                     <span className="text-gray-600">
-                      상담 {nextLevelProgress.sessionsNeeded}회 더 필요
+                      다음 티어까지 레벨 {nextLevelProgress.levelsNeeded} 필요
                     </span>
                   </div>
                   <div className="flex items-center">
                     <Star className="h-4 w-4 text-yellow-500 mr-1" />
-                    <span className="text-gray-600">
-                      평점 {(nextLevelProgress.ratingNeeded || 0).toFixed(1)} 더
-                      필요
-                    </span>
+                    <span className="text-gray-600">지금 페이스 좋아요!</span>
                   </div>
                 </div>
               </div>
@@ -389,7 +481,7 @@ const ExpertProfile = ({ expertData, onSave }) => {
           )}
 
           {/* 최고 레벨 달성 메시지 */}
-          {nextLevelProgress.isMaxLevel && (
+          {nextLevelProgress.isMaxTier && (
             <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg p-4 mb-6 border border-yellow-200">
               <h5 className="font-semibold text-gray-900 mb-3 flex items-center">
                 <Award className="h-5 w-5 text-yellow-600 mr-2" />
@@ -512,6 +604,46 @@ const ExpertProfile = ({ expertData, onSave }) => {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* 상담 가능 시간 섹션 */}
+          <div className="mt-8 pt-6 border-t border-gray-200">
+            <h5 className="font-semibold text-gray-900 mb-4 flex items-center">
+              <Calendar className="h-5 w-5 text-blue-600 mr-2" />
+              상담 가능 시간
+            </h5>
+            {(() => {
+              const availableDays = daysOrder.filter(
+                (d) => profileData.availability[d]?.available,
+              );
+              if (availableDays.length === 0) {
+                return (
+                  <p className="text-sm text-gray-500">
+                    등록된 상담 가능 시간이 없습니다.
+                  </p>
+                );
+              }
+              return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {availableDays.map((day) => (
+                    <div
+                      key={day}
+                      className="p-3 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between"
+                    >
+                      <div className="flex items-center">
+                        <Calendar className="h-4 w-4 text-green-600 mr-2" />
+                        <span className="text-sm font-medium text-gray-800">
+                          {dayNames[day]}
+                        </span>
+                      </div>
+                      <span className="text-sm font-semibold text-green-700">
+                        {profileData.availability[day]?.hours}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
 
           {/* 포트폴리오 섹션 */}
@@ -763,7 +895,7 @@ const ExpertProfile = ({ expertData, onSave }) => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {consultationTypeOptions.map((option) => {
                 const isSelected = profileData.consultationTypes.includes(
-                  option.id,
+                  option.id as ConsultationType,
                 );
 
                 // 아이콘 결정
@@ -788,7 +920,7 @@ const ExpertProfile = ({ expertData, onSave }) => {
                     <input
                       type="checkbox"
                       checked={isSelected}
-                      onChange={() => handleConsultationTypeToggle(option.id)}
+                      onChange={() => handleConsultationTypeToggle(option.id as ConsultationType)}
                       className="sr-only"
                     />
                     {/* 선택되지 않은 경우 이모지, 선택된 경우 아이콘 */}
@@ -808,6 +940,59 @@ const ExpertProfile = ({ expertData, onSave }) => {
                       <CheckCircle className="h-6 w-6 text-blue-500 ml-2" />
                     )}
                   </label>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 상담 가능 시간 설정 */}
+          <div>
+            <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <Calendar className="h-5 w-5 text-blue-600 mr-2" />
+              상담 가능 시간
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {daysOrder.map((day) => {
+                const availabilityForDay = profileData.availability[day];
+                const isAvailable = availabilityForDay?.available;
+                const hours = availabilityForDay?.hours ?? "09:00-18:00";
+                return (
+                  <div key={day} className="p-4 border border-gray-200 rounded-lg">
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          className="mr-2 h-4 w-4"
+                          checked={!!isAvailable}
+                          onChange={() =>
+                            handleAvailabilityChange(day, "available", !isAvailable)
+                          }
+                        />
+                        <span className="text-sm font-medium text-gray-800">
+                          {dayNames[day]}
+                        </span>
+                      </label>
+                      <span
+                        className={
+                          isAvailable ? "text-green-600 text-sm" : "text-gray-400 text-sm"
+                        }
+                      >
+                        {isAvailable ? "가능" : "미가능"}
+                      </span>
+                    </div>
+                    <input
+                      type="text"
+                      value={hours}
+                      onChange={(e) =>
+                        handleAvailabilityChange(day, "hours", e.target.value)
+                      }
+                      disabled={!isAvailable}
+                      className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
+                        isAvailable ? "border-gray-300" : "border-gray-200 bg-gray-100 text-gray-400"
+                      }`}
+                      placeholder="예: 09:00-12:00, 13:00-18:00"
+                    />
+                  </div>
                 );
               })}
             </div>

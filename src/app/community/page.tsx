@@ -10,7 +10,7 @@ import CreatePostModal from "@/components/community/CreatePostModal";
 export default function CommunityPage() {
   const [activeTab, setActiveTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState("latest");
+  const [sortBy, setSortBy] = useState<"latest" | "popular" | "comments" | "views">("latest");
 
   const handleTabChange = (categoryId: string) => {
     setActiveTab(categoryId);
@@ -20,7 +20,7 @@ export default function CommunityPage() {
     setSearchQuery(query);
   };
 
-  const handleSortChange = (sort: string) => {
+  const handleSortChange = (sort: "latest" | "popular" | "comments" | "views") => {
     setSortBy(sort);
   };
 

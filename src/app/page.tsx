@@ -8,7 +8,6 @@
  */
 
 import { useState } from "react";
-import MainNavigation from "../components/layout/MainNavigation";
 import HeroSection from "../components/home/HeroSection";
 import SearchingSection from "../components/home/SearchingSection";
 import MatchedExpertsSection from "../components/home/MatchedExpertsSection";
@@ -291,8 +290,6 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* 메인 네비게이션 */}
-      <MainNavigation />
 
       <HeroSection
         searchCategory={searchCategory}

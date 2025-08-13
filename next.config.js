@@ -1,10 +1,7 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  // 폰트 최적화 설정
-  experimental: {
-    optimizePackageImports: ["lucide-react"],
-  },
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  // experimental 최적화 설정 제거 (SSR 런타임 오류 방지)
+  experimental: {},
 
   // 웹팩 설정
   webpack: (config, { dev, isServer }) => {
@@ -38,4 +35,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+module.exports = nextConfig;

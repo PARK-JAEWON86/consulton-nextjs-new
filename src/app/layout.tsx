@@ -1,18 +1,17 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/layout/Navbar";
-import Sidebar from "@/components/layout/Sidebar";
+import MainNavigation from "@/components/layout/MainNavigation";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
   display: "swap", // 폰트 로딩 최적화
   preload: true, // 프리로드 활성화
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
   subsets: ["latin"],
   display: "swap", // 폰트 로딩 최적화
   preload: true, // 프리로드 활성화
@@ -39,22 +38,23 @@ export default function RootLayout({
         {/* 폰트 프리로드 최적화 */}
         <link
           rel="preload"
-          href="/_next/static/media/geist-sans.woff2"
+          href="/_next/static/media/inter.woff2"
           as="font"
           type="font/woff2"
           crossOrigin="anonymous"
         />
         <link
           rel="preload"
-          href="/_next/static/media/geist-mono.woff2"
+          href="/_next/static/media/jetbrains-mono.woff2"
           as="font"
           type="font/woff2"
           crossOrigin="anonymous"
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}
       >
+        <MainNavigation />
         {children}
       </body>
     </html>

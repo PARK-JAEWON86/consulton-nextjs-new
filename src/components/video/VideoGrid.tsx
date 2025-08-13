@@ -8,8 +8,8 @@ interface Participant {
   name: string;
   isPresenting?: boolean;
   isScreenSharing?: boolean;
-  isVideoEnabled?: boolean;
-  isAudioEnabled?: boolean;
+  isVideoOn?: boolean;
+  isAudioOn?: boolean;
   stream?: MediaStream;
 }
 
@@ -51,8 +51,12 @@ const VideoGrid = ({ participants, isScreenSharing }: VideoGridProps) => {
         {participants.map((participant) => (
           <ParticipantVideo
             key={participant.id}
-            participant={participant}
-            isMain={participants.length <= 2 || participant.isPresenting}
+            participant={{
+              ...participant,
+              isVideoOn: participant.isVideoOn ?? true,
+              isAudioOn: participant.isAudioOn ?? true,
+            }}
+            isMain={participants.length <= 2 || !!participant.isPresenting}
             showControls={true}
           />
         ))}
@@ -65,7 +69,11 @@ const VideoGrid = ({ participants, isScreenSharing }: VideoGridProps) => {
             {otherParticipants.slice(0, 3).map((participant) => (
               <div key={participant.id} className="w-32 h-24">
                 <ParticipantVideo
-                  participant={participant}
+                  participant={{
+                    ...participant,
+                    isVideoOn: participant.isVideoOn ?? true,
+                    isAudioOn: participant.isAudioOn ?? true,
+                  }}
                   isMain={false}
                   showControls={false}
                 />

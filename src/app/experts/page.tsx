@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import type { ComponentType } from "react";
 import ServiceLayout from "@/components/layout/ServiceLayout";
 import {
   Search,
@@ -38,8 +39,41 @@ import {
 import ConsultationRecommendation from "@/components/recommendation/ConsultationRecommendation";
 import { calculateCreditsByLevel } from "@/utils/expertLevels";
 
+type ConsultationType = "video" | "chat";
+
+type ExpertItem = {
+  id: number;
+  name: string;
+  specialty: string;
+  experience: number;
+  rating: number;
+  reviewCount: number;
+  totalSessions: number;
+  avgRating: number;
+  description: string;
+  specialties: string[];
+  consultationTypes: ConsultationType[];
+  languages: string[];
+  profileImage: string | null;
+  responseTime: number | null;
+  education: string[];
+  certifications: string[];
+  totalConsultations: number;
+  level: number;
+};
+
+type SortBy = "rating" | "experience" | "reviews";
+
+type SelectedFilters = {
+  specialty: string;
+  minRating: number;
+  maxPrice: number;
+  availability: string;
+  experience: number;
+};
+
 // 전문가 레벨 계산 함수들
-const calculateExpertLevel = (expert) => {
+const calculateExpertLevel = (expert: ExpertItem): number => {
   // 경험, 평점, 상담 수 등을 종합하여 레벨 계산
   const experienceScore = expert.experience * 10;
   const ratingScore = expert.rating * 20;
@@ -48,12 +82,12 @@ const calculateExpertLevel = (expert) => {
   return Math.floor((experienceScore + ratingScore + consultationScore) / 10);
 };
 
-const calculateCreditsPerMinute = (expert) => {
+const calculateCreditsPerMinute = (expert: ExpertItem): number => {
   // expertLevels.ts의 함수를 사용하여 레벨별 과금 체계 적용
   return calculateCreditsByLevel(expert.level || 1);
 };
 
-const getLevelBadgeStyles = (levelName) => {
+const getLevelBadgeStyles = (levelName: string): string => {
   const styles = {
     beginner: "bg-green-500 text-white",
     intermediate: "bg-yellow-500 text-white",
@@ -61,10 +95,10 @@ const getLevelBadgeStyles = (levelName) => {
     expert: "bg-red-500 text-white",
     master: "bg-purple-500 text-white",
   };
-  return styles[levelName] || styles.beginner;
+  return (styles as Record<string, string>)[levelName] || styles.beginner;
 };
 
-const getKoreanLevelName = (level) => {
+const getKoreanLevelName = (level: number): string => {
   if (level >= 800) return "마스터";
   if (level >= 600) return "전문가";
   if (level >= 400) return "고급";
@@ -74,7 +108,7 @@ const getKoreanLevelName = (level) => {
 
 const ExpertSearch = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedFilters, setSelectedFilters] = useState({
+  const [selectedFilters, setSelectedFilters] = useState<SelectedFilters>({
     specialty: "",
     minRating: 0,
     maxPrice: 10000,
@@ -82,11 +116,11 @@ const ExpertSearch = () => {
     experience: 0,
   });
   const [showFilters, setShowFilters] = useState(false);
-  const [sortBy, setSortBy] = useState("rating");
-  const [favorites, setFavorites] = useState([]);
-  const [filteredExperts, setFilteredExperts] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(9);
+  const [sortBy, setSortBy] = useState<SortBy>("rating");
+  const [favorites, setFavorites] = useState<number[]>([]);
+  const [filteredExperts, setFilteredExperts] = useState<ExpertItem[]>([]);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [itemsPerPage] = useState<number>(9);
   const [consultationTopic, setConsultationTopic] = useState("");
   const [consultationSummary, setConsultationSummary] = useState("");
   const [showRecommendation, setShowRecommendation] = useState(true);
@@ -95,7 +129,7 @@ const ExpertSearch = () => {
   const [showAllCategories, setShowAllCategories] = useState(false);
 
   // 샘플 전문가 데이터
-  const allExperts = [
+  const allExperts: ExpertItem[] = [
     {
       id: 1,
       name: "박지영",
@@ -266,7 +300,7 @@ const ExpertSearch = () => {
     },
   ];
 
-  const specialtyOptions = [
+  const specialtyOptions: string[] = [
     "심리상담",
     "법률상담",
     "재무상담",
@@ -287,12 +321,12 @@ const ExpertSearch = () => {
 
   // 필터링 로직
   useEffect(() => {
-    let filtered = allExperts;
+    let filtered: ExpertItem[] = allExperts;
 
     // 검색어 필터
     if (searchQuery) {
       filtered = filtered.filter(
-        (expert) =>
+        (expert: ExpertItem) =>
           expert.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           expert.specialty.toLowerCase().includes(searchQuery.toLowerCase()) ||
           expert.specialties.some((s) =>
@@ -305,34 +339,39 @@ const ExpertSearch = () => {
     // 전문분야 필터
     if (selectedFilters.specialty) {
       filtered = filtered.filter(
-        (expert) => expert.specialty === selectedFilters.specialty
+        (expert: ExpertItem) => expert.specialty === selectedFilters.specialty
       );
     }
 
     // 평점 필터
     if (selectedFilters.minRating > 0) {
       filtered = filtered.filter(
-        (expert) => expert.rating >= selectedFilters.minRating
+        (expert: ExpertItem) => expert.rating >= selectedFilters.minRating
       );
     }
 
     // 경력 필터
     if (selectedFilters.experience > 0) {
       filtered = filtered.filter(
-        (expert) => expert.experience >= selectedFilters.experience
+        (expert: ExpertItem) =>
+          expert.experience >= selectedFilters.experience
       );
     }
 
     // 정렬
     switch (sortBy) {
       case "rating":
-        filtered.sort((a, b) => b.rating - a.rating);
+        filtered.sort((a: ExpertItem, b: ExpertItem) => b.rating - a.rating);
         break;
       case "experience":
-        filtered.sort((a, b) => b.experience - a.experience);
+        filtered.sort(
+          (a: ExpertItem, b: ExpertItem) => b.experience - a.experience
+        );
         break;
       case "reviews":
-        filtered.sort((a, b) => b.reviewCount - a.reviewCount);
+        filtered.sort(
+          (a: ExpertItem, b: ExpertItem) => b.reviewCount - a.reviewCount
+        );
         break;
       default:
         break;
@@ -342,14 +381,17 @@ const ExpertSearch = () => {
     setCurrentPage(1);
   }, [searchQuery, selectedFilters, sortBy]);
 
-  const handleFilterChange = (filterType, value) => {
+  const handleFilterChange = (
+    filterType: keyof SelectedFilters,
+    value: string | number
+  ) => {
     setSelectedFilters((prev) => ({
       ...prev,
-      [filterType]: value,
+      [filterType]: value as never,
     }));
   };
 
-  const toggleFavorite = (expertId) => {
+  const toggleFavorite = (expertId: number) => {
     setFavorites((prev) =>
       prev.includes(expertId)
         ? prev.filter((id) => id !== expertId)
@@ -368,7 +410,9 @@ const ExpertSearch = () => {
     setSearchQuery("");
   };
 
-  const getConsultationTypeIcon = (type) => {
+  const getConsultationTypeIcon = (
+    type: ConsultationType
+  ): ComponentType<{ className?: string }> => {
     switch (type) {
       case "video":
         return Video;
@@ -379,7 +423,7 @@ const ExpertSearch = () => {
     }
   };
 
-  const getResponseTimeText = (responseTime) => {
+  const getResponseTimeText = (responseTime: number | null | undefined): string => {
     if (!responseTime) return "답변 시간 정보 없음";
 
     if (typeof responseTime === "number") {
@@ -397,7 +441,9 @@ const ExpertSearch = () => {
     return "답변 시간 정보 없음";
   };
 
-  const getResponseTimeColor = (responseTime) => {
+  const getResponseTimeColor = (
+    responseTime: number | null | undefined
+  ): string => {
     if (!responseTime) return "text-gray-400";
 
     if (typeof responseTime === "number") {
@@ -417,9 +463,9 @@ const ExpertSearch = () => {
   const totalPages = Math.ceil(filteredExperts.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentExperts = filteredExperts.slice(startIndex, endIndex);
+  const currentExperts: ExpertItem[] = filteredExperts.slice(startIndex, endIndex);
 
-  const handlePageChange = (page) => {
+  const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
 
@@ -435,7 +481,7 @@ const ExpertSearch = () => {
     }
   };
 
-  const handleProfileView = (expert) => {
+  const handleProfileView = (expert: ExpertItem) => {
     // 전문가 프로필 페이지로 이동
     console.log("전문가 프로필 보기:", expert);
   };
@@ -500,7 +546,7 @@ const ExpertSearch = () => {
             {/* 정렬 선택 */}
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
+              onChange={(e) => setSortBy(e.target.value as SortBy)}
               className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="rating">평점 높은 순</option>
@@ -714,7 +760,7 @@ const ExpertSearch = () => {
 
         {/* 전문가 목록 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {currentExperts.map((expert) => {
+          {currentExperts.map((expert: ExpertItem) => {
             const creditsPerMinute = calculateCreditsPerMinute(expert);
 
             return (

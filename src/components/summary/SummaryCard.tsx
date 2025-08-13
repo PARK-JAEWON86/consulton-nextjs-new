@@ -53,7 +53,7 @@ const SummaryCard = ({
         <div className="px-6 pb-6">
           {type === "list" ? (
             <ul className="space-y-3">
-              {items.map((item, index) => (
+              {(items as string[]).map((item, index) => (
                 <li key={index} className="flex items-start space-x-3">
                   <div className="w-2 h-2 bg-blue-600 rounded-full mt-2 flex-shrink-0" />
                   <span className="text-gray-700 leading-relaxed">{item}</span>
@@ -62,7 +62,7 @@ const SummaryCard = ({
             </ul>
           ) : type === "grid" ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {items.map((item, index) => (
+              {(items as GridItem[]).map((item, index) => (
                 <div key={index} className="p-4 bg-gray-50 rounded-lg">
                   <h4 className="font-medium text-gray-900 mb-2">
                     {item.title}
@@ -90,7 +90,7 @@ const SummaryCard = ({
             </div>
           ) : (
             <div className="prose max-w-none">
-              {items.map((item, index) => (
+              {(items as string[]).map((item, index) => (
                 <p key={index} className="text-gray-700 mb-3 leading-relaxed">
                   {item}
                 </p>

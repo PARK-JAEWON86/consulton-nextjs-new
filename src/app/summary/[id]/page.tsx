@@ -30,7 +30,7 @@ interface ActionItem {
   id: number;
   task: string;
   assignee: string;
-  dueDate: Date;
+  dueDate: Date | null;
   status: "pending" | "completed";
   priority: "high" | "medium" | "low";
 }
@@ -49,7 +49,7 @@ interface SummaryData {
     name: string;
     company: string;
   };
-  status: string;
+  status: "recording" | "processing" | "completed" | "failed";
   recordingUrl: string;
   recordingDuration: number;
   summary: {

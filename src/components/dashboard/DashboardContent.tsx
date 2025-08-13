@@ -28,6 +28,7 @@ import UserProfile from "./UserProfile";
 import ExpertProfile from "./ExpertProfile";
 
 export default function DashboardContent() {
+  type ConsultationType = "video" | "chat" | "voice";
   const [isExpertMode, setIsExpertMode] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -70,7 +71,7 @@ export default function DashboardContent() {
     education: ["경희대학교 경영학과 학사"],
     certifications: ["진로상담사 2급", "직업상담사 2급"],
     specialties: ["취업 준비", "이직 상담", "진로 탐색", "면접 준비"],
-    consultationTypes: ["video", "chat"],
+    consultationTypes: ["video", "chat"] as ConsultationType[],
     languages: ["한국어"],
     hourlyRate: "1200",
     contactInfo: {
