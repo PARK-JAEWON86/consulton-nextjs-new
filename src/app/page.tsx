@@ -193,6 +193,18 @@ export default function HomePage() {
       icon: Building2,
       description: "생명보험, 손해보험, 연금",
     },
+    {
+      id: "admission",
+      name: "진학상담",
+      icon: GraduationCap,
+      description: "대입, 수시, 정시 전략",
+    },
+    {
+      id: "other",
+      name: "그외 기타",
+      icon: X,
+      description: "기타 상담 분야",
+    },
   ];
 
   // 연령대 옵션
@@ -328,11 +340,13 @@ export default function HomePage() {
           <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
             전문가와 함께
             <br />
-            <span className="text-blue-600">성장하는 상담</span>
+            <span className="block mt-3 text-blue-600">
+              성장하는 온디맨드 상담
+            </span>
           </h1>
           <p className="text-xl text-gray-600 mb-12 max-w-3xl mx-auto">
-            진로, 심리, 재무 등 다양한 분야의 전문가들과 1:1 상담을 통해 당신의
-            고민을 해결하고 목표를 달성해보세요.
+            다양한 분야의 전문가들과 1:1 상담을 통해 당신의 고민을 해결하고
+            목표를 달성해보세요.
           </p>
 
           {/* 메인 검색바 */}
@@ -786,22 +800,22 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-6">
-            {/* 인기 상담 분야 6개만 표시 */}
-            {categories.slice(0, 6).map((category) => {
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {/* 인기 상담 분야 5개만 표시 */}
+            {categories.slice(0, 5).map((category) => {
               const IconComponent = category.icon;
               return (
                 <div
                   key={category.id}
-                  className="bg-white rounded-xl p-6 text-center hover:shadow-lg transition-shadow duration-200 cursor-pointer"
+                  className="bg-white rounded-xl p-4 text-center hover:shadow-lg transition-shadow duration-200 cursor-pointer min-h-[160px] flex flex-col justify-center"
                 >
                   <div className="flex justify-center mb-3">
-                    <IconComponent className="h-12 w-12 text-blue-600" />
+                    <IconComponent className="h-10 w-10 text-blue-600" />
                   </div>
-                  <h3 className="font-semibold text-gray-900 mb-2">
+                  <h3 className="font-semibold text-gray-900 mb-2 text-sm">
                     {category.name}
                   </h3>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-xs text-gray-600 leading-relaxed">
                     {category.description}
                   </p>
                 </div>
@@ -811,19 +825,19 @@ export default function HomePage() {
             {/* 더보기 칸 */}
             <div
               onClick={() => setShowAllCategories(!showAllCategories)}
-              className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-xl p-6 text-center hover:shadow-lg transition-all duration-200 cursor-pointer border-2 border-dashed border-blue-300 hover:border-blue-400 group"
+              className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-xl p-4 text-center hover:shadow-lg transition-all duration-200 cursor-pointer border-2 border-dashed border-blue-300 hover:border-blue-400 group min-h-[160px] flex flex-col justify-center"
             >
               <div className="flex justify-center mb-3">
-                <div className="bg-blue-100 rounded-full p-3 group-hover:bg-blue-200 transition-colors">
+                <div className="bg-blue-100 rounded-full p-2 group-hover:bg-blue-200 transition-colors">
                   <ChevronDown
-                    className={`h-12 w-12 text-blue-600 transition-transform duration-200 ${showAllCategories ? "rotate-180" : ""}`}
+                    className={`h-10 w-10 text-blue-600 transition-transform duration-200 ${showAllCategories ? "rotate-180" : ""}`}
                   />
                 </div>
               </div>
-              <h3 className="font-semibold text-gray-900 mb-2">
+              <h3 className="font-semibold text-gray-900 mb-2 text-sm">
                 {showAllCategories ? "접기" : "더 많은 분야"}
               </h3>
-              <p className="text-sm text-gray-600">
+              <p className="text-xs text-gray-600">
                 총 {categories.length}개의 상담 분야
               </p>
             </div>
@@ -832,21 +846,21 @@ export default function HomePage() {
           {/* 추가 카테고리들 */}
           {showAllCategories && (
             <div className="mt-8">
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
-                {categories.slice(6).map((category) => {
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                {categories.slice(5).map((category) => {
                   const IconComponent = category.icon;
                   return (
                     <div
                       key={category.id}
-                      className="bg-white rounded-xl p-6 text-center hover:shadow-lg transition-all duration-200 cursor-pointer"
+                      className="bg-white rounded-xl p-4 text-center hover:shadow-lg transition-all duration-200 cursor-pointer min-h-[160px] flex flex-col justify-center"
                     >
                       <div className="flex justify-center mb-3">
-                        <IconComponent className="h-12 w-12 text-blue-600" />
+                        <IconComponent className="h-10 w-10 text-blue-600" />
                       </div>
-                      <h3 className="font-semibold text-gray-900 mb-2">
+                      <h3 className="font-semibold text-gray-900 mb-2 text-sm">
                         {category.name}
                       </h3>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-xs text-gray-600 leading-relaxed">
                         {category.description}
                       </p>
                     </div>
