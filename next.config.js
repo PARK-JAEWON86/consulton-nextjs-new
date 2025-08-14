@@ -12,6 +12,9 @@ const nextConfig = {
         fs: false,
       };
     }
+
+    // alias는 사용하지 않음 (빌드 아티팩트 충돌 방지)
+
     return config;
   },
 

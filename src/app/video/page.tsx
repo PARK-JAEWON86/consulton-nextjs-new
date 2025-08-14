@@ -155,6 +155,18 @@ export default function VideoPage() {
       };
       setChatMessages((prev) => [...prev, endMessage]);
 
+      // 상담 완료 상태로 자동 업데이트
+      (async () => {
+        try {
+          const { useConsultationsStore } = await import(
+            "@/stores/consultationsStore"
+          );
+          useConsultationsStore.getState().completeCurrent();
+        } catch (e) {
+          console.warn("Failed to mark consultation as completed", e);
+        }
+      })();
+
       // 상담 완료 페이지로 이동 (실제 구현 시)
       console.log("상담 종료");
     }
@@ -297,8 +309,8 @@ export default function VideoPage() {
                       {userControls.isRecording && expertControls.isRecording
                         ? "녹화 중 (양쪽)"
                         : userControls.isRecording
-                          ? "김철수님 녹화 중"
-                          : "이민수 전문가님 녹화 중"}
+                        ? "김철수님 녹화 중"
+                        : "이민수 전문가님 녹화 중"}
                     </span>
                   </div>
                 )}

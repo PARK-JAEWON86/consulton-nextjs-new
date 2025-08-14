@@ -84,7 +84,7 @@ const PaymentModal = ({ expert, onClose }: PaymentModalProps) => {
   ];
 
   const selectedType = consultationTypes.find(
-    (type) => type.id === consultationType,
+    (type) => type.id === consultationType
   );
   const baseCredits = expert.creditsPerMinute * estimatedDuration;
   const finalCredits = Math.round(baseCredits * selectedType!.creditRate);
@@ -103,6 +103,23 @@ const PaymentModal = ({ expert, onClose }: PaymentModalProps) => {
         paymentMethod: selectedPaymentMethod,
         credits: finalCredits,
       });
+
+      // 상담 예약 자동 등록
+      try {
+        const { useConsultationsStore } = await import(
+          "@/stores/consultationsStore"
+        );
+        const addScheduled = useConsultationsStore.getState().addScheduled;
+        addScheduled({
+          customer: "고객", // 실제 구현 시 사용자 이름으로 대체
+          topic: `${expert.name} - ${selectedType?.name}`,
+          amount: finalCredits,
+          method: consultationType as any,
+          duration: estimatedDuration,
+        });
+      } catch (e) {
+        console.warn("Failed to auto-register consultation", e);
+      }
 
       // 크레딧 사용 완료 시 상담 페이지로 이동
       alert("크레딧 사용이 완료되었습니다! 상담을 시작합니다.");
@@ -139,8 +156,8 @@ const PaymentModal = ({ expert, onClose }: PaymentModalProps) => {
               {currentStep === 1
                 ? "상담 방법 선택"
                 : currentStep === 2
-                  ? "결제 정보"
-                  : "크레딧 사용 확인"}
+                ? "결제 정보"
+                : "크레딧 사용 확인"}
             </h2>
             <p className="text-sm text-gray-600 mt-1">
               {expert.name} 전문가와의 상담

@@ -16,7 +16,7 @@ import QuestionInput from "@/components/chat/QuestionInput";
 import ChatHistory from "@/components/chat/ChatHistory";
 import ChatBubble from "@/components/chat/ChatBubble";
 import AIChatCreditsBar from "@/components/chat/AIChatCreditsBar";
-import ChatLayout from "@/components/layout/ChatLayout";
+import ServiceLayout from "@/components/layout/ServiceLayout";
 import { useAIChatCreditsStore } from "@/stores/aiChatCreditsStore";
 
 interface Message {
@@ -269,7 +269,7 @@ export default function ChatPage() {
   };
 
   return (
-    <ChatLayout>
+    <ServiceLayout>
       {/* 크레딧 사용 모달 */}
       {showCreditModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -713,6 +713,6 @@ export default function ChatPage() {
           </div>
         </div>
       </div>
-    </ChatLayout>
+    </ServiceLayout>
   );
 }
