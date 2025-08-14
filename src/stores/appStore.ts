@@ -9,6 +9,8 @@ interface AppState {
   // UI 상태
   sidebarOpen: boolean;
   currentPage: string;
+  // 현재 보기 모드 (사용자/전문가)
+  viewMode: "user" | "expert";
 
   // 사용자 정보
   user: {
@@ -25,6 +27,7 @@ interface AppState {
   setAuthenticated: (status: boolean) => void;
   setSidebarOpen: (open: boolean) => void;
   setCurrentPage: (page: string) => void;
+  setViewMode: (mode: "user" | "expert") => void;
   setUser: (user: AppState["user"]) => void;
   updateCredits: (credits: number) => void;
   logout: () => void;
@@ -38,6 +41,7 @@ export const useAppStore = create<AppState>()(
       isAuthenticated: false,
       sidebarOpen: false,
       currentPage: "/",
+      viewMode: "user",
       user: null,
 
       // 액션들
@@ -70,6 +74,10 @@ export const useAppStore = create<AppState>()(
         set({ currentPage: page });
       },
 
+      setViewMode: (mode: "user" | "expert") => {
+        set({ viewMode: mode });
+      },
+
       setUser: (user: AppState["user"]) => {
         set({ user });
       },
@@ -86,6 +94,7 @@ export const useAppStore = create<AppState>()(
           isAuthenticated: false,
           user: null,
           hasEnteredService: false,
+          viewMode: "user",
         });
         // 쿠키 제거
         if (typeof document !== "undefined") {
@@ -99,8 +108,9 @@ export const useAppStore = create<AppState>()(
       partialize: (state) => ({
         hasEnteredService: state.hasEnteredService,
         isAuthenticated: state.isAuthenticated,
+        viewMode: state.viewMode,
         user: state.user,
       }),
-    },
-  ),
+    }
+  )
 );

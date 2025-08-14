@@ -118,11 +118,11 @@ const ExpertProfile = ({ expertData, onSave }: ExpertProfileProps) => {
   // 현재 전문가의 레벨 정보 계산 (안전한 기본값 사용)
   const currentLevel = calculateExpertLevel(
     profileData.totalSessions || 0,
-    profileData.avgRating || 0,
+    profileData.avgRating || 0
   );
   const nextLevelProgress = getNextLevelProgress(
     profileData.totalSessions || 0,
-    profileData.avgRating || 0,
+    profileData.avgRating || 0
   );
   const levelBadgeStyles = getLevelBadgeStyles(currentLevel?.name || "Bronze");
   const creditsPerMinute = currentLevel.creditsPerMinute;
@@ -165,7 +165,10 @@ const ExpertProfile = ({ expertData, onSave }: ExpertProfileProps) => {
 
   const handleInputChange = (field: string, value: unknown) => {
     if (field.includes(".")) {
-      const [parent, child] = field.split(".") as ["contactInfo", keyof ExpertProfileData["contactInfo"] & string];
+      const [parent, child] = field.split(".") as [
+        "contactInfo",
+        keyof ExpertProfileData["contactInfo"] & string,
+      ];
       if (parent === "contactInfo") {
         setProfileData((prev) => ({
           ...prev,
@@ -188,7 +191,7 @@ const ExpertProfile = ({ expertData, onSave }: ExpertProfileProps) => {
   const handleArrayChange = (
     field: "education" | "certifications" | "specialties",
     index: number,
-    value: string,
+    value: string
   ) => {
     setProfileData((prev) => ({
       ...prev,
@@ -196,7 +199,9 @@ const ExpertProfile = ({ expertData, onSave }: ExpertProfileProps) => {
     }));
   };
 
-  const addArrayItem = (field: "education" | "certifications" | "specialties") => {
+  const addArrayItem = (
+    field: "education" | "certifications" | "specialties"
+  ) => {
     setProfileData((prev) => ({
       ...prev,
       [field]: [...prev[field], ""],
@@ -205,7 +210,7 @@ const ExpertProfile = ({ expertData, onSave }: ExpertProfileProps) => {
 
   const removeArrayItem = (
     field: "education" | "certifications" | "specialties",
-    index: number,
+    index: number
   ) => {
     setProfileData((prev) => ({
       ...prev,
@@ -232,7 +237,7 @@ const ExpertProfile = ({ expertData, onSave }: ExpertProfileProps) => {
       | "saturday"
       | "sunday",
     field: "available" | "hours",
-    value: boolean | string,
+    value: boolean | string
   ) => {
     setProfileData((prev) => ({
       ...prev,
@@ -248,7 +253,7 @@ const ExpertProfile = ({ expertData, onSave }: ExpertProfileProps) => {
 
   const handleFileUpload = (
     event: { target: { files: FileList | null } },
-    type: "profile" | "portfolio",
+    type: "profile" | "portfolio"
   ) => {
     const files = Array.from(event.target.files ?? []);
 
@@ -322,7 +327,7 @@ const ExpertProfile = ({ expertData, onSave }: ExpertProfileProps) => {
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFileUpload(
         { target: { files: e.dataTransfer.files } },
-        "portfolio",
+        "portfolio"
       );
     }
   };
@@ -527,7 +532,7 @@ const ExpertProfile = ({ expertData, onSave }: ExpertProfileProps) => {
                 <div className="flex flex-wrap gap-2">
                   {profileData.consultationTypes.map((typeId) => {
                     const type = consultationTypeOptions.find(
-                      (t) => t.id === typeId,
+                      (t) => t.id === typeId
                     );
 
                     // 아이콘 결정
@@ -614,7 +619,7 @@ const ExpertProfile = ({ expertData, onSave }: ExpertProfileProps) => {
             </h5>
             {(() => {
               const availableDays = daysOrder.filter(
-                (d) => profileData.availability[d]?.available,
+                (d) => profileData.availability[d]?.available
               );
               if (availableDays.length === 0) {
                 return (
@@ -718,7 +723,7 @@ const ExpertProfile = ({ expertData, onSave }: ExpertProfileProps) => {
         </div>
       </div>
 
-      <div className="p-6 max-h-[32rem] overflow-y-auto">
+      <div className="p-6">
         <div className="space-y-8">
           {/* 기본 정보 */}
           <div>
@@ -895,7 +900,7 @@ const ExpertProfile = ({ expertData, onSave }: ExpertProfileProps) => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {consultationTypeOptions.map((option) => {
                 const isSelected = profileData.consultationTypes.includes(
-                  option.id as ConsultationType,
+                  option.id as ConsultationType
                 );
 
                 // 아이콘 결정
@@ -920,7 +925,11 @@ const ExpertProfile = ({ expertData, onSave }: ExpertProfileProps) => {
                     <input
                       type="checkbox"
                       checked={isSelected}
-                      onChange={() => handleConsultationTypeToggle(option.id as ConsultationType)}
+                      onChange={() =>
+                        handleConsultationTypeToggle(
+                          option.id as ConsultationType
+                        )
+                      }
                       className="sr-only"
                     />
                     {/* 선택되지 않은 경우 이모지, 선택된 경우 아이콘 */}
@@ -957,7 +966,10 @@ const ExpertProfile = ({ expertData, onSave }: ExpertProfileProps) => {
                 const isAvailable = availabilityForDay?.available;
                 const hours = availabilityForDay?.hours ?? "09:00-18:00";
                 return (
-                  <div key={day} className="p-4 border border-gray-200 rounded-lg">
+                  <div
+                    key={day}
+                    className="p-4 border border-gray-200 rounded-lg"
+                  >
                     <div className="flex items-center justify-between mb-3">
                       <label className="flex items-center">
                         <input
@@ -965,7 +977,11 @@ const ExpertProfile = ({ expertData, onSave }: ExpertProfileProps) => {
                           className="mr-2 h-4 w-4"
                           checked={!!isAvailable}
                           onChange={() =>
-                            handleAvailabilityChange(day, "available", !isAvailable)
+                            handleAvailabilityChange(
+                              day,
+                              "available",
+                              !isAvailable
+                            )
                           }
                         />
                         <span className="text-sm font-medium text-gray-800">
@@ -974,7 +990,9 @@ const ExpertProfile = ({ expertData, onSave }: ExpertProfileProps) => {
                       </label>
                       <span
                         className={
-                          isAvailable ? "text-green-600 text-sm" : "text-gray-400 text-sm"
+                          isAvailable
+                            ? "text-green-600 text-sm"
+                            : "text-gray-400 text-sm"
                         }
                       >
                         {isAvailable ? "가능" : "미가능"}
@@ -988,7 +1006,9 @@ const ExpertProfile = ({ expertData, onSave }: ExpertProfileProps) => {
                       }
                       disabled={!isAvailable}
                       className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
-                        isAvailable ? "border-gray-300" : "border-gray-200 bg-gray-100 text-gray-400"
+                        isAvailable
+                          ? "border-gray-300"
+                          : "border-gray-200 bg-gray-100 text-gray-400"
                       }`}
                       placeholder="예: 09:00-12:00, 13:00-18:00"
                     />

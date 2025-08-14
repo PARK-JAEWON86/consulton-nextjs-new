@@ -1,31 +1,35 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAIChatCreditsStore } from "../../stores/aiChatCreditsStore";
+import { useAppStore } from "../../stores/appStore";
 import {
   Home,
   MessageCircle,
   Users,
-  Video,
   FileText,
   Settings,
   User,
-  X,
-  ChevronRight,
+  Bell,
   BarChart3,
   CreditCard,
-  Bell,
-  Sparkles,
-  PanelLeftClose,
+  LifeBuoy,
+  Megaphone,
   PanelLeft,
+  ChevronRight,
+  LogOut,
+  Sun,
+  Shield,
+  HelpCircle,
+  ArrowLeftRight,
 } from "lucide-react";
 
 interface SidebarProps {
   isOpen?: boolean;
   onClose?: () => void;
   onToggle?: () => void;
+  variant?: "user" | "expert"; // 명시적으로 강제 가능
 }
 
 interface MenuItem {
@@ -33,232 +37,183 @@ interface MenuItem {
   name: string;
   icon: React.ComponentType<{ className?: string }>;
   path: string;
-  description: string;
-  badge?: string;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
   isOpen = false,
   onClose,
   onToggle,
+  variant,
 }) => {
-  const [activeItem, setActiveItem] = useState("dashboard");
+  const pathname = usePathname();
+  const router = useRouter();
+
   const [showExitWarning, setShowExitWarning] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<MenuItem | null>(
     null
   );
-  const pathname = usePathname();
-  const router = useRouter();
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    if (typeof window === "undefined") return "light";
+    const stored = localStorage.getItem("consulton-theme");
+    return stored === "dark" ? "dark" : "light";
+  });
 
-  // AI 채팅 크레딧 스토어에서 크레딧 정보 가져오기
+  // 크레딧 정보
   const { remainingAIChatCredits, checkAndResetMonthly, setCreditsTo7300 } =
     useAIChatCreditsStore();
 
-  // 컴포넌트 마운트 시 월간 리셋 체크 및 크레딧을 7300으로 설정
+  // 유저 역할/저장된 뷰 모드 기반으로 variant 결정
+  const { user, viewMode, setViewMode } = useAppStore();
+  const effectiveVariant: "user" | "expert" = useMemo(() => {
+    if (variant) return variant;
+    if (viewMode) return viewMode;
+    if (pathname.startsWith("/dashboard/expert")) return "expert";
+    if (user?.expertLevel) return "expert";
+    return "user";
+  }, [variant, viewMode, pathname, user]);
+
   useEffect(() => {
     checkAndResetMonthly();
-    setCreditsTo7300(); // 크레딧을 7300으로 설정
+    setCreditsTo7300();
   }, [checkAndResetMonthly, setCreditsTo7300]);
 
-  const menuItems = useMemo<MenuItem[]>(
-    () => [
-      {
-        id: "chat",
-        name: "Quick AI 상담",
-        icon: Sparkles,
-        path: "/chat",
-        description: "AI와 상담하기",
-      },
-      {
-        id: "experts",
-        name: "전문가 찾기",
-        icon: Users,
-        path: "/experts",
-        description: "전문가 검색 및 매칭",
-      },
-      {
-        id: "video",
-        name: "상담 시작",
-        icon: Video,
-        path: "/video",
-        description: "전문가와 상담 시작",
-      },
-      {
-        id: "summary",
-        name: "상담 요약",
-        icon: FileText,
-        path: "/summary",
-        description: "상담 기록 보기",
-      },
-      {
-        id: "analytics",
-        name: "분석 리포트",
-        icon: BarChart3,
-        path: "/analytics",
-        description: "상담 통계",
-      },
-    ],
-    []
-  );
+  useEffect(() => {
+    // 간단한 테마 토글 (class 전략)
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+    if (typeof window !== "undefined") {
+      localStorage.setItem("consulton-theme", theme);
+    }
+  }, [theme]);
 
-  const settingsItems = useMemo<MenuItem[]>(
-    () => [
-      {
-        id: "dashboard",
-        name: "대시보드",
-        icon: Home,
-        path: "/dashboard",
-        description: "전체 현황 보기",
-      },
-      {
-        id: "notifications",
-        name: "알림 설정",
-        icon: Bell,
-        path: "/dashboard/notifications",
-        description: "알림 관리",
-      },
+  // 메뉴 정의: 심플 스타일
+  const primaryMenu: MenuItem[] = useMemo(() => {
+    if (effectiveVariant === "expert") {
+      return [
+        { id: "home", name: "대시보드", icon: Home, path: "/dashboard/expert" },
+        {
+          id: "expert-profile",
+          name: "전문가 프로필",
+          icon: User,
+          path: "/dashboard/expert/profile",
+        },
+        { id: "analytics", name: "분석", icon: BarChart3, path: "/analytics" },
+        {
+          id: "payouts",
+          name: "정산/출금",
+          icon: CreditCard,
+          path: "/dashboard/expert/payouts",
+        },
+        {
+          id: "consultations",
+          name: "상담내역",
+          icon: FileText,
+          path: "/dashboard/expert/consultations",
+        },
+        {
+          id: "notifications",
+          name: "알림",
+          icon: Bell,
+          path: "/dashboard/notifications",
+        },
+        {
+          id: "settings",
+          name: "설정",
+          icon: Settings,
+          path: "/dashboard/settings",
+        },
+      ];
+    }
+
+    return [
+      { id: "home", name: "홈", icon: Home, path: "/dashboard" },
+      { id: "experts", name: "전문가 찾기", icon: Users, path: "/experts" },
+      { id: "chat", name: "AI 상담", icon: MessageCircle, path: "/chat" },
+      { id: "summary", name: "상담 요약", icon: FileText, path: "/summary" },
       {
         id: "billing",
-        name: "결제 및 크레딧",
+        name: "크레딧",
         icon: CreditCard,
         path: "/credit-packages",
-        description: "크레딧 관리",
       },
       {
         id: "settings",
         name: "설정",
         icon: Settings,
         path: "/dashboard/settings",
-        description: "일반 설정",
       },
+    ];
+  }, [effectiveVariant]);
+
+  const secondaryMenu: MenuItem[] = useMemo(
+    () => [
+      { id: "support", name: "지원", icon: LifeBuoy, path: "/community" },
+      { id: "changelog", name: "변경 로그", icon: Megaphone, path: "/" },
     ],
     []
   );
 
-  // 현재 경로에 따라 활성 아이템 설정
-  useEffect(() => {
-    const currentPath = pathname;
-
-    // 메인 메뉴에서 일치하는 항목 찾기
-    const mainMenuItem = menuItems.find((item) => {
-      if (item.id === "summary") {
-        // 상담 요약의 경우 /summary 경로와 /summary/[id] 경로 모두 처리
-        return (
-          currentPath === "/summary" || currentPath.startsWith("/summary/")
-        );
-      }
-      if (item.id === "experts") {
-        // 전문가 찾기의 경우 /experts 경로 처리
-        return currentPath === "/experts";
-      }
-      return currentPath === item.path;
-    });
-
-    if (mainMenuItem) {
-      setActiveItem(mainMenuItem.id);
-      return;
+  const isActivePath = (itemPath: string) => {
+    if (itemPath === "/") return pathname === "/";
+    if (itemPath === "/summary") {
+      return pathname === "/summary" || pathname.startsWith("/summary/");
     }
-
-    // 설정 메뉴에서 일치하는 항목 찾기
-    const settingMenuItem = settingsItems.find(
-      (item) => currentPath === item.path
-    );
-    if (settingMenuItem) {
-      setActiveItem(settingMenuItem.id);
-      return;
+    // 전문가 대시보드 루트는 정확히 일치할 때만 활성화
+    if (itemPath === "/dashboard/expert") {
+      return pathname === "/dashboard/expert";
     }
-
-    // 대시보드 하위 경로들 처리
-    if (currentPath.startsWith("/dashboard/")) {
-      const dashboardSubPath = currentPath.replace("/dashboard/", "");
-      const subMenuItem = settingsItems.find(
-        (item) => item.path === `/dashboard/${dashboardSubPath}`
-      );
-      if (subMenuItem) {
-        setActiveItem(subMenuItem.id);
-      }
+    // 사용자 대시보드 루트도 동일
+    if (itemPath === "/dashboard") {
+      return pathname === "/dashboard";
     }
-  }, [pathname, menuItems, settingsItems]);
+    return pathname === itemPath || pathname.startsWith(`${itemPath}/`);
+  };
 
-  const handleItemClick = (item: MenuItem) => {
-    setActiveItem(item.id);
-
-    // Quick AI 상담 버튼 클릭 시 현재 페이지가 /chat이면 모달을 표시하도록 sessionStorage 플래그 설정
+  const handleNavigate = (item: MenuItem) => {
     if (item.id === "chat" && pathname === "/chat") {
       sessionStorage.setItem("showQuickChatModal", "true");
-      // 현재 페이지를 다시 로드하여 모달 표시
       window.location.reload();
-    } else if (pathname === "/chat" && item.id !== "chat") {
-      // AI 상담 화면에서 다른 메뉴 클릭 시 경고 모달 표시
+      return;
+    }
+    if (pathname === "/chat" && item.id !== "chat") {
       setPendingNavigation(item);
       setShowExitWarning(true);
-    } else {
-      // 일반적인 네비게이션 처리
-      router.push(item.path);
+      return;
     }
-
-    // 모바일에서 사이드바 닫기
-    if (onClose) {
-      onClose();
-    }
-  };
-
-  const handleConfirmNavigation = () => {
-    if (pendingNavigation) {
-      router.push(pendingNavigation.path);
-      setShowExitWarning(false);
-      setPendingNavigation(null);
-    }
-  };
-
-  const handleCancelNavigation = () => {
-    setShowExitWarning(false);
-    setPendingNavigation(null);
+    router.push(item.path);
+    if (onClose) onClose();
   };
 
   return (
     <>
-      {/* 상담 종료 경고 모달 */}
       {showExitWarning && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
-            <div className="p-6">
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg
-                    className="w-8 h-8 text-white"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
-                    />
-                  </svg>
-                </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                  상담이 저장되지 않습니다
-                </h2>
-                <p className="text-gray-600">
-                  현재 진행 중인 AI 상담이 저장되지 않고 종료됩니다.
-                  계속하시겠습니까?
-                </p>
-              </div>
-
-              {/* 버튼들 */}
-              <div className="flex space-x-3">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-lg max-w-md w-full">
+            <div className="p-6 space-y-4">
+              <h2 className="text-xl font-semibold text-gray-900 text-center">
+                현재 AI 상담이 저장되지 않고 종료됩니다. 계속하시겠어요?
+              </h2>
+              <div className="flex gap-3">
                 <button
-                  onClick={handleCancelNavigation}
-                  className="flex-1 bg-gray-200 text-gray-800 py-3 px-4 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+                  onClick={() => {
+                    setShowExitWarning(false);
+                    setPendingNavigation(null);
+                  }}
+                  className="flex-1 h-10 rounded-md bg-gray-100 text-gray-800 hover:bg-gray-200"
                 >
                   취소
                 </button>
                 <button
-                  onClick={handleConfirmNavigation}
-                  className="flex-1 bg-gradient-to-r from-red-500 to-pink-600 text-white py-3 px-4 rounded-lg font-medium hover:from-red-600 hover:to-pink-700 transition-all duration-200 shadow-sm hover:shadow-md"
+                  onClick={() => {
+                    if (pendingNavigation) router.push(pendingNavigation.path);
+                    setShowExitWarning(false);
+                    setPendingNavigation(null);
+                  }}
+                  className="flex-1 h-10 rounded-md bg-blue-600 text-white hover:bg-blue-700"
                 >
                   계속하기
                 </button>
@@ -268,227 +223,89 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       )}
 
-      {/* 사이드바 토글 버튼 - 네비게이션바 아래 */}
       <button
         onClick={onToggle}
-        className="fixed top-20 left-4 z-50 lg:hidden p-2 bg-white rounded-lg shadow-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+        className="fixed top-20 left-4 z-50 lg:hidden p-2 bg-white rounded-md shadow border border-gray-200"
       >
         <PanelLeft className="h-5 w-5 text-gray-600" />
       </button>
 
-      {/* 모바일 오버레이 */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
+          className="fixed inset-0 bg-black/40 z-20 lg:hidden"
           onClick={onClose}
         />
       )}
 
-      {/* 사이드바 */}
-      <div
-        className={`fixed top-0 left-0 bottom-0 z-30 bg-white border-r border-gray-200 transform transition-all duration-300 ease-in-out lg:translate-x-0 w-64 ${
+      <aside
+        className={`fixed top-0 left-0 bottom-0 z-30 bg-white border-r border-gray-200 transform transition-transform duration-300 lg:translate-x-0 w-64 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="flex flex-col h-full">
-          {/* 네비게이션 바 공간 확보 */}
-          <div className="h-16"></div>
+          <div className="h-16" />
 
-          {/* 모바일용 헤더 - 닫기 버튼 제거 */}
-          <div className="flex items-center justify-center p-4 border-b border-gray-200 lg:hidden">
-            <span className="text-sm text-gray-600 font-medium">메뉴</span>
-          </div>
+          <div className="flex-1 overflow-y-auto px-3 py-4">
+            <nav className="space-y-1">
+              {primaryMenu.map((item) => {
+                const Icon = item.icon;
+                const active = isActivePath(item.path);
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleNavigate(item)}
+                    className={`w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                      active
+                        ? "bg-gray-100 text-gray-900"
+                        : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                    }`}
+                  >
+                    <Icon
+                      className={`h-5 w-5 ${active ? "text-gray-900" : "text-gray-500"}`}
+                    />
+                    <span>{item.name}</span>
+                  </button>
+                );
+              })}
+            </nav>
 
-          {/* 메뉴 섹션 */}
-          <div className="flex-1 overflow-y-auto py-2">
-            {/* 메인 메뉴 */}
-            <div className="px-4 mb-4">
-              <nav className="space-y-2">
-                {menuItems.map((item) => {
-                  const IconComponent = item.icon;
-                  const isActive = activeItem === item.id;
-                  const isQuickAI = item.id === "chat";
+            <div className="mt-6">
+              <p className="px-3 text-xs font-semibold text-gray-400">
+                다가오는 일정
+              </p>
+              <ul className="mt-2 space-y-1">
+                {["팀 코칭", "이직 상담", "프로필 검수", "세션 리뷰"].map(
+                  (label, i) => (
+                    <li
+                      key={i}
+                      className="px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      {label}
+                    </li>
+                  )
+                )}
+              </ul>
+            </div>
 
+            <div className="mt-6">
+              <nav className="space-y-1">
+                {secondaryMenu.map((item) => {
+                  const Icon = item.icon;
+                  const active = isActivePath(item.path);
                   return (
                     <button
                       key={item.id}
-                      onClick={() => handleItemClick(item)}
-                      className={`w-full group relative overflow-hidden rounded-xl transition-all duration-300 ${
-                        isQuickAI ? "p-4" : "p-3"
-                      } ${
-                        isQuickAI
-                          ? "bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-600 text-white shadow-lg hover:shadow-xl hover:scale-105"
-                          : isActive
-                            ? "bg-gradient-to-r from-gray-200 to-gray-300 text-gray-800 shadow-lg transform scale-105"
-                            : "bg-white hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 text-gray-700 hover:shadow-md hover:transform hover:scale-102 border border-gray-200"
+                      onClick={() => handleNavigate(item)}
+                      className={`w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                        active
+                          ? "bg-gray-100 text-gray-900"
+                          : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
                       }`}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div
-                            className={`p-2 rounded-lg transition-all duration-300 ${
-                              isQuickAI
-                                ? "bg-white bg-opacity-20"
-                                : isActive
-                                  ? "bg-gray-100"
-                                  : "bg-gray-100 group-hover:bg-blue-100"
-                            }`}
-                          >
-                            <IconComponent
-                              className={`h-5 w-5 ${
-                                isQuickAI
-                                  ? "text-white"
-                                  : isActive
-                                    ? "text-gray-700"
-                                    : "text-gray-600 group-hover:text-blue-600"
-                              } ${item.id === "chat" ? "animate-pulse" : ""}`}
-                            />
-                          </div>
-                          <div className="text-left">
-                            <div
-                              className={`${
-                                isQuickAI
-                                  ? "font-bold text-base"
-                                  : "font-semibold text-sm"
-                              } ${
-                                isQuickAI
-                                  ? "text-white"
-                                  : isActive
-                                    ? "text-gray-800"
-                                    : "text-gray-900"
-                              }`}
-                            >
-                              {item.name}
-                            </div>
-                            <div
-                              className={`text-xs ${
-                                isQuickAI
-                                  ? "text-blue-100"
-                                  : isActive
-                                    ? "text-gray-600"
-                                    : "text-gray-500"
-                              }`}
-                            >
-                              {item.description}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center space-x-2">
-                          {item.badge && (
-                            <span
-                              className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${
-                                isQuickAI
-                                  ? "bg-white bg-opacity-20 text-white"
-                                  : isActive
-                                    ? "bg-white bg-opacity-20 text-white"
-                                    : "bg-red-100 text-red-800"
-                              }`}
-                            >
-                              {item.badge}
-                            </span>
-                          )}
-                          <ChevronRight
-                            className={`h-4 w-4 transition-transform duration-300 ${
-                              isQuickAI
-                                ? "text-white"
-                                : isActive
-                                  ? "text-gray-600"
-                                  : "text-gray-400 group-hover:text-blue-600"
-                            } ${
-                              isQuickAI || isActive
-                                ? "transform translate-x-1"
-                                : ""
-                            }`}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Quick AI 상담 버튼의 특별한 글로우 효과 */}
-                      {isQuickAI && (
-                        <div className="absolute inset-0 bg-gradient-to-br from-cyan-300 via-blue-400 to-indigo-500 opacity-30 rounded-xl group-hover:opacity-50 transition-opacity duration-300"></div>
-                      )}
-
-                      {/* 활성 상태일 때의 글로우 효과 */}
-                      {isActive && !isQuickAI && (
-                        <div className="absolute inset-0 bg-gradient-to-r from-gray-300 to-gray-400 opacity-20 rounded-xl"></div>
-                      )}
-                    </button>
-                  );
-                })}
-              </nav>
-            </div>
-
-            {/* 구분선 */}
-            <div className="px-4 mb-4">
-              <div className="border-t border-gray-200"></div>
-            </div>
-
-            {/* 설정 메뉴 */}
-            <div className="px-4">
-              <nav className="space-y-2">
-                {settingsItems.map((item) => {
-                  const IconComponent = item.icon;
-                  const isActive = activeItem === item.id;
-
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => handleItemClick(item)}
-                      className={`w-full group relative overflow-hidden rounded-xl transition-all duration-300 p-3 ${
-                        isActive
-                          ? "bg-gradient-to-r from-gray-200 to-gray-300 text-gray-800 shadow-lg transform scale-105"
-                          : "bg-white hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 text-gray-700 hover:shadow-md hover:transform hover:scale-102 border border-gray-200"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div
-                            className={`p-2 rounded-lg transition-all duration-300 ${
-                              isActive
-                                ? "bg-gray-100"
-                                : "bg-gray-100 group-hover:bg-gray-200"
-                            }`}
-                          >
-                            <IconComponent
-                              className={`h-5 w-5 ${
-                                isActive
-                                  ? "text-gray-700"
-                                  : "text-gray-600 group-hover:text-gray-700"
-                              }`}
-                            />
-                          </div>
-                          <div className="text-left">
-                            <div
-                              className={`font-semibold text-sm ${
-                                isActive ? "text-gray-800" : "text-gray-900"
-                              }`}
-                            >
-                              {item.name}
-                            </div>
-                            <div
-                              className={`text-xs ${
-                                isActive ? "text-gray-600" : "text-gray-500"
-                              }`}
-                            >
-                              {item.description}
-                            </div>
-                          </div>
-                        </div>
-
-                        <ChevronRight
-                          className={`h-4 w-4 transition-transform duration-300 ${
-                            isActive
-                              ? "text-gray-600"
-                              : "text-gray-400 group-hover:text-gray-600"
-                          } ${isActive ? "transform translate-x-1" : ""}`}
-                        />
-                      </div>
-
-                      {/* 활성 상태일 때의 글로우 효과 */}
-                      {isActive && (
-                        <div className="absolute inset-0 bg-gradient-to-r from-gray-300 to-gray-400 opacity-20 rounded-xl"></div>
-                      )}
+                      <Icon
+                        className={`h-5 w-5 ${active ? "text-gray-900" : "text-gray-500"}`}
+                      />
+                      <span>{item.name}</span>
                     </button>
                   );
                 })}
@@ -496,32 +313,118 @@ const Sidebar: React.FC<SidebarProps> = ({
             </div>
           </div>
 
-          {/* 사이드바 하단 */}
-          <div className="p-3 border-t border-gray-200">
-            <div className="bg-blue-50 rounded-lg p-4">
-              <div className="flex items-center space-x-3 mb-3">
-                <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                  <CreditCard className="h-4 w-4 text-white" />
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-blue-900">
-                    크레딧 잔액
-                  </div>
-                  <div className="text-xs text-blue-700">
-                    {remainingAIChatCredits} 크레딧 보유
-                  </div>
-                </div>
-              </div>
+          <div className="border-t border-gray-200 p-3">
+            <div className="relative">
               <button
-                onClick={() => router.push("/credit-packages")}
-                className="w-full bg-blue-600 text-white text-sm font-medium py-2 px-3 rounded-lg hover:bg-blue-700 transition-colors"
+                onClick={() => setShowProfileMenu((v) => !v)}
+                className="w-full flex items-center gap-3 rounded-md px-3 py-2 hover:bg-gray-50"
               >
-                크레딧 충전
+                <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-medium">
+                  {(user?.name || "사용자").charAt(0)}
+                </div>
+                <div className="flex-1 text-left">
+                  <div className="text-sm font-medium text-gray-900">
+                    {user?.name || "게스트"}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {user?.email || "guest@example.com"}
+                  </div>
+                </div>
+                <ChevronRight
+                  className={`h-4 w-4 text-gray-400 transition-transform ${showProfileMenu ? "rotate-90" : ""}`}
+                />
               </button>
+
+              {showProfileMenu && (
+                <div className="absolute bottom-12 left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg z-40 overflow-hidden">
+                  <div className="py-1">
+                    <button
+                      onClick={() => {
+                        router.push("/credit-packages");
+                        setShowProfileMenu(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <CreditCard className="h-4 w-4 text-gray-600" />
+                      <span>결제 및 크레딧</span>
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        setTheme((t) => (t === "light" ? "dark" : "light"))
+                      }
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <Sun className="h-4 w-4 text-gray-600" />
+                      <span>테마</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        router.push("/dashboard/settings");
+                        setShowProfileMenu(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <Shield className="h-4 w-4 text-gray-600" />
+                      <span>개인정보 처리방침</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        router.push("/community");
+                        setShowProfileMenu(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <HelpCircle className="h-4 w-4 text-gray-600" />
+                      <span>도움말 및 지원</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        const nextMode =
+                          effectiveVariant === "expert" ? "user" : "expert";
+                        setViewMode(nextMode);
+                        const target =
+                          nextMode === "expert"
+                            ? "/dashboard/expert"
+                            : "/dashboard";
+                        router.push(target);
+                        setShowProfileMenu(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <ArrowLeftRight className="h-4 w-4 text-gray-600" />
+                      <span>
+                        {effectiveVariant === "expert"
+                          ? "사용자 모드로 전환"
+                          : "전문가 모드로 전환"}
+                      </span>
+                    </button>
+
+                    <div className="my-1 border-t border-gray-200" />
+
+                    <button
+                      onClick={() => {
+                        try {
+                          useAppStore.getState().logout();
+                        } catch {}
+                        router.push("/auth/login");
+                        setShowProfileMenu(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-gray-50"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      <span>로그아웃</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
-      </div>
+      </aside>
     </>
   );
 };
