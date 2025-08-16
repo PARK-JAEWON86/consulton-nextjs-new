@@ -67,3 +67,27 @@ export interface CreditPackage {
   description: string;
   isPopular?: boolean;
 }
+
+// 통계 관련 타입
+export interface PlatformStats {
+  totalConsultations: number;
+  averageMatchingTimeMinutes: number;
+  totalExperts: number;
+  totalUsers: number;
+  lastUpdated: Date;
+}
+
+export interface StatsUpdate {
+  type: 'consultation_completed' | 'expert_registered' | 'user_registered' | 'matching_time_recorded';
+  data?: {
+    matchingTimeMinutes?: number;
+  };
+}
+
+export interface MatchingRecord {
+  id: string;
+  userId: string;
+  expertId: string;
+  matchingTimeMinutes: number;
+  createdAt: Date;
+}

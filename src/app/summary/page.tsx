@@ -15,31 +15,25 @@ import {
   Share2,
 } from "lucide-react";
 import ServiceLayout from "@/components/layout/ServiceLayout";
+import { dummyConsultationSummaries, ConsultationSummary } from "@/data/dummy";
 
-interface ConsultationSummary {
-  id: string;
-  title: string;
-  date: Date;
-  duration: number;
-  expert: {
-    name: string;
-    title: string;
-  };
-  status: "completed" | "processing" | "failed";
-  creditsUsed: number;
-  hasRecording: boolean;
-  tags: string[];
-}
+// ConsultationSummary 타입은 더미 데이터에서 import
 
 export default function SummaryPage() {
   const router = useRouter();
-  const [summaries, setSummaries] = useState<ConsultationSummary[]>([]);
+  const [summaries, setSummaries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  // 더미 상담 요약 데이터
-  const mockSummaries: ConsultationSummary[] = [
+  // 더미 상담 요약 데이터 (더미 데이터에서 가져오기)
+  const mockSummaries = dummyConsultationSummaries.map(summary => ({
+    ...summary,
+    status: summary.status === 'pending' ? 'failed' as const : summary.status as 'completed' | 'processing' | 'failed'
+  }));
+
+  // 기존 더미 데이터는 주석 처리
+  /*const mockSummaries: ConsultationSummary[] = [
     {
       id: "123",
       title: "온라인 쇼핑몰 마케팅 전략 상담",
@@ -96,7 +90,7 @@ export default function SummaryPage() {
       hasRecording: true,
       tags: ["투자", "피칭", "전략"],
     },
-  ];
+  ];*/
 
   useEffect(() => {
     // 실제로는 API에서 데이터 가져오기
@@ -111,7 +105,7 @@ export default function SummaryPage() {
     const matchesSearch =
       summary.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       summary.expert.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      summary.tags.some((tag) =>
+      summary.tags.some((tag: string) =>
         tag.toLowerCase().includes(searchTerm.toLowerCase()),
       );
 
@@ -277,7 +271,7 @@ export default function SummaryPage() {
 
                 {/* 태그 */}
                 <div className="flex flex-wrap gap-2 mb-4">
-                  {summary.tags.slice(0, 3).map((tag, index) => (
+                  {summary.tags.slice(0, 3).map((tag: string, index: number) => (
                     <span
                       key={index}
                       className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700"

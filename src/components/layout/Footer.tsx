@@ -13,6 +13,11 @@ export default function Footer() {
             <h4 className="font-medium mb-4">서비스</h4>
             <ul className="space-y-2 text-sm text-gray-400">
               <li>
+                <a href="/how-it-works" className="hover:text-white">
+                  서비스 소개
+                </a>
+              </li>
+              <li>
                 <a href="/experts" className="hover:text-white">
                   상담 찾기
                 </a>
