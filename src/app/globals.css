@@ -68,3 +68,16 @@ body {
 .chat-page * {
   background-color: inherit;
 }
+
+/* 매칭 애니메이션 지연 효과 */
+.animation-delay-75 {
+  animation-delay: 0.75s;
+}
+
+.animation-delay-150 {
+  animation-delay: 1.5s;
+}
+
+.animation-delay-300 {
+  animation-delay: 3s;
+}

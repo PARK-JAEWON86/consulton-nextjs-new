@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowRight } from "lucide-react";
+import { useRouter } from "next/navigation";
 import SearchFields from "./SearchFields";
 
 type IconType = any;
@@ -57,6 +58,12 @@ export default function HeroSection(props: HeroSectionProps) {
     durations,
   } = props;
 
+  const router = useRouter();
+
+  const handleAIChatClick = () => {
+    router.push("/chat");
+  };
+
   return (
     <section className="relative z-10 overflow-visible py-28 sm:py-40 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
       <div
@@ -103,6 +110,40 @@ export default function HeroSection(props: HeroSectionProps) {
           ageGroups={ageGroups}
           durations={durations}
         />
+
+        <div className="mt-8 flex flex-col items-center space-y-4">
+          <div className="flex items-center space-x-2 text-gray-500">
+            <div className="h-px bg-gray-300 w-16"></div>
+            <span className="text-sm">또는</span>
+            <div className="h-px bg-gray-300 w-16"></div>
+          </div>
+          
+          <div className="text-center">
+            <p className="text-gray-600 mb-4">
+              어떤 전문가를 찾아야 할지 모르겠나요?
+            </p>
+            <button 
+              onClick={handleAIChatClick}
+              className="inline-flex items-center px-6 py-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 group"
+            >
+              <svg
+                className="w-5 h-5 mr-2 text-purple-500 group-hover:text-blue-500 transition-colors duration-300 animate-pulse"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+                />
+              </svg>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 via-blue-500 to-cyan-400 group-hover:from-purple-700 group-hover:via-blue-600 group-hover:to-cyan-500 font-medium transition-all duration-300">AI 채팅 상담하기</span>
+            </button>
+          </div>
+        </div>
       </div>
     </section>
   );

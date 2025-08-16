@@ -38,28 +38,18 @@ import {
 } from "lucide-react";
 import ConsultationRecommendation from "@/components/recommendation/ConsultationRecommendation";
 import { calculateCreditsByLevel } from "@/utils/expertLevels";
+import { dummyExperts, ExpertItem as DummyExpertItem } from "@/data/dummy";
 
 type ConsultationType = "video" | "chat";
 
-type ExpertItem = {
-  id: number;
-  name: string;
-  specialty: string;
-  experience: number;
-  rating: number;
-  reviewCount: number;
-  totalSessions: number;
-  avgRating: number;
-  description: string;
-  specialties: string[];
-  consultationTypes: ConsultationType[];
-  languages: string[];
-  profileImage: string | null;
-  responseTime: number | null;
-  education: string[];
-  certifications: string[];
-  totalConsultations: number;
-  level: number;
+// 더미 데이터의 ExpertItem 타입을 확장하여 사용
+type ExpertItem = Omit<DummyExpertItem, 'responseTime'> & {
+  specialties?: string[];
+  consultationTypes?: ConsultationType[];
+  profileImage?: string | null;
+  responseTime?: number | null;
+  totalConsultations?: number;
+  level?: number;
 };
 
 type SortBy = "rating" | "experience" | "reviews";
@@ -128,8 +118,30 @@ const ExpertSearch = () => {
     useState(false);
   const [showAllCategories, setShowAllCategories] = useState(false);
 
-  // 샘플 전문가 데이터
-  const allExperts: ExpertItem[] = [
+  // 더미 전문가 데이터를 현재 컴포넌트 형식에 맞게 변환
+  const allExperts: ExpertItem[] = dummyExperts.map(expert => {
+    // responseTime 문자열에서 숫자 추출 ("30분 이내" -> 30)
+    const responseTimeNumber = expert.responseTime ? 
+      parseInt(expert.responseTime.match(/\d+/)?.[0] || '30') : 30;
+    
+    const convertedExpert = {
+      ...expert,
+      specialties: expert.tags,
+      consultationTypes: expert.consultationTypes.slice(0, 2) as ConsultationType[],
+      profileImage: expert.image,
+      responseTime: responseTimeNumber,
+      totalConsultations: expert.totalSessions,
+      level: 0 // 임시값, 아래에서 계산
+    };
+    
+    // 레벨 계산
+    convertedExpert.level = calculateExpertLevel(convertedExpert);
+    
+    return convertedExpert;
+  });
+
+  // 기존 샘플 데이터는 주석 처리
+  /*const allExperts: ExpertItem[] = [
     {
       id: 1,
       name: "박지영",
@@ -298,7 +310,7 @@ const ExpertSearch = () => {
       totalConsultations: 223,
       level: 678,
     },
-  ];
+  ];*/
 
   const specialtyOptions: string[] = [
     "심리상담",
@@ -329,7 +341,7 @@ const ExpertSearch = () => {
         (expert: ExpertItem) =>
           expert.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           expert.specialty.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          expert.specialties.some((s) =>
+          expert.specialties?.some((s) =>
             s.toLowerCase().includes(searchQuery.toLowerCase())
           ) ||
           expert.description.toLowerCase().includes(searchQuery.toLowerCase())
@@ -787,25 +799,25 @@ const ExpertSearch = () => {
                         {/* 전문가 레벨 표시 */}
                         <div
                           className={`absolute -bottom-1 -right-1 border-2 border-white rounded-full shadow-sm flex items-center justify-center ${
-                            expert.level >= 100
+                            (expert.level || 0) >= 100
                               ? "w-12 h-6 px-2"
                               : "w-10 h-6 px-1"
                           } ${
-                            expert.level >= 800
+                            (expert.level || 0) >= 800
                               ? "bg-purple-500"
-                              : expert.level >= 600
+                              : (expert.level || 0) >= 600
                                 ? "bg-red-500"
-                                : expert.level >= 400
+                                : (expert.level || 0) >= 400
                                   ? "bg-orange-500"
-                                  : expert.level >= 200
+                                  : (expert.level || 0) >= 200
                                     ? "bg-yellow-500"
-                                    : expert.level >= 100
+                                    : (expert.level || 0) >= 100
                                       ? "bg-green-500"
                                       : "bg-blue-500"
                           }`}
                         >
                           <span className="text-[10px] font-bold text-white">
-                            Lv.{expert.level}
+                            Lv.{expert.level || 0}
                           </span>
                         </div>
                       </div>
@@ -860,7 +872,7 @@ const ExpertSearch = () => {
 
                   {/* 전문 분야 태그 */}
                   <div className="flex gap-1.5 overflow-hidden mb-4">
-                    {expert.specialties.slice(0, 3).map((specialty, index) => (
+                    {(expert.specialties || []).slice(0, 3).map((specialty, index) => (
                       <span
                         key={index}
                         className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs rounded-full border border-blue-100 flex-shrink-0"
@@ -868,9 +880,9 @@ const ExpertSearch = () => {
                         {specialty}
                       </span>
                     ))}
-                    {expert.specialties.length > 3 && (
+                    {(expert.specialties || []).length > 3 && (
                       <span className="px-2.5 py-1 bg-gray-50 text-gray-600 text-xs rounded-full border border-gray-100 flex-shrink-0">
-                        +{expert.specialties.length - 3}
+                        +{(expert.specialties || []).length - 3}
                       </span>
                     )}
                   </div>
@@ -878,8 +890,8 @@ const ExpertSearch = () => {
                   {/* 상담 방식 및 답변 시간 */}
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center space-x-2">
-                      {expert.consultationTypes.map((type) => {
-                        const Icon = getConsultationTypeIcon(type);
+                      {(expert.consultationTypes || []).map((type) => {
+                        const Icon = getConsultationTypeIcon(type as ConsultationType);
                         return (
                           <div
                             key={type}

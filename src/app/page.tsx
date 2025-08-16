@@ -11,6 +11,7 @@ import { useState } from "react";
 import HeroSection from "../components/home/HeroSection";
 import SearchingSection from "../components/home/SearchingSection";
 import MatchedExpertsSection from "../components/home/MatchedExpertsSection";
+import StatsSection from "../components/home/StatsSection";
 import PopularCategoriesSection from "../components/home/PopularCategoriesSection";
 import AIChatPromoSection from "../components/home/AIChatPromoSection";
 import Footer from "../components/layout/Footer";
@@ -43,6 +44,7 @@ import {
   UserCheck,
   X,
 } from "lucide-react";
+import { getExtendedCategories, getExtendedAgeGroups, getExtendedDurations, dummyMatchedExperts } from "@/data/dummy";
 
 export default function HomePage() {
   // 검색 상태
@@ -329,6 +331,9 @@ export default function HomePage() {
             experts={matchedExperts}
           />
         )}
+
+      {/* 통계 섹션 */}
+      <StatsSection />
 
       {/* 인기 카테고리 섹션 */}
       <PopularCategoriesSection
