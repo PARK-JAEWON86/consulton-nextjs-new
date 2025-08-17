@@ -15,21 +15,13 @@ import {
   Star,
   FileText,
   CheckCircle,
-  TrendingUp,
-  DollarSign,
-  Award,
-  Phone,
-  Mail,
-  Home,
 } from "lucide-react";
 import CreditBalance from "./CreditBalance";
-import PackCard from "./PackCard";
 import UserProfile from "./UserProfile";
-import ExpertProfile from "./ExpertProfile";
 
 export default function DashboardContent() {
   type ConsultationType = "video" | "chat" | "voice";
-  const [isExpertMode, setIsExpertMode] = useState(false);
+
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
@@ -49,40 +41,7 @@ export default function DashboardContent() {
     joinDate: "2024-01-15",
   });
 
-  // 전문가 프로필 데이터
-  const [expertProfile, setExpertProfile] = useState({
-    name: "김민수",
-    specialty: "진로상담",
-    rating: 4.1,
-    totalConsultations: 8,
-    totalSessions: 8,
-    avgRating: 4.1,
-    creditsPerMinute: 1200,
-    totalEarnings: 96000,
-    monthlyEarnings: 48000,
-    completionRate: 87.5,
-    responseRate: 95,
-    tags: ["취업준비", "이직", "진로고민"],
-    isProfileComplete: true,
-    isProfilePublic: false,
-    experience: 2,
-    description:
-      "2년간의 HR 경험과 진로상담 자격증을 바탕으로 취업 준비생과 직장인들의 진로 고민을 함께 해결해나가고 있습니다.",
-    education: ["경희대학교 경영학과 학사"],
-    certifications: ["진로상담사 2급", "직업상담사 2급"],
-    specialties: ["취업 준비", "이직 상담", "진로 탐색", "면접 준비"],
-    consultationTypes: ["video", "chat"] as ConsultationType[],
-    languages: ["한국어"],
-    hourlyRate: "1200",
-    contactInfo: {
-      phone: "010-9876-5432",
-      email: "career.expert@example.com",
-      location: "서울특별시 마포구",
-      website: "",
-    },
-    profileImage: null,
-    portfolioFiles: [],
-  });
+
 
   // 예약된 상담 일정 데이터
   const upcomingConsultations = [
@@ -115,29 +74,7 @@ export default function DashboardContent() {
     },
   ];
 
-  // 전문가의 예약 받은 상담 일정
-  const expertConsultations = [
-    {
-      id: 1,
-      clientName: "이*준",
-      topic: "취업 준비 상담",
-      date: "2025-08-05",
-      time: "14:00",
-      type: "video",
-      status: "confirmed",
-      duration: "45분",
-    },
-    {
-      id: 2,
-      clientName: "박*영",
-      topic: "이직 고민 상담",
-      date: "2025-08-08",
-      time: "19:00",
-      type: "chat",
-      status: "pending",
-      duration: "30분",
-    },
-  ];
+
 
   // 상담 일지 데이터
   const consultationLogs = [
@@ -164,29 +101,7 @@ export default function DashboardContent() {
     },
   ];
 
-  // 전문가의 최근 완료된 상담
-  const expertCompletedConsultations = [
-    {
-      id: 1,
-      clientName: "정*우",
-      topic: "면접 준비",
-      date: "2024-12-15",
-      duration: "40분",
-      rating: 4,
-      earnings: 48000,
-      feedback: "면접 준비에 많은 도움이 되었습니다.",
-    },
-    {
-      id: 2,
-      clientName: "최*진",
-      topic: "진로 고민",
-      date: "2024-12-10",
-      duration: "50분",
-      rating: 4,
-      earnings: 60000,
-      feedback: "진로 방향을 정하는데 도움이 되었어요.",
-    },
-  ];
+
 
   // 즐겨찾는 전문가 데이터
   const favoriteExperts = [
@@ -300,24 +215,10 @@ export default function DashboardContent() {
 
   const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
 
-  // 전문가 프로필 저장 핸들러
-  const handleExpertProfileSave = (profileData: any) => {
-    console.log("전문가 프로필 저장:", profileData);
-    setExpertProfile((prev) => ({ ...prev, ...profileData }));
-  };
-
   // 사용자 프로필 저장 핸들러
   const handleUserProfileSave = (profileData: any) => {
     console.log("사용자 프로필 저장:", profileData);
     setUser((prev) => ({ ...prev, ...profileData }));
-  };
-
-  // 프로필 공개 토글 핸들러
-  const handleProfilePublicToggle = () => {
-    setExpertProfile((prev) => ({
-      ...prev,
-      isProfilePublic: !prev.isProfilePublic,
-    }));
   };
 
   return (
@@ -329,209 +230,25 @@ export default function DashboardContent() {
             <div className="flex-1">
               <div className="flex-1">
                 <h1 className="text-3xl font-bold text-gray-900">
-                  안녕하세요, {isExpertMode ? expertProfile.name : user.name}{" "}
-                  님!
+                  안녕하세요, {user.name}님!
                 </h1>
                 <p className="text-gray-600 mt-2">
-                  {isExpertMode
-                    ? "브론즈 레벨 진로상담 전문가로 활동 중입니다. 더 많은 경험을 쌓아보세요!"
-                    : "오늘도 전문가와 함께 성장해보세요."}
+                  오늘도 전문가와 함께 성장해보세요.
                 </p>
               </div>
             </div>
-            <div className="flex-shrink-0 ml-6">
-              {/* 모드 토글 버튼 */}
-              <div className="flex items-center space-x-3">
-                <span
-                  className={`text-sm font-medium transition-colors ${
-                    !isExpertMode ? "text-blue-600" : "text-gray-500"
-                  }`}
-                >
-                  사용자 모드
-                </span>
-                <button
-                  onClick={() => setIsExpertMode(!isExpertMode)}
-                  className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                  style={{
-                    backgroundColor: isExpertMode ? "#3B82F6" : "#E5E7EB",
-                  }}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      isExpertMode ? "translate-x-6" : "translate-x-1"
-                    }`}
-                  />
-                </button>
-                <span
-                  className={`text-sm font-medium transition-colors ${
-                    isExpertMode ? "text-blue-600" : "text-gray-500"
-                  }`}
-                >
-                  전문가 모드
-                </span>
-              </div>
-            </div>
+
           </div>
         </div>
 
-        {/* 전문가 통계 / 크레딧 잔액 */}
+        {/* 크레딧 잔액 */}
         <div className="mb-8">
-          {isExpertMode ? (
-            // 전문가 모드 - 통계 카드들
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-                <div className="flex items-center">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <TrendingUp className="h-6 w-6 text-blue-600" />
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">
-                      총 상담 수
-                    </p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {expertProfile.totalConsultations}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-                <div className="flex items-center">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <DollarSign className="h-6 w-6 text-green-600" />
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">
-                      이번 달 수익
-                    </p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {Math.floor(expertProfile.monthlyEarnings / 10)} 크레딧
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      (₩{expertProfile.monthlyEarnings.toLocaleString()})
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-                <div className="flex items-center">
-                  <div className="p-2 bg-yellow-100 rounded-lg">
-                    <Star className="h-6 w-6 text-yellow-600" />
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">
-                      평균 평점
-                    </p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {expertProfile.rating}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-                <div className="flex items-center">
-                  <div className="p-2 bg-purple-100 rounded-lg">
-                    <Award className="h-6 w-6 text-purple-600" />
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">완료율</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {expertProfile.completionRate}%
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            // 사용자 모드 - 크레딧 잔액
-            <CreditBalance credits={user.credits} />
-          )}
+          <CreditBalance credits={user.credits} />
         </div>
 
         {/* 프로필 섹션 */}
         <div className="mb-8">
-          {isExpertMode ? (
-            // 전문가 모드 - 전문가 프로필
-            <>
-              {/* 프로필 공개 설정 */}
-              <div className="bg-white shadow rounded-lg p-6 mb-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-medium text-gray-900 mb-1">
-                      프로필 공개 설정
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      프로필을 공개하면 다른 사용자들이 전문가 검색에서 찾을 수
-                      있습니다.
-                    </p>
-                  </div>
-                  <div className="flex items-center space-x-3 ml-6">
-                    <span
-                      className={`text-sm font-medium transition-colors ${
-                        !expertProfile.isProfilePublic
-                          ? "text-gray-500"
-                          : "text-gray-400"
-                      }`}
-                    >
-                      비공개
-                    </span>
-                    <button
-                      onClick={handleProfilePublicToggle}
-                      className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                      style={{
-                        backgroundColor: expertProfile.isProfilePublic
-                          ? "#3B82F6"
-                          : "#E5E7EB",
-                      }}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          expertProfile.isProfilePublic
-                            ? "translate-x-6"
-                            : "translate-x-1"
-                        }`}
-                      />
-                    </button>
-                    <span
-                      className={`text-sm font-medium transition-colors ${
-                        expertProfile.isProfilePublic
-                          ? "text-blue-600"
-                          : "text-gray-400"
-                      }`}
-                    >
-                      공개
-                    </span>
-                  </div>
-                </div>
-                {expertProfile.isProfilePublic && (
-                  <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                    <div className="flex items-start">
-                      <CheckCircle className="h-5 w-5 text-blue-600 mt-0.5 mr-2" />
-                      <div>
-                        <p className="text-sm font-medium text-blue-900">
-                          프로필이 공개되었습니다!
-                        </p>
-                        <p className="text-sm text-blue-700 mt-1">
-                          이제 다른 사용자들이 전문가 검색에서 회원님의 프로필을
-                          찾을 수 있습니다.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <ExpertProfile
-                expertData={expertProfile}
-                onSave={handleExpertProfileSave}
-              />
-            </>
-          ) : (
-            // 사용자 모드 - 사용자 프로필
-            <UserProfile />
-          )}
+          <UserProfile />
         </div>
 
         {/* 상담 일정 섹션 */}
@@ -539,7 +256,7 @@ export default function DashboardContent() {
           <div className="px-6 py-4 border-b border-gray-200">
             <h3 className="text-lg font-medium text-gray-900 flex items-center">
               <Calendar className="h-5 w-5 text-blue-600 mr-2" />
-              {isExpertMode ? "예약 받은 상담 일정" : "다음 예약된 상담 일정"}
+              다음 예약된 상담 일정
             </h3>
           </div>
           <div className="p-6">
@@ -714,28 +431,21 @@ export default function DashboardContent() {
                     : "전체 예약된 상담"}
                 </h4>
 
-                {(isExpertMode ? expertConsultations : upcomingConsultations)
-                  .length === 0 ? (
+                {upcomingConsultations.length === 0 ? (
                   <div className="text-center py-8">
                     <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-500">
-                      {isExpertMode
-                        ? "예약 받은 상담이 없습니다."
-                        : "예약된 상담이 없습니다."}
+                      예약된 상담이 없습니다.
                     </p>
                     <p className="text-sm text-gray-400 mt-1">
-                      {isExpertMode
-                        ? "새로운 상담 요청을 기다리고 있습니다."
-                        : "전문가를 찾아 새로운 상담을 예약해보세요."}
+                      전문가를 찾아 새로운 상담을 예약해보세요.
                     </p>
                   </div>
                 ) : (
                   <div className="space-y-3 max-h-80 overflow-y-auto">
-                    {(isExpertMode
-                      ? expertConsultations
-                      : selectedDate
-                        ? getConsultationsByDate(selectedDate)
-                        : upcomingConsultations
+                    {(selectedDate
+                      ? getConsultationsByDate(selectedDate)
+                      : upcomingConsultations
                     ).map((consultation) => (
                       <div
                         key={consultation.id}
@@ -752,21 +462,14 @@ export default function DashboardContent() {
                             </div>
                             <div>
                               <h5 className="text-sm font-medium text-gray-900">
-                                {isExpertMode
-                                  ? (consultation as any).clientName
-                                  : (consultation as any).expertName}
+                                {(consultation as any).expertName}
                               </h5>
                               <p className="text-xs text-gray-500">
-                                {isExpertMode
-                                  ? (consultation as any).topic
-                                  : (consultation as any).specialty}
+                                {(consultation as any).specialty}
                               </p>
                               <div className="flex items-center text-xs text-gray-500 mt-1">
                                 <Clock className="h-3 w-3 mr-1" />
                                 {consultation.date} {consultation.time}
-                                {isExpertMode && (
-                                  <span className="h-3 w-3 mr-1" />
-                                )}
                               </div>
                             </div>
                           </div>
@@ -811,31 +514,23 @@ export default function DashboardContent() {
             <div className="px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-medium text-gray-900 flex items-center">
                 <BookOpen className="h-5 w-5 text-blue-600 mr-2" />
-                {isExpertMode ? "최근 완료한 상담" : "최근 상담 일지"}
+                최근 상담 일지
               </h3>
             </div>
             <div className="p-6">
-              {(isExpertMode ? expertCompletedConsultations : consultationLogs)
-                .length === 0 ? (
+              {consultationLogs.length === 0 ? (
                 <div className="text-center py-8">
                   <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-500">
-                    {isExpertMode
-                      ? "아직 완료한 상담이 없습니다."
-                      : "아직 완료된 상담이 없습니다."}
+                    아직 완료된 상담이 없습니다.
                   </p>
                   <p className="text-sm text-gray-400 mt-1">
-                    {isExpertMode
-                      ? "첫 상담을 시작해보세요!"
-                      : "첫 상담을 시작해보세요!"}
+                    첫 상담을 시작해보세요!
                   </p>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {(isExpertMode
-                    ? expertCompletedConsultations
-                    : consultationLogs
-                  ).map((log) => (
+                  {consultationLogs.map((log) => (
                     <div
                       key={log.id}
                       className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
@@ -844,14 +539,10 @@ export default function DashboardContent() {
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-2">
                             <h4 className="text-sm font-medium text-gray-900">
-                              {isExpertMode
-                                ? (log as any).clientName
-                                : (log as any).expertName}
+                              {(log as any).expertName}
                             </h4>
                             <span className="text-xs text-gray-500">
-                              {isExpertMode
-                                ? (log as any).topic
-                                : (log as any).specialty}
+                              {(log as any).specialty}
                             </span>
                             <div className="flex items-center">
                               {[...Array(5)].map((_, i) => (
@@ -867,18 +558,11 @@ export default function DashboardContent() {
                             </div>
                           </div>
                           <p className="text-sm text-gray-600 mb-2">
-                            {isExpertMode
-                              ? (log as any).feedback
-                              : (log as any).summary}
+                            {(log as any).summary}
                           </p>
                           <div className="flex items-center text-xs text-gray-500 space-x-4">
                             <span>{log.date}</span>
                             <span>{log.duration}</span>
-                            {isExpertMode && (
-                              <span className="text-green-600 font-medium">
-                                ₩{(log as any).earnings?.toLocaleString()}
-                              </span>
-                            )}
                             <div className="flex items-center">
                               <CheckCircle className="h-3 w-3 text-green-500 mr-1" />
                               완료
@@ -890,9 +574,7 @@ export default function DashboardContent() {
                   ))}
                   <div className="text-center pt-4">
                     <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">
-                      {isExpertMode
-                        ? "모든 완료한 상담 보기"
-                        : "모든 상담 일지 보기"}
+                      모든 상담 일지 보기
                     </button>
                   </div>
                 </div>
@@ -905,7 +587,7 @@ export default function DashboardContent() {
             <div className="px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-medium text-gray-900 flex items-center">
                 <Star className="h-5 w-5 text-yellow-500 mr-2" />
-                {isExpertMode ? "단골 고객" : "즐겨찾는 전문가"}
+                즐겨찾는 전문가
               </h3>
             </div>
             <div className="p-6">
@@ -913,14 +595,10 @@ export default function DashboardContent() {
                 <div className="text-center py-8">
                   <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-500">
-                    {isExpertMode
-                      ? "단골 고객이 없습니다."
-                      : "즐겨찾는 전문가가 없습니다."}
+                    즐겨찾는 전문가가 없습니다.
                   </p>
                   <p className="text-sm text-gray-400 mt-1">
-                    {isExpertMode
-                      ? "더 많은 상담을 통해 단골 고객을 만들어보세요!"
-                      : "전문가를 즐겨찾기에 추가해보세요!"}
+                    전문가를 즐겨찾기에 추가해보세요!
                   </p>
                 </div>
               ) : (
@@ -973,35 +651,19 @@ export default function DashboardContent() {
                           </div>
                         </div>
                         <div className="flex flex-col space-y-1">
-                          {isExpertMode ? (
-                            <>
-                              <button className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white text-xs rounded transition-colors flex items-center">
-                                <Phone className="h-3 w-3 mr-1" />
-                                연락하기
-                              </button>
-                              <button className="px-3 py-1 border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs rounded transition-colors">
-                                상담 기록
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <button className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded transition-colors">
-                                상담하기
-                              </button>
-                              <button className="px-3 py-1 border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs rounded transition-colors">
-                                프로필
-                              </button>
-                            </>
-                          )}
+                          <button className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded transition-colors">
+                            상담하기
+                          </button>
+                          <button className="px-3 py-1 border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs rounded transition-colors">
+                            프로필
+                          </button>
                         </div>
                       </div>
                     </div>
                   ))}
                   <div className="text-center pt-4">
                     <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">
-                      {isExpertMode
-                        ? "모든 단골 고객 보기"
-                        : "모든 즐겨찾는 전문가 보기"}
+                      모든 즐겨찾는 전문가 보기
                     </button>
                   </div>
                 </div>

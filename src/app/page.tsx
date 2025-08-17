@@ -15,6 +15,7 @@ import StatsSection from "../components/home/StatsSection";
 import PopularCategoriesSection from "../components/home/PopularCategoriesSection";
 import AIChatPromoSection from "../components/home/AIChatPromoSection";
 import Footer from "../components/layout/Footer";
+import { dummyExperts } from "../data/dummy/experts";
 import {
   Users,
   Target,
@@ -237,51 +238,8 @@ export default function HomePage() {
     }, 2000);
   };
 
-  // 전문가 데이터 (실제로는 API에서 가져옴)
-  const matchedExperts = [
-    {
-      id: 1,
-      name: "김민수",
-      specialty: "진로상담",
-      rating: 4.8,
-      totalConsultations: 156,
-      price: "₩50,000",
-      duration: "45분",
-      tags: ["취업준비", "이직", "진로고민"],
-      isOnline: true,
-      image: null,
-      description:
-        "10년간의 HR 경험과 진로상담 자격증을 바탕으로 취업 준비생과 직장인들의 진로 고민을 함께 해결해나가고 있습니다.",
-    },
-    {
-      id: 2,
-      name: "박지영",
-      specialty: "심리상담",
-      rating: 4.9,
-      totalConsultations: 203,
-      price: "₩60,000",
-      duration: "50분",
-      tags: ["스트레스", "우울증", "불안장애"],
-      isOnline: false,
-      image: null,
-      description:
-        "임상심리학 박사로서 다양한 연령대의 심리적 어려움을 전문적으로 상담하고 있습니다.",
-    },
-    {
-      id: 3,
-      name: "이소연",
-      specialty: "재무상담",
-      rating: 4.7,
-      totalConsultations: 89,
-      price: "₩70,000",
-      duration: "60분",
-      tags: ["투자", "자산관리", "세무"],
-      isOnline: true,
-      image: null,
-      description:
-        "금융권 15년 경력과 재무설계사 자격을 갖춘 전문가로 개인과 기업의 재무상담을 제공합니다.",
-    },
-  ];
+  // 전문가 데이터 (더미 데이터에서 처음 3명 사용)
+  const matchedExperts = dummyExperts.slice(0, 3);
 
   const categoryText = searchCategory
     ? `"${categories.find((c) => c.id === searchCategory)?.name}"`
@@ -321,10 +279,10 @@ export default function HomePage() {
 
       {/* 매칭된 전문가 결과 */}
       {!isSearching &&
-        (searchCategory ||
-          searchStartDate ||
-          searchEndDate ||
-          searchAgeGroup) && (
+        searchCategory &&
+        searchStartDate &&
+        searchEndDate &&
+        searchAgeGroup && (
           <MatchedExpertsSection
             title="매칭된 전문가"
             subtitle={`${categoryText} 분야의${ageText} 전문가 ${matchedExperts.length}명을 찾았습니다.`}
