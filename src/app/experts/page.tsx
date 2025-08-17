@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import type { ComponentType } from "react";
 import ServiceLayout from "@/components/layout/ServiceLayout";
 import {
@@ -97,6 +98,7 @@ const getKoreanLevelName = (level: number): string => {
 };
 
 const ExpertSearch = () => {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilters, setSelectedFilters] = useState<SelectedFilters>({
     specialty: "",
@@ -495,7 +497,7 @@ const ExpertSearch = () => {
 
   const handleProfileView = (expert: ExpertItem) => {
     // 전문가 프로필 페이지로 이동
-    console.log("전문가 프로필 보기:", expert);
+    router.push(`/experts/${expert.id}`);
   };
 
   return (

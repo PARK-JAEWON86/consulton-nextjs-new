@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { calculateCreditsByLevel } from "@/utils/expertLevels";
 import {
   Users,
@@ -97,6 +98,7 @@ export default function MatchedExpertsSection({
   experts,
   onClickProfile,
 }: MatchedExpertsSectionProps) {
+  const router = useRouter();
   const [favorites, setFavorites] = useState<number[]>([]);
 
   const normalizedExperts = useMemo(
@@ -110,6 +112,14 @@ export default function MatchedExpertsSection({
         ? prev.filter((id) => id !== expertId)
         : [...prev, expertId]
     );
+  };
+
+  const handleProfileView = (expert: any) => {
+    if (expert.id) {
+      router.push(`/experts/${expert.id}`);
+    } else if (onClickProfile) {
+      onClickProfile(expert);
+    }
   };
 
   return (
@@ -274,9 +284,7 @@ export default function MatchedExpertsSection({
                     </div>
                     <div className="flex space-x-2">
                       <button
-                        onClick={() =>
-                          onClickProfile ? onClickProfile(expert) : null
-                        }
+                        onClick={() => handleProfileView(expert)}
                         className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-sm"
                         aria-label={`${expert.name} 전문가 프로필 보기`}
                       >

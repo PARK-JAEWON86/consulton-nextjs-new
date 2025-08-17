@@ -8,6 +8,12 @@ import {
   AlertCircle,
   Clock,
   UserCheck,
+  Bot,
+  Sparkles,
+  HelpCircle,
+  Star,
+  Award,
+  MessageSquare,
 } from "lucide-react";
 
 interface Post {
@@ -19,8 +25,9 @@ interface Post {
   category: string;
   tags: string[];
   createdAt: string;
+  postType: "consultation_request" | "consultation_review" | "expert_intro" | "general";
   isExpert?: boolean;
-  isConsultationRequest?: boolean;
+  isAISummary?: boolean;
   urgency?: string;
   preferredMethod?: string;
   likes: number;
@@ -32,7 +39,7 @@ interface PostCardProps {
   onLike?: (postId: string) => void;
   onComment?: (postId: string) => void;
   onShare?: (postId: string) => void;
-  onExpertContact?: (postId: string) => void;
+  onPostClick?: (postId: string) => void;
 }
 
 const PostCard = ({
@@ -40,7 +47,7 @@ const PostCard = ({
   onLike,
   onComment,
   onShare,
-  onExpertContact,
+  onPostClick,
 }: PostCardProps) => {
   const getUrgencyColor = (urgency: string) => {
     switch (urgency) {
@@ -55,19 +62,79 @@ const PostCard = ({
     }
   };
 
+  const getPostTypeInfo = (postType: string, isAISummary?: boolean) => {
+    switch (postType) {
+      case "consultation_request":
+        if (isAISummary) {
+          return {
+            label: "AI 상담요약",
+            icon: Bot,
+            bgColor: "bg-purple-100",
+            textColor: "text-purple-700",
+            borderColor: "border-purple-200",
+            cardBg: "bg-gradient-to-r from-purple-50/50 to-orange-50/50"
+          };
+        }
+        return {
+          label: "상담요청",
+          icon: HelpCircle,
+          bgColor: "bg-orange-100",
+          textColor: "text-orange-700",
+          borderColor: "border-orange-200",
+          cardBg: "bg-orange-50/30"
+        };
+      case "consultation_review":
+        return {
+          label: "상담후기",
+          icon: Star,
+          bgColor: "bg-green-100",
+          textColor: "text-green-700",
+          borderColor: "border-green-200",
+          cardBg: "bg-green-50/30"
+        };
+      case "expert_intro":
+        return {
+          label: "전문가소개",
+          icon: Award,
+          bgColor: "bg-blue-100",
+          textColor: "text-blue-700",
+          borderColor: "border-blue-200",
+          cardBg: "bg-blue-50/30"
+        };
+      default:
+        return {
+          label: "일반글",
+          icon: MessageSquare,
+          bgColor: "bg-gray-100",
+          textColor: "text-gray-700",
+          borderColor: "border-gray-200",
+          cardBg: "bg-white"
+        };
+    }
+  };
+
+  const postTypeInfo = getPostTypeInfo(post.postType, post.isAISummary);
+
   return (
     <div
-      className={`bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow ${
-        post.isConsultationRequest
-          ? "border-blue-200 bg-blue-50/30"
-          : "border-gray-200"
-      }`}
+      className={`bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow cursor-pointer ${postTypeInfo.borderColor} ${postTypeInfo.cardBg}`}
+      onClick={() => onPostClick && onPostClick(post.id)}
     >
       <div className="flex items-start gap-4">
-        <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-          <span className="text-white text-sm font-medium">
-            {post.authorAvatar}
-          </span>
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+          post.isAISummary
+            ? "bg-gradient-to-r from-purple-500 to-blue-500" 
+            : post.postType === "expert_intro"
+            ? "bg-gradient-to-r from-blue-500 to-indigo-600"
+            : "bg-blue-600"
+        }`}>
+          {post.isAISummary ? (
+            <Bot className="h-5 w-5 text-white" />
+          ) : (
+            <span className="text-white text-sm font-medium">
+              {post.authorAvatar}
+            </span>
+          )}
         </div>
 
         <div className="flex-1">
@@ -78,18 +145,19 @@ const PostCard = ({
                 전문가
               </span>
             )}
+            
+            {/* 게시글 타입 배지 */}
+            <span className={`px-2 py-0.5 text-xs rounded-full flex items-center gap-1 ${postTypeInfo.bgColor} ${postTypeInfo.textColor}`}>
+              <postTypeInfo.icon className="h-3 w-3" />
+              {postTypeInfo.label}
+            </span>
+            
             <span className="text-gray-500 text-sm">•</span>
             <span className="text-gray-500 text-sm">{post.createdAt}</span>
-            <span
-              className={`px-2 py-0.5 text-xs rounded-full ml-2 ${
-                post.isConsultationRequest
-                  ? "bg-orange-100 text-orange-700"
-                  : "bg-blue-100 text-blue-700"
-              }`}
-            >
+            <span className={`px-2 py-0.5 text-xs rounded-full ml-2 ${postTypeInfo.bgColor} ${postTypeInfo.textColor}`}>
               {post.category}
             </span>
-            {post.isConsultationRequest && post.urgency && (
+            {post.postType === "consultation_request" && post.urgency && (
               <span
                 className={`px-2 py-0.5 text-xs rounded-full border ${getUrgencyColor(
                   post.urgency,
@@ -100,7 +168,7 @@ const PostCard = ({
             )}
           </div>
 
-          <h3 className="text-lg font-semibold text-gray-900 mb-2 cursor-pointer hover:text-blue-600 text-left">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2 hover:text-blue-600 text-left">
             {post.title}
           </h3>
 
@@ -119,21 +187,51 @@ const PostCard = ({
             ))}
           </div>
 
-          {/* 상담요청 전용 정보 */}
-          {post.isConsultationRequest && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+          {/* 게시글 타입별 전용 정보 */}
+          {post.postType === "consultation_request" && (
+            <div className={`${postTypeInfo.cardBg} border ${postTypeInfo.borderColor} rounded-lg p-3 mb-4`}>
               <div className="flex items-center gap-4 text-sm">
                 {post.preferredMethod && (
                   <div className="flex items-center gap-1">
-                    <Clock className="h-4 w-4 text-blue-600" />
-                    <span className="text-blue-700">
+                    <Clock className={`h-4 w-4 ${postTypeInfo.textColor.replace('text-', 'text-').replace('-700', '-600')}`} />
+                    <span className={postTypeInfo.textColor}>
                       선호: {post.preferredMethod}
                     </span>
                   </div>
                 )}
                 <div className="flex items-center gap-1">
-                  <AlertCircle className="h-4 w-4 text-blue-600" />
-                  <span className="text-blue-700">전문가 상담 요청</span>
+                  <HelpCircle className={`h-4 w-4 ${postTypeInfo.textColor.replace('text-', 'text-').replace('-700', '-600')}`} />
+                  <span className={postTypeInfo.textColor}>전문가 상담 요청</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {post.isAISummary && (
+            <div className={`${postTypeInfo.cardBg} border ${postTypeInfo.borderColor} rounded-lg p-3 mb-4`}>
+              <div className="flex items-center gap-4 text-sm">
+                <div className="flex items-center gap-1">
+                  <Bot className="h-4 w-4 text-purple-600" />
+                  <span className="text-purple-700">AI 채팅상담으로 생성된 요약</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Sparkles className="h-4 w-4 text-purple-600" />
+                  <span className="text-purple-700">자동 익명화 처리</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {post.postType === "expert_intro" && (
+            <div className={`${postTypeInfo.cardBg} border ${postTypeInfo.borderColor} rounded-lg p-3 mb-4`}>
+              <div className="flex items-center gap-4 text-sm">
+                <div className="flex items-center gap-1">
+                  <Award className="h-4 w-4 text-blue-600" />
+                  <span className="text-blue-700">전문가 프로필</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <UserCheck className="h-4 w-4 text-blue-600" />
+                  <span className="text-blue-700">인증된 전문가</span>
                 </div>
               </div>
             </div>
@@ -142,39 +240,40 @@ const PostCard = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
-                onClick={() => onLike && onLike(post.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onLike && onLike(post.id);
+                }}
                 className="flex items-center gap-1 text-gray-500 hover:text-red-500 transition-colors"
               >
                 <Heart className="h-4 w-4" />
                 <span className="text-sm">{post.likes}</span>
               </button>
               <button
-                onClick={() => onComment && onComment(post.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onComment && onComment(post.id);
+                }}
                 className="flex items-center gap-1 text-gray-500 hover:text-blue-500 transition-colors"
               >
                 <MessageCircle className="h-4 w-4" />
                 <span className="text-sm">{post.comments}</span>
               </button>
               <button
-                onClick={() => onShare && onShare(post.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onShare && onShare(post.id);
+                }}
                 className="flex items-center gap-1 text-gray-500 hover:text-green-500 transition-colors"
               >
                 <Share2 className="h-4 w-4" />
                 <span className="text-sm">공유</span>
               </button>
-
-              {/* 상담요청 게시글의 전문가 컨택 버튼 */}
-              {post.isConsultationRequest && (
-                <button
-                  onClick={() => onExpertContact && onExpertContact(post.id)}
-                  className="flex items-center gap-1 bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700 transition-colors text-sm"
-                >
-                  <UserCheck className="h-4 w-4" />
-                  <span>상담 제안</span>
-                </button>
-              )}
             </div>
-            <button className="text-gray-400 hover:text-gray-600">
+            <button 
+              onClick={(e) => e.stopPropagation()}
+              className="text-gray-400 hover:text-gray-600"
+            >
               <MoreHorizontal className="h-5 w-5" />
             </button>
           </div>

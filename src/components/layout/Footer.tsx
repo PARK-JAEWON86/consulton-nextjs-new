@@ -43,7 +43,7 @@ export default function Footer() {
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:text-white">
+                <a href="/terms" className="hover:text-white">
                   이용약관
                 </a>
               </li>

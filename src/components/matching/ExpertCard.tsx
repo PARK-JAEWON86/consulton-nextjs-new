@@ -1,17 +1,23 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Star, MapPin, Clock, MessageCircle, Calendar } from "lucide-react";
 
 interface Expert {
+  id?: number;
   name?: string;
   title?: string;
+  specialty?: string;
   rating?: number;
   reviewCount?: number;
   specialties?: string[];
+  tags?: string[];
   experience?: string | number;
   consultationCount?: number;
+  totalSessions?: number;
   creditsPerMinute?: number;
+  pricePerMinute?: number;
 }
 
 const ExpertCard = ({
@@ -24,6 +30,15 @@ const ExpertCard = ({
   onProfileView?: () => void;
 }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const router = useRouter();
+
+  const handleProfileView = () => {
+    if (expert.id) {
+      router.push(`/experts/${expert.id}`);
+    } else if (onProfileView) {
+      onProfileView();
+    }
+  };
 
   return (
     <div
@@ -51,7 +66,7 @@ const ExpertCard = ({
             {expert.name || "전문가 이름"}
           </h3>
           <p className="text-sm text-gray-600 mb-2">
-            {expert.title || "전문 분야"}
+            {expert.title || expert.specialty || "전문 분야"}
           </p>
 
           {/* 평점 */}
@@ -69,7 +84,7 @@ const ExpertCard = ({
         {/* 전문 분야 */}
         <div className="mb-3">
           <div className="flex gap-1.5 overflow-hidden">
-            {(expert.specialties || ["전문분야1", "전문분야2"]).map(
+            {(expert.specialties || expert.tags || ["전문분야1", "전문분야2"]).map(
               (specialty: string, index: number) => (
                 <span
                   key={index}
@@ -90,7 +105,7 @@ const ExpertCard = ({
           </div>
           <div className="flex items-center space-x-2 text-gray-600">
             <MessageCircle className="h-4 w-4" />
-            <span>{expert.consultationCount || "50"}회 상담</span>
+            <span>{expert.consultationCount || expert.totalSessions || "50"}회 상담</span>
           </div>
         </div>
 
@@ -99,13 +114,13 @@ const ExpertCard = ({
           {/* 가격 정보 */}
           <div className="flex items-center space-x-2">
             <span className="font-bold text-gray-900 text-xl">
-              {expert.creditsPerMinute || 100}크레딧
+              {expert.creditsPerMinute || expert.pricePerMinute || 100}크레딧
             </span>
             <span className="text-sm text-gray-500">/분</span>
           </div>
 
           {/* 프로필 보기 버튼 */}
-          <button onClick={onProfileView} className="px-4 py-2 rounded-lg font-medium transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 shadow-sm">
+          <button onClick={handleProfileView} className="px-4 py-2 rounded-lg font-medium transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 shadow-sm">
             프로필 보기
           </button>
         </div>
