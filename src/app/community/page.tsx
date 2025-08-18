@@ -5,18 +5,23 @@ import CategorySidebar from "@/components/community/CategorySidebar";
 import PostCard from "@/components/community/PostCard";
 import SearchAndFilter from "@/components/community/SearchAndFilter";
 import CreatePostModal from "@/components/community/CreatePostModal";
-import { HelpCircle, Star, Award, Bot, MessageSquare, Grid3X3 } from "lucide-react";
+import { communityPosts, CommunityPost, getPostsByType, getPostsByCategory, sortPosts, getCategoriesWithCount } from "@/data/dummy";
+import { HelpCircle, Star, Award, Bot, MessageSquare, Grid3X3, ChevronLeft, ChevronRight, Menu, X } from "lucide-react";
 
 export default function CommunityPage() {
   const [activeTab, setActiveTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"latest" | "popular" | "comments" | "views">("latest");
   const [postTypeFilter, setPostTypeFilter] = useState<"all" | "consultation_request" | "consultation_review" | "expert_intro" | "general">("all");
-  
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const postsPerPage = 5; // 페이지당 게시글 수
 
 
   const handleTabChange = (categoryId: string) => {
     setActiveTab(categoryId);
+    setCurrentPage(1); // 카테고리 변경 시 첫 페이지로 리셋
   };
 
   const handleSearchChange = (query: string) => {
@@ -50,6 +55,21 @@ export default function CommunityPage() {
     // router.push(`/community/posts/${postId}`);
   };
 
+  const handleCreatePost = () => {
+    setIsCreateModalOpen(true);
+  };
+
+  const handleCloseCreateModal = () => {
+    setIsCreateModalOpen(false);
+  };
+
+  const handleSubmitPost = (postData: any) => {
+    // 새 게시글 데이터 처리 로직
+    console.log("새 게시글 데이터:", postData);
+    // 실제로는 API 호출을 통해 서버에 저장
+    // 임시로 콘솔에만 출력
+  };
+
   // 게시글 타입 필터 옵션
   const postTypeFilters = [
     { id: "all", name: "전체", icon: Grid3X3, color: "text-gray-600", bgColor: "bg-gray-100", hoverColor: "hover:bg-gray-200" },
@@ -59,125 +79,79 @@ export default function CommunityPage() {
     { id: "general", name: "일반글", icon: MessageSquare, color: "text-gray-600", bgColor: "bg-gray-100", hoverColor: "hover:bg-gray-200" },
   ];
 
-  // 모든 게시글 데이터
-  const allPosts = [
-    {
-      id: "ai-1",
-      title: "[AI 상담 요약] 진로 전환에 대한 고민",
-      content: "AI 상담을 통해 현재 직장에서의 스트레스와 새로운 분야로의 전환 가능성에 대해 상담했습니다. 개발자로 전향하고 싶지만 나이와 경험 부족이 걱정됩니다.",
-      author: "익명사용자",
-      authorAvatar: "익",
-      createdAt: "2024-01-16",
-      category: "진로상담",
-      tags: ["AI상담", "진로전환", "개발자"],
-      likes: 24,
-      comments: 8,
-      postType: "consultation_request" as const,
-      isAISummary: true,
-      urgency: "보통",
-      preferredMethod: "화상상담",
-    },
-    {
-      id: "1",
-      title: "진로 상담 경험 공유",
-      content: "전문가와의 상담을 통해 진로 방향을 찾았습니다. 3개월간의 상담 과정에서 얻은 인사이트를 공유합니다.",
-      author: "김철수",
-      authorAvatar: "김",
-      createdAt: "2024-01-15",
-      category: "진로상담",
-      tags: ["진로", "상담후기", "경험공유"],
-      likes: 12,
-      comments: 5,
-      postType: "consultation_review" as const,
-    },
-    {
-      id: "req-1",
-      title: "연애 관계 상담 요청드립니다",
-      content: "연인과의 소통 문제로 고민이 많습니다. 서로 다른 성격으로 인한 갈등을 해결하고 싶어요.",
-      author: "익명사용자",
-      authorAvatar: "익",
-      createdAt: "2024-01-14",
-      category: "관계상담",
-      tags: ["연애", "소통", "갈등해결"],
-      likes: 8,
-      comments: 3,
-      postType: "consultation_request" as const,
-      urgency: "보통",
-      preferredMethod: "화상상담",
-    },
-    {
-      id: "expert-1",
-      title: "심리상담 전문가 박상담입니다",
-      content: "10년 경력의 심리상담사입니다. 우울, 불안, 트라우마 전문으로 상담하고 있으며, 많은 분들께 도움을 드리고 있습니다.",
-      author: "박상담",
-      authorAvatar: "박",
-      createdAt: "2024-01-14",
-      category: "심리상담",
-      tags: ["전문가", "심리상담", "경력10년"],
-      likes: 45,
-      comments: 18,
-      postType: "expert_intro" as const,
-      isExpert: true,
-    },
-    {
-      id: "2",
-      title: "재무 상담 정말 도움됐어요!",
-      content: "투자와 저축에 대한 좋은 조언을 받았습니다. 전문가님 덕분에 재정 계획을 체계적으로 세울 수 있었어요.",
-      author: "박민수",
-      authorAvatar: "박",
-      createdAt: "2024-01-13",
-      category: "재무상담",
-      tags: ["투자", "재무", "상담후기"],
-      likes: 15,
-      comments: 7,
-      postType: "consultation_review" as const,
-    },
-    {
-      id: "ai-2",
-      title: "[AI 상담 요약] 투자 초보자를 위한 조언",
-      content: "AI와 함께 투자 기초에 대해 상담했습니다. 적금과 주식 투자의 차이점, 초보자가 주의해야 할 점들에 대해 알아봤습니다.",
-      author: "익명사용자",
-      authorAvatar: "익",
-      createdAt: "2024-01-12",
-      category: "투자상담",
-      tags: ["AI상담", "투자초보", "주식"],
-      likes: 31,
-      comments: 15,
-      postType: "consultation_request" as const,
-      isAISummary: true,
-      urgency: "낮음",
-      preferredMethod: "채팅상담",
-    },
-    {
-      id: "general-1",
-      title: "상담 플랫폼 이용 팁 공유",
-      content: "처음 상담 플랫폼을 이용하시는 분들을 위해 유용한 팁들을 정리해봤습니다.",
-      author: "상담고수",
-      authorAvatar: "상",
-      createdAt: "2024-01-11",
-      category: "기타",
-      tags: ["팁", "플랫폼", "가이드"],
-      likes: 22,
-      comments: 9,
-      postType: "general" as const,
-    },
-  ];
+  // 모든 게시글 데이터 (더미 데이터에서 가져옴)
+  const allPosts = communityPosts;
 
-  // 필터링된 게시글
-  const filteredPosts = postTypeFilter === "all" 
-    ? allPosts 
-    : allPosts.filter(post => post.postType === postTypeFilter);
+  // 필터링 및 정렬된 게시글
+  // 1단계: 카테고리별 필터링
+  const categoryFilteredPosts = getPostsByCategory(activeTab);
+  // 2단계: 게시글 타입별 필터링
+  const typeFilteredPosts = postTypeFilter === "all" 
+    ? categoryFilteredPosts 
+    : categoryFilteredPosts.filter(post => post.postType === postTypeFilter);
+  // 3단계: 정렬
+  const filteredPosts = sortPosts(typeFilteredPosts, sortBy);
 
-  // 각 필터별 게시글 개수 계산
+  // 페이지네이션 계산
+  const totalPages = Math.ceil(filteredPosts.length / postsPerPage);
+  const startIndex = (currentPage - 1) * postsPerPage;
+  const endIndex = startIndex + postsPerPage;
+  const currentPosts = filteredPosts.slice(startIndex, endIndex);
+
+  // 각 필터별 게시글 개수 계산 (현재 카테고리 고려)
   const getPostCount = (filterId: string) => {
-    if (filterId === "all") return allPosts.length;
-    return allPosts.filter(post => post.postType === filterId).length;
+    const categoryPosts = getPostsByCategory(activeTab);
+    if (filterId === "all") return categoryPosts.length;
+    return categoryPosts.filter(post => post.postType === filterId).length;
+  };
+
+  // 페이지네이션 핸들러
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // 페이지 변경 시 맨 위로 스크롤
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      handlePageChange(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      handlePageChange(currentPage + 1);
+    }
+  };
+
+  // 필터 변경 시 첫 페이지로 리셋
+  const handleFilterChange = (filterId: string) => {
+    setPostTypeFilter(filterId as any);
+    setCurrentPage(1);
+  };
+
+  // 사이드바 토글 핸들러
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+
+  const closeSidebar = () => {
+    setIsSidebarOpen(false);
   };
   return (
     <div className="min-h-screen bg-gray-50 pt-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">커뮤니티</h1>
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-3xl font-bold text-gray-900">커뮤니티</h1>
+            {/* 모바일 사이드바 토글 버튼 */}
+            <button
+              onClick={toggleSidebar}
+              className="lg:hidden flex items-center justify-center w-10 h-10 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          </div>
           <p className="text-gray-600">
             다른 사용자들과 경험을 공유하고 소통하세요.
             {postTypeFilter === "consultation_request" && (
@@ -188,71 +162,135 @@ export default function CommunityPage() {
           </p>
         </div>
 
-        <div className="flex gap-8">
-          <div className="w-72 flex-shrink-0">
+        <div className="relative flex gap-8">
+          {/* 데스크톱 사이드바 */}
+          <div className="hidden lg:block w-72 flex-shrink-0">
             <CategorySidebar
-              categories={[
-                { id: "all", name: "전체", count: 1247 },
-                { id: "career", name: "진로상담", count: 156 },
-                { id: "psychology", name: "심리상담", count: 89 },
-                { id: "finance", name: "재무상담", count: 234 },
-                { id: "legal", name: "법률상담", count: 67 },
-                { id: "education", name: "교육상담", count: 45 },
-                { id: "health", name: "건강상담", count: 78 },
-                { id: "relationship", name: "관계상담", count: 123 },
-                { id: "business", name: "사업상담", count: 56 },
-                { id: "technology", name: "기술상담", count: 98 },
-                { id: "design", name: "디자인상담", count: 34 },
-                { id: "language", name: "언어상담", count: 42 },
-                { id: "art", name: "예술상담", count: 29 },
-                { id: "sports", name: "스포츠상담", count: 37 },
-                { id: "travel", name: "여행상담", count: 51 },
-                { id: "food", name: "요리상담", count: 33 },
-                { id: "fashion", name: "패션상담", count: 28 },
-                { id: "pet", name: "반려동물상담", count: 64 },
-                { id: "gardening", name: "정원상담", count: 19 },
-                { id: "investment", name: "투자상담", count: 87 },
-                { id: "tax", name: "세무상담", count: 43 },
-                { id: "insurance", name: "보험상담", count: 52 },
-                { id: "admission", name: "진학상담", count: 76 },
-                { id: "other", name: "그외 기타", count: 95 },
-              ]}
+              categories={getCategoriesWithCount()}
               activeTab={activeTab}
               onTabChange={handleTabChange}
               popularTags={["상담후기", "전문가추천", "진로고민", "투자조언"]}
               onTagClick={handleTagClick}
+              onCreatePost={handleCreatePost}
             />
           </div>
 
-          <div className="flex-1 min-w-0">
-            {/* 게시글 타입 필터 버튼 */}
+          {/* 모바일 사이드바 오버레이 */}
+          {isSidebarOpen && (
+            <div className="lg:hidden fixed inset-0 z-50 flex">
+              {/* 배경 오버레이 */}
+              <div 
+                className="fixed inset-0 bg-black bg-opacity-50"
+                onClick={closeSidebar}
+              ></div>
+              
+              {/* 사이드바 컨테이너 */}
+              <div className="relative w-80 max-w-sm bg-gray-50 shadow-xl overflow-y-auto">
+                {/* 사이드바 헤더 */}
+                <div className="flex items-center justify-between p-4 bg-white border-b border-gray-200">
+                  <h2 className="text-lg font-semibold text-gray-900">프로필 & 카테고리</h2>
+                  <button
+                    onClick={closeSidebar}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                
+                {/* 사이드바 내용 */}
+                <div className="p-4">
+                  <CategorySidebar
+                    categories={getCategoriesWithCount()}
+                    activeTab={activeTab}
+                    onTabChange={(categoryId) => {
+                      handleTabChange(categoryId);
+                      closeSidebar(); // 카테고리 선택 후 사이드바 닫기
+                    }}
+                    popularTags={["상담후기", "전문가추천", "진로고민", "투자조언"]}
+                    onTagClick={(tag) => {
+                      handleTagClick(tag);
+                      closeSidebar(); // 태그 클릭 후 사이드바 닫기
+                    }}
+                    onCreatePost={() => {
+                      handleCreatePost();
+                      closeSidebar(); // 새 글 작성 후 사이드바 닫기
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex-1 min-w-0 w-full lg:w-auto">
+            {/* 게시글 타입 필터 버튼 및 페이징 */}
             <div className="mb-6">
-              <div className="flex flex-wrap gap-2 mb-4">
-                {postTypeFilters.map((filter) => {
-                  const Icon = filter.icon;
-                  const isActive = postTypeFilter === filter.id;
-                  const postCount = getPostCount(filter.id);
-                  
-                  return (
-                    <button
-                      key={filter.id}
-                      onClick={() => setPostTypeFilter(filter.id as any)}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        isActive
-                          ? `${filter.bgColor} ${filter.color} border-2 border-current`
-                          : `bg-white text-gray-600 border border-gray-200 ${filter.hoverColor}`
-                      }`}
-                    >
-                      <Icon className="h-4 w-4" />
-                      <span>{filter.name}</span>
-                      <span className={`px-1.5 py-0.5 text-xs rounded-full ${
-                        isActive ? "bg-white bg-opacity-50" : "bg-gray-100"
-                      }`}>
-                        {postCount}
+              <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mb-4">
+                {/* 왼쪽: 필터 버튼들 */}
+                <div className="flex flex-wrap gap-2">
+                  {postTypeFilters.map((filter) => {
+                    const Icon = filter.icon;
+                    const isActive = postTypeFilter === filter.id;
+                    const postCount = getPostCount(filter.id);
+                    
+                    return (
+                      <button
+                        key={filter.id}
+                        onClick={() => handleFilterChange(filter.id)}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          isActive
+                            ? `${filter.bgColor} ${filter.color} border-2 border-current`
+                            : `bg-white text-gray-600 border border-gray-200 ${filter.hoverColor}`
+                        }`}
+                      >
+                        <Icon className="h-4 w-4" />
+                        <span className="hidden sm:inline">{filter.name}</span>
+                        <span className="sm:hidden">{filter.name.slice(0, 2)}</span>
+                        <span className={`px-1.5 py-0.5 text-xs rounded-full ${
+                          isActive ? "bg-white bg-opacity-50" : "bg-gray-100"
+                        }`}>
+                          {postCount}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* 오른쪽: 페이징 버튼 */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-center lg:justify-end">
+                    <div className="flex items-center gap-1 bg-white rounded-lg px-3 py-2 shadow-sm border border-gray-200">
+                      <button
+                        onClick={handlePrevPage}
+                        disabled={currentPage === 1}
+                        className={`flex items-center gap-1 px-2 py-1 rounded-md text-sm font-medium transition-colors ${
+                          currentPage === 1
+                            ? "text-gray-400 cursor-not-allowed"
+                            : "text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+                        }`}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        <span className="hidden sm:inline">이전</span>
+                      </button>
+                      
+                      <span className="text-sm text-gray-500 px-2 min-w-[60px] text-center">
+                        {currentPage} / {totalPages}
                       </span>
-                    </button>
-                  );
-                })}
+                      
+                      <button
+                        onClick={handleNextPage}
+                        disabled={currentPage === totalPages}
+                        className={`flex items-center gap-1 px-2 py-1 rounded-md text-sm font-medium transition-colors ${
+                          currentPage === totalPages
+                            ? "text-gray-400 cursor-not-allowed"
+                            : "text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+                        }`}
+                      >
+                        <span className="hidden sm:inline">다음</span>
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
               
               <SearchAndFilter
@@ -273,7 +311,7 @@ export default function CommunityPage() {
                   <p className="text-gray-500">선택한 타입의 게시글이 없습니다.</p>
                 </div>
               ) : (
-                filteredPosts.map((post) => (
+                currentPosts.map((post) => (
                   <PostCard
                     key={post.id}
                     post={post}
@@ -284,8 +322,118 @@ export default function CommunityPage() {
                 ))
               )}
             </div>
+
+            {/* 하단 페이지네이션 - 페이지 번호 포함 */}
+            {totalPages > 1 && (
+              <div className="flex justify-center items-center mt-8 space-x-1">
+                {/* 이전 버튼 */}
+                <button
+                  onClick={handlePrevPage}
+                  disabled={currentPage === 1}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    currentPage === 1
+                      ? "text-gray-400 cursor-not-allowed bg-gray-100"
+                      : "text-gray-600 hover:text-blue-600 hover:bg-blue-50 bg-white border border-gray-200"
+                  }`}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+
+                {/* 페이지 번호들 */}
+                {(() => {
+                  const pages = [];
+                  const showPages = 5; // 보여줄 페이지 수
+                  let startPage = Math.max(1, currentPage - Math.floor(showPages / 2));
+                  let endPage = Math.min(totalPages, startPage + showPages - 1);
+                  
+                  // 끝 페이지가 조정되면 시작 페이지도 다시 조정
+                  if (endPage - startPage + 1 < showPages) {
+                    startPage = Math.max(1, endPage - showPages + 1);
+                  }
+
+                  // 첫 페이지 (1이 범위에 없을 때)
+                  if (startPage > 1) {
+                    pages.push(
+                      <button
+                        key={1}
+                        onClick={() => handlePageChange(1)}
+                        className="px-3 py-2 rounded-lg text-sm font-medium transition-colors text-gray-600 hover:text-blue-600 hover:bg-blue-50 bg-white border border-gray-200"
+                      >
+                        1
+                      </button>
+                    );
+                    if (startPage > 2) {
+                      pages.push(
+                        <span key="start-ellipsis" className="px-2 py-2 text-gray-400">
+                          ...
+                        </span>
+                      );
+                    }
+                  }
+
+                  // 중간 페이지들
+                  for (let i = startPage; i <= endPage; i++) {
+                    pages.push(
+                      <button
+                        key={i}
+                        onClick={() => handlePageChange(i)}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          i === currentPage
+                            ? "bg-blue-600 text-white"
+                            : "text-gray-600 hover:text-blue-600 hover:bg-blue-50 bg-white border border-gray-200"
+                        }`}
+                      >
+                        {i}
+                      </button>
+                    );
+                  }
+
+                  // 마지막 페이지 (totalPages가 범위에 없을 때)
+                  if (endPage < totalPages) {
+                    if (endPage < totalPages - 1) {
+                      pages.push(
+                        <span key="end-ellipsis" className="px-2 py-2 text-gray-400">
+                          ...
+                        </span>
+                      );
+                    }
+                    pages.push(
+                      <button
+                        key={totalPages}
+                        onClick={() => handlePageChange(totalPages)}
+                        className="px-3 py-2 rounded-lg text-sm font-medium transition-colors text-gray-600 hover:text-blue-600 hover:bg-blue-50 bg-white border border-gray-200"
+                      >
+                        {totalPages}
+                      </button>
+                    );
+                  }
+
+                  return pages;
+                })()}
+
+                {/* 다음 버튼 */}
+                <button
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    currentPage === totalPages
+                      ? "text-gray-400 cursor-not-allowed bg-gray-100"
+                      : "text-gray-600 hover:text-blue-600 hover:bg-blue-50 bg-white border border-gray-200"
+                  }`}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
+
+        {/* 새 글 작성 모달 */}
+        <CreatePostModal
+          isOpen={isCreateModalOpen}
+          onClose={handleCloseCreateModal}
+          onSubmit={handleSubmitPost}
+        />
       </div>
     </div>
   );

@@ -38,20 +38,20 @@ import {
   ShoppingBag,
 } from "lucide-react";
 import ConsultationRecommendation from "@/components/recommendation/ConsultationRecommendation";
-import { calculateCreditsByLevel } from "@/utils/expertLevels";
-import { dummyExperts, ExpertItem as DummyExpertItem } from "@/data/dummy";
+import { 
+  calculateCreditsByLevel, 
+  calculateExpertLevel as calcExpertLevel,
+  getLevelBadgeStyles as getBadgeStyles,
+  getKoreanLevelName as getKoreanLevel 
+} from "@/utils/expertLevels";
+import { useExpertProfileStore } from "@/stores/expertProfileStore";
+import { initializeDummyExpertsToStore } from "@/data/dummy/experts";
+import { ExpertProfile } from "@/types";
 
 type ConsultationType = "video" | "chat";
 
-// 더미 데이터의 ExpertItem 타입을 확장하여 사용
-type ExpertItem = Omit<DummyExpertItem, 'responseTime'> & {
-  specialties?: string[];
-  consultationTypes?: ConsultationType[];
-  profileImage?: string | null;
-  responseTime?: number | null;
-  totalConsultations?: number;
-  level?: number;
-};
+// ExpertProfile 타입 사용
+type ExpertItem = ExpertProfile;
 
 type SortBy = "rating" | "experience" | "reviews";
 
@@ -63,38 +63,10 @@ type SelectedFilters = {
   experience: number;
 };
 
-// 전문가 레벨 계산 함수들
-const calculateExpertLevel = (expert: ExpertItem): number => {
-  // 경험, 평점, 상담 수 등을 종합하여 레벨 계산
-  const experienceScore = expert.experience * 10;
-  const ratingScore = expert.rating * 20;
-  const consultationScore = (expert.totalConsultations || 0) * 0.5;
-
-  return Math.floor((experienceScore + ratingScore + consultationScore) / 10);
-};
-
+// 전문가 레벨 및 크레딧 계산 함수들
 const calculateCreditsPerMinute = (expert: ExpertItem): number => {
-  // expertLevels.ts의 함수를 사용하여 레벨별 과금 체계 적용
-  return calculateCreditsByLevel(expert.level || 1);
-};
-
-const getLevelBadgeStyles = (levelName: string): string => {
-  const styles = {
-    beginner: "bg-green-500 text-white",
-    intermediate: "bg-yellow-500 text-white",
-    advanced: "bg-orange-500 text-white",
-    expert: "bg-red-500 text-white",
-    master: "bg-purple-500 text-white",
-  };
-  return (styles as Record<string, string>)[levelName] || styles.beginner;
-};
-
-const getKoreanLevelName = (level: number): string => {
-  if (level >= 800) return "마스터";
-  if (level >= 600) return "전문가";
-  if (level >= 400) return "고급";
-  if (level >= 200) return "중급";
-  return "초급";
+  const level = calcExpertLevel(expert.totalSessions, expert.avgRating);
+  return level.creditsPerMinute;
 };
 
 const ExpertSearch = () => {
@@ -120,27 +92,11 @@ const ExpertSearch = () => {
     useState(false);
   const [showAllCategories, setShowAllCategories] = useState(false);
 
-  // 더미 전문가 데이터를 현재 컴포넌트 형식에 맞게 변환
-  const allExperts: ExpertItem[] = dummyExperts.map(expert => {
-    // responseTime 문자열에서 숫자 추출 ("30분 이내" -> 30)
-    const responseTimeNumber = expert.responseTime ? 
-      parseInt(expert.responseTime.match(/\d+/)?.[0] || '30') : 30;
-    
-    const convertedExpert = {
-      ...expert,
-      specialties: expert.tags,
-      consultationTypes: expert.consultationTypes.slice(0, 2) as ConsultationType[],
-      profileImage: expert.image,
-      responseTime: responseTimeNumber,
-      totalConsultations: expert.totalSessions,
-      level: 0 // 임시값, 아래에서 계산
-    };
-    
-    // 레벨 계산
-    convertedExpert.level = calculateExpertLevel(convertedExpert);
-    
-    return convertedExpert;
-  });
+  // 전문가 프로필 스토어 사용
+  const { getAllProfiles } = useExpertProfileStore();
+
+  // 스토어에서 전문가 데이터 가져오기
+  const allExperts: ExpertItem[] = getAllProfiles();
 
   // 기존 샘플 데이터는 주석 처리
   /*const allExperts: ExpertItem[] = [
@@ -333,9 +289,16 @@ const ExpertSearch = () => {
     "쇼핑몰상담",
   ];
 
+  // 스토어 초기화
+  useEffect(() => {
+    if (allExperts.length === 0) {
+      initializeDummyExpertsToStore();
+    }
+  }, []);
+
   // 필터링 로직
   useEffect(() => {
-    let filtered: ExpertItem[] = allExperts;
+    let filtered: ExpertItem[] = getAllProfiles();
 
     // 검색어 필터
     if (searchQuery) {
@@ -343,7 +306,7 @@ const ExpertSearch = () => {
         (expert: ExpertItem) =>
           expert.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           expert.specialty.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          expert.specialties?.some((s) =>
+          expert.specialties.some((s) =>
             s.toLowerCase().includes(searchQuery.toLowerCase())
           ) ||
           expert.description.toLowerCase().includes(searchQuery.toLowerCase())
@@ -437,8 +400,10 @@ const ExpertSearch = () => {
     }
   };
 
-  const getResponseTimeText = (responseTime: number | null | undefined): string => {
+  const getResponseTimeText = (responseTime: string | number | null | undefined): string => {
     if (!responseTime) return "답변 시간 정보 없음";
+    
+    if (typeof responseTime === "string") return responseTime;
 
     if (typeof responseTime === "number") {
       if (responseTime < 60) {
@@ -456,9 +421,15 @@ const ExpertSearch = () => {
   };
 
   const getResponseTimeColor = (
-    responseTime: number | null | undefined
+    responseTime: string | number | null | undefined
   ): string => {
     if (!responseTime) return "text-gray-400";
+    
+    if (typeof responseTime === "string") {
+      if (responseTime.includes("분")) return "text-green-500";
+      if (responseTime.includes("시간")) return "text-yellow-500";
+      return "text-red-500";
+    }
 
     if (typeof responseTime === "number") {
       if (responseTime < 60) {
@@ -799,29 +770,31 @@ const ExpertSearch = () => {
                           )}
                         </div>
                         {/* 전문가 레벨 표시 */}
-                        <div
-                          className={`absolute -bottom-1 -right-1 border-2 border-white rounded-full shadow-sm flex items-center justify-center ${
-                            (expert.level || 0) >= 100
-                              ? "w-12 h-6 px-2"
-                              : "w-10 h-6 px-1"
-                          } ${
-                            (expert.level || 0) >= 800
-                              ? "bg-purple-500"
-                              : (expert.level || 0) >= 600
-                                ? "bg-red-500"
-                                : (expert.level || 0) >= 400
-                                  ? "bg-orange-500"
-                                  : (expert.level || 0) >= 200
-                                    ? "bg-yellow-500"
-                                    : (expert.level || 0) >= 100
-                                      ? "bg-green-500"
-                                      : "bg-blue-500"
-                          }`}
-                        >
-                          <span className="text-[10px] font-bold text-white">
-                            Lv.{expert.level || 0}
-                          </span>
-                        </div>
+                        {(() => {
+                          // 실제 레벨 숫자 계산
+                          const actualLevel = Math.min(
+                            999,
+                            Math.max(1, Math.floor(expert.totalSessions / 10) + Math.floor(expert.avgRating * 10))
+                          );
+                          
+                          // 색상 결정
+                          let bgColor = "bg-blue-500";
+                          if (actualLevel >= 800) bgColor = "bg-purple-500";
+                          else if (actualLevel >= 600) bgColor = "bg-red-500";
+                          else if (actualLevel >= 400) bgColor = "bg-orange-500";
+                          else if (actualLevel >= 200) bgColor = "bg-yellow-500";
+                          else if (actualLevel >= 100) bgColor = "bg-green-500";
+                          
+                          return (
+                            <div className={`absolute -bottom-1 -right-1 border-2 border-white rounded-full shadow-sm flex items-center justify-center ${
+                              actualLevel >= 100 ? "w-12 h-6 px-2" : "w-10 h-6 px-1"
+                            } ${bgColor}`}>
+                              <span className="text-[10px] font-bold text-white">
+                                Lv.{actualLevel}
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center space-x-2 mb-2">

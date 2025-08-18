@@ -15,6 +15,7 @@ interface CategorySidebarProps {
   onTabChange: (categoryId: string) => void;
   popularTags?: string[];
   onTagClick?: (tag: string) => void;
+  onCreatePost?: () => void;
 }
 
 const CategorySidebar = ({
@@ -23,6 +24,7 @@ const CategorySidebar = ({
   onTabChange,
   popularTags = [],
   onTagClick,
+  onCreatePost,
 }: CategorySidebarProps) => {
   const [showAllCategories, setShowAllCategories] = useState(false);
   
@@ -31,7 +33,7 @@ const CategorySidebar = ({
   const hasMoreCategories = categories.length > 7;
 
   return (
-    <div className="w-72 flex-shrink-0 space-y-4">
+    <div className="w-full lg:w-72 flex-shrink-0 space-y-4">
       {/* 개인 프로필 */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
         <div className="flex items-center gap-3 mb-4">
@@ -72,7 +74,10 @@ const CategorySidebar = ({
         </div>
         
 
-        <button className="w-full bg-blue-500 text-white py-2.5 px-4 rounded-lg font-medium text-sm hover:bg-blue-600 transition-colors duration-200 shadow-sm">
+        <button 
+          onClick={onCreatePost}
+          className="w-full bg-blue-500 text-white py-2.5 px-4 rounded-lg font-medium text-sm hover:bg-blue-600 transition-colors duration-200 shadow-sm"
+        >
           새 글 작성하기
         </button>
       </div>

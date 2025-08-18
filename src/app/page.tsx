@@ -54,6 +54,9 @@ export default function HomePage() {
   const [searchEndDate, setSearchEndDate] = useState("");
   const [searchAgeGroup, setSearchAgeGroup] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [exactMatchCount, setExactMatchCount] = useState(0);
 
   // 카테고리 표시 상태
   const [showAllCategories, setShowAllCategories] = useState(false);
@@ -218,6 +221,49 @@ export default function HomePage() {
     { id: "120", name: "120분", description: "전문 상담" },
   ];
 
+  // 전문가 필터링 함수
+  const filterExperts = (experts: any[], category: string, date: string, duration: string, ageGroup: string) => {
+    return experts.filter(expert => {
+      // 1. 카테고리 필터링
+      const categoryMatch = expert.specialty === categories.find(c => c.id === category)?.name;
+      
+      // 2. 연령대 필터링 (targetAudience 기준)
+      const ageGroupName = ageGroups.find(a => a.id === ageGroup)?.name;
+      let ageMatch = true;
+      if (ageGroupName) {
+        if (ageGroup === "teen") {
+          ageMatch = expert.targetAudience.some((target: string) => 
+            target.includes("청소년") || target.includes("중학생") || target.includes("고등학생")
+          );
+        } else if (ageGroup === "student") {
+          ageMatch = expert.targetAudience.some((target: string) => 
+            target.includes("대학생") || target.includes("취준생") || target.includes("학생")
+          );
+        } else if (ageGroup === "adult") {
+          ageMatch = expert.targetAudience.some((target: string) => 
+            target.includes("성인") || target.includes("직장인") || target.includes("자영업자")
+          );
+        } else if (ageGroup === "senior") {
+          ageMatch = expert.targetAudience.some((target: string) => 
+            target.includes("시니어") || target.includes("은퇴")
+          );
+        }
+      }
+      
+      // 3. 날짜 필터링 (현재는 모든 전문가가 가능하다고 가정)
+      const dateMatch = true; // 실제로는 expert.weeklyAvailability와 date를 비교
+      
+      // 4. 상담시간 필터링
+      let durationMatch = true;
+      if (duration && duration !== "decide_after_matching") {
+        const requestedDuration = parseInt(duration);
+        durationMatch = expert.pricingTiers.some((tier: any) => tier.duration === requestedDuration);
+      }
+      
+      return categoryMatch && ageMatch && dateMatch && durationMatch;
+    });
+  };
+
   // 검색 실행
   const handleSearch = () => {
     if (
@@ -231,22 +277,38 @@ export default function HomePage() {
     }
 
     setIsSearching(true);
-    // no-op: dropdown is now managed inside SearchFields
+    setHasSearched(true);
+    
     // 실제로는 API 호출하여 전문가 검색
     setTimeout(() => {
+      // 검색 조건에 맞는 전문가 필터링
+      const filteredExperts = filterExperts(
+        dummyExperts, 
+        searchCategory, 
+        searchStartDate, 
+        searchEndDate, 
+        searchAgeGroup
+      );
+      
+      // 정확한 매칭 수 저장
+      setExactMatchCount(filteredExperts.length);
+      
+      // 결과가 적을 경우 더미 데이터 추가 (실제 서비스에서는 제거)
+      let finalResults = [...filteredExperts];
+      if (filteredExperts.length < 3) {
+        // 부족한 경우 다른 카테고리 전문가도 추가 (관련 전문가로 표시)
+        const additionalExperts = dummyExperts
+          .filter(expert => !filteredExperts.some(filtered => filtered.id === expert.id))
+          .slice(0, 5 - filteredExperts.length);
+        finalResults = [...filteredExperts, ...additionalExperts];
+      }
+      
+      setSearchResults(finalResults);
       setIsSearching(false);
-    }, 2000);
+    }, 800);
   };
 
-  // 전문가 데이터 (더미 데이터에서 처음 3명 사용)
-  const matchedExperts = dummyExperts.slice(0, 3);
 
-  const categoryText = searchCategory
-    ? `"${categories.find((c) => c.id === searchCategory)?.name}"`
-    : "";
-  const ageText = searchAgeGroup
-    ? ` ${ageGroups.find((a) => a.id === searchAgeGroup)?.name} 대상`
-    : "";
 
   return (
     <div className="min-h-screen bg-white">
@@ -265,9 +327,12 @@ export default function HomePage() {
         categories={categories}
         ageGroups={ageGroups}
         durations={durations}
+        searchResults={searchResults}
+        hasSearched={hasSearched}
+        exactMatchCount={exactMatchCount}
       />
 
-      {/* 검색 결과 섹션 */}
+      {/* 검색 진행 중일 때만 표시 */}
       {isSearching && (
         <SearchingSection
           searchCategory={searchCategory}
@@ -276,19 +341,6 @@ export default function HomePage() {
           ageGroups={ageGroups}
         />
       )}
-
-      {/* 매칭된 전문가 결과 */}
-      {!isSearching &&
-        searchCategory &&
-        searchStartDate &&
-        searchEndDate &&
-        searchAgeGroup && (
-          <MatchedExpertsSection
-            title="매칭된 전문가"
-            subtitle={`${categoryText} 분야의${ageText} 전문가 ${matchedExperts.length}명을 찾았습니다.`}
-            experts={matchedExperts}
-          />
-        )}
 
       {/* 통계 섹션 */}
       <StatsSection />
