@@ -470,21 +470,17 @@ export default function ChatPage() {
         </div>
       )}
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-gray-50">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-gray-50">
         {/* 헤더 */}
-        <div className="mb-8">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex-1">
-                <h1 className="text-3xl font-bold text-gray-900">
-                  AI 상담 어시스턴트
-                </h1>
-                <p className="text-gray-600 mt-2">
-                  AI 상담을 통해 자신의 문제를 정리하고 적절한 전문가를 찾는 데
-                  도움을 받으세요
-                </p>
-              </div>
-            </div>
+        <div className="mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              AI 상담 어시스턴트
+            </h1>
+            <p className="text-gray-600 mt-1">
+              AI 상담을 통해 자신의 문제를 정리하고 적절한 전문가를 찾는 데
+              도움을 받으세요
+            </p>
           </div>
         </div>
 

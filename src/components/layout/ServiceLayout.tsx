@@ -19,7 +19,7 @@ const ServiceLayout = ({ children }: ServiceLayoutProps) => {
   };
 
   return (
-    <>
+    <div className="flex min-h-screen bg-gray-50">
       {/* 사이드바 */}
       <Sidebar
         isOpen={isSidebarOpen}
@@ -28,10 +28,11 @@ const ServiceLayout = ({ children }: ServiceLayoutProps) => {
       />
 
       {/* 메인 콘텐츠 영역 */}
-      <main className="pt-16 lg:ml-64">
-        <div className="min-h-screen bg-gray-50">{children}</div>
-      </main>
-    </>
+      <div className="flex-1 flex flex-col">
+        {/* 페이지 콘텐츠 */}
+        <main className="pt-16 lg:ml-64 flex-1">{children}</main>
+      </div>
+    </div>
   );
 };
 

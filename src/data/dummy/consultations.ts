@@ -1,195 +1,198 @@
+import { ConsultationItem } from "@/stores/consultationsStore";
+
 // 더미 상담 데이터
-// TODO: 실제 API 연동 시 이 파일을 삭제하세요
-
-export interface ConsultationItem {
-  id: number | string;
-  expertName: string;
-  specialty: string;
-  date: string;
-  time: string;
-  type: "video" | "chat" | "voice";
-  status: "confirmed" | "pending" | "completed" | "cancelled";
-  creditsUsed?: number;
-  duration?: number;
-  title?: string;
-  expert?: {
-    name: string;
-    title: string;
-  };
-  hasRecording?: boolean;
-  tags?: string[];
-}
-
-export interface ConsultationSummary {
-  id: string;
-  title: string;
-  date: Date;
-  duration: number;
-  expert: {
-    name: string;
-    title: string;
-  };
-  status: "completed" | "processing" | "pending";
-  creditsUsed: number;
-  hasRecording: boolean;
-  tags: string[];
-}
-
-// 예약된 상담 일정 데이터 (사용자용)
-export const dummyUpcomingConsultations: ConsultationItem[] = [
+export const dummyConsultations: ConsultationItem[] = [
   {
-    id: 1,
-    expertName: "박지영",
-    specialty: "심리상담",
-    date: "2025-08-05",
-    time: "14:00",
-    type: "video",
-    status: "confirmed",
-  },
-  {
-    id: 2,
-    expertName: "이민수",
-    specialty: "법률상담",
-    date: "2025-08-12",
-    time: "10:30",
-    type: "chat",
-    status: "pending",
-  },
-  {
-    id: 3,
-    expertName: "김소연",
-    specialty: "재무상담",
-    date: "2025-08-18",
-    time: "16:00",
-    type: "video",
-    status: "confirmed",
-  },
-];
-
-// 전문가의 예약 받은 상담 일정
-export const dummyExpertConsultations: ConsultationItem[] = [
-  {
-    id: 1,
-    expertName: "김철수",
-    specialty: "진로상담",
-    date: "2025-08-05",
-    time: "10:00",
-    type: "video",
-    status: "confirmed",
-  },
-  {
-    id: 2,
-    expertName: "이영희",
-    specialty: "재무상담",
-    date: "2025-08-07",
-    time: "14:30",
-    type: "chat",
-    status: "pending",
-  },
-];
-
-// 상담 요약 데이터
-export const dummyConsultationSummaries: ConsultationSummary[] = [
-  {
-    id: "123",
-    title: "온라인 쇼핑몰 마케팅 전략 상담",
-    date: new Date("2024-01-15T14:30:00"),
-    duration: 45,
-    expert: {
-      name: "이민수",
-      title: "디지털 마케팅 전문가",
-    },
+    id: 3000,
+    date: "2024-05-09T10:00:00Z",
+    customer: "김민수",
+    topic: "진로 상담",
+    amount: 80,
     status: "completed",
-    creditsUsed: 25,
-    hasRecording: true,
-    tags: ["마케팅", "디지털마케팅", "SNS"],
-  },
-  {
-    id: "124",
-    title: "창업 아이템 검증 및 사업계획 수립",
-    date: new Date("2024-01-10T10:00:00"),
+    method: "video",
     duration: 60,
-    expert: {
-      name: "박영희",
-      title: "창업 컨설턴트",
-    },
+    summary: "IT 업계 전환에 대한 구체적인 로드맵을 제시하고, 필요한 기술 스택과 학습 방법에 대해 상담했습니다.",
+    notes: "고객이 매우 적극적이고 의욕적임. 3개월 후 재상담 예정"
+  },
+  {
+    id: 3001,
+    date: "2024-05-05T08:00:00Z",
+    customer: "박지영",
+    topic: "심리 상담",
+    amount: 299,
     status: "completed",
-    creditsUsed: 30,
-    hasRecording: true,
-    tags: ["창업", "사업계획", "검증"],
+    method: "chat",
+    duration: 45,
+    summary: "직장 내 스트레스 관리와 워라밸 개선 방안에 대해 논의했습니다.",
+    notes: "정기 상담을 희망하는 고객"
   },
   {
-    id: "125",
-    title: "개인 브랜딩 및 SNS 전략",
-    date: new Date("2024-01-08T16:00:00"),
-    duration: 30,
-    expert: {
-      name: "김지원",
-      title: "브랜딩 전문가",
-    },
-    status: "processing",
-    creditsUsed: 20,
-    hasRecording: false,
-    tags: ["브랜딩", "SNS", "개인마케팅"],
-  },
-  {
-    id: "126",
-    title: "투자 유치 전략 및 피칭 준비",
-    date: new Date("2024-01-05T11:30:00"),
+    id: 3002,
+    date: "2024-04-28T12:30:00Z",
+    customer: "이서준",
+    topic: "재무 상담",
+    amount: 150,
+    status: "completed",
+    method: "video",
     duration: 90,
-    expert: {
-      name: "최동현",
-      title: "투자 컨설턴트",
-    },
-    status: "completed",
-    creditsUsed: 40,
-    hasRecording: true,
-    tags: ["투자", "피칭", "전략"],
+    summary: "투자 포트폴리오 재구성 및 은퇴 계획 수립에 대한 상담을 진행했습니다.",
+    notes: "보수적 투자 성향, 안정성 중시"
   },
+  {
+    id: 3003,
+    date: "2024-04-23T14:00:00Z",
+    customer: "최유진",
+    topic: "건강 상담",
+    amount: 80,
+    status: "canceled",
+    method: "voice",
+    duration: 0,
+    summary: "",
+    notes: "고객 개인사정으로 취소"
+  },
+  {
+    id: 3004,
+    date: "2024-04-18T11:00:00Z",
+    customer: "정하늘",
+    topic: "법률 상담",
+    amount: 115,
+    status: "scheduled",
+    method: "video",
+    duration: 60,
+    summary: "",
+    notes: "계약서 검토 관련 상담 예정"
+  },
+  {
+    id: 3005,
+    date: "2024-04-14T09:00:00Z",
+    customer: "한동훈",
+    topic: "부동산 상담",
+    amount: 299,
+    status: "completed",
+    method: "video",
+    duration: 75,
+    summary: "서울 강남 지역 아파트 투자 전략과 시장 전망에 대해 상담했습니다.",
+    notes: "투자 경험 풍부, 추가 투자 계획 있음"
+  },
+  {
+    id: 3006,
+    date: "2024-04-10T16:00:00Z",
+    customer: "이준호",
+    topic: "창업 상담",
+    amount: 200,
+    status: "completed",
+    method: "video",
+    duration: 120,
+    summary: "스타트업 비즈니스 모델 검토 및 초기 자금 조달 방안에 대해 논의했습니다.",
+    notes: "아이디어 구체적, 실행력 우수"
+  },
+  {
+    id: 3007,
+    date: "2024-04-05T13:30:00Z",
+    customer: "강태현",
+    topic: "기술 컨설팅",
+    amount: 180,
+    status: "completed",
+    method: "chat",
+    duration: 90,
+    summary: "AI 기술 도입 전략과 개발팀 구성에 대한 컨설팅을 제공했습니다.",
+    notes: "기술 이해도 높음, 후속 프로젝트 가능성"
+  },
+  {
+    id: 3008,
+    date: "2024-03-30T10:15:00Z",
+    customer: "윤서진",
+    topic: "업무 효율성",
+    amount: 120,
+    status: "completed",
+    method: "voice",
+    duration: 50,
+    summary: "시간 관리 및 업무 프로세스 개선 방안에 대해 상담했습니다.",
+    notes: "실행 의지 강함, 1개월 후 성과 점검 예정"
+  },
+  {
+    id: 3009,
+    date: "2024-03-25T14:45:00Z",
+    customer: "정민우",
+    topic: "투자 상담",
+    amount: 250,
+    status: "completed",
+    method: "video",
+    duration: 80,
+    summary: "주식 투자 포트폴리오 분석 및 리밸런싱 전략에 대해 상담했습니다.",
+    notes: "투자 경험 부족, 기초 교육 필요"
+  },
+  {
+    id: 3010,
+    date: "2024-03-20T11:30:00Z",
+    customer: "한지우",
+    topic: "자기계발",
+    amount: 100,
+    status: "completed",
+    method: "chat",
+    duration: 60,
+    summary: "개인 브랜딩 및 네트워킹 전략에 대한 조언을 제공했습니다.",
+    notes: "적극적 성향, 실행력 우수"
+  }
 ];
 
-// 매칭된 전문가 데이터 (홈페이지용)
-export const dummyMatchedExperts = [
-  {
-    id: 1,
-    name: "박지영",
-    specialty: "심리상담",
-    rating: 4.9,
-    totalConsultations: 245,
-    price: "₩80,000",
-    duration: "50분",
-    tags: ["우울증", "불안장애", "대인관계"],
-    isOnline: true,
-    image: null,
-    description:
-      "임상심리학 박사로 8년간 다양한 심리상담 경험을 보유하고 있습니다.",
-  },
-  {
-    id: 2,
-    name: "이민수",
-    specialty: "법률상담",
-    rating: 4.8,
-    totalConsultations: 189,
-    price: "₩90,000",
-    duration: "60분",
-    tags: ["민사소송", "계약서", "부동산"],
-    isOnline: false,
-    image: null,
-    description:
-      "변호사 자격을 보유한 법률 전문가로 다양한 분야의 법률 상담을 제공합니다.",
-  },
-  {
-    id: 3,
-    name: "이소연",
-    specialty: "재무상담",
-    rating: 4.7,
-    totalConsultations: 89,
-    price: "₩70,000",
-    duration: "60분",
-    tags: ["투자", "자산관리", "세무"],
-    isOnline: true,
-    image: null,
-    description:
-      "금융권 15년 경력과 재무설계사 자격을 갖춘 전문가로 개인과 기업의 재무상담을 제공합니다.",
-  },
-];
+// 상담 통계 계산 함수
+export const getConsultationStats = (consultations: ConsultationItem[]) => {
+  const totalConsultations = consultations.length;
+  const completedConsultations = consultations.filter(c => c.status === "completed");
+  const scheduledConsultations = consultations.filter(c => c.status === "scheduled");
+  const canceledConsultations = consultations.filter(c => c.status === "canceled");
+  
+  const totalRevenue = completedConsultations.reduce((sum, c) => sum + c.amount, 0);
+  const averageRevenue = completedConsultations.length > 0 
+    ? totalRevenue / completedConsultations.length 
+    : 0;
+  
+  const totalDuration = completedConsultations.reduce((sum, c) => sum + (c.duration || 0), 0);
+  const averageDuration = completedConsultations.length > 0 
+    ? totalDuration / completedConsultations.length 
+    : 0;
+
+  const methodDistribution = {
+    video: consultations.filter(c => c.method === "video").length,
+    chat: consultations.filter(c => c.method === "chat").length,
+    voice: consultations.filter(c => c.method === "voice").length,
+    call: consultations.filter(c => c.method === "call").length,
+  };
+
+  return {
+    totalConsultations,
+    completedConsultations: completedConsultations.length,
+    scheduledConsultations: scheduledConsultations.length,
+    canceledConsultations: canceledConsultations.length,
+    completionRate: totalConsultations > 0 
+      ? Math.round((completedConsultations.length / totalConsultations) * 100) 
+      : 0,
+    totalRevenue,
+    averageRevenue: Math.round(averageRevenue),
+    totalDuration,
+    averageDuration: Math.round(averageDuration),
+    methodDistribution
+  };
+};
+
+// 날짜별 상담 데이터 그룹화
+export const groupConsultationsByDate = (consultations: ConsultationItem[]) => {
+  const grouped = consultations.reduce((acc, consultation) => {
+    const date = new Date(consultation.date).toISOString().split('T')[0];
+    if (!acc[date]) {
+      acc[date] = [];
+    }
+    acc[date].push(consultation);
+    return acc;
+  }, {} as Record<string, ConsultationItem[]>);
+
+  return grouped;
+};
+
+// 고객별 상담 히스토리
+export const getCustomerHistory = (consultations: ConsultationItem[], customerName: string) => {
+  return consultations
+    .filter(c => c.customer === customerName)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+};

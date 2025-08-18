@@ -59,6 +59,7 @@ interface ExpertProfileData {
     | "sunday",
     { available: boolean; hours: string }
   >;
+  holidayPolicy?: string; // 공휴일 정책 추가
   contactInfo: {
     phone: string;
     email: string;
@@ -109,6 +110,7 @@ const ExpertProfile = ({ expertData, onSave, isEditing: externalIsEditing, onEdi
       saturday: { available: false, hours: "09:00-18:00" },
       sunday: { available: false, hours: "09:00-18:00" },
     },
+    holidayPolicy: expertData?.holidayPolicy || "", // 공휴일 정책 추가
     contactInfo: {
       phone: expertData?.contactInfo?.phone || "",
       email: expertData?.contactInfo?.email || "",
@@ -255,6 +257,8 @@ const ExpertProfile = ({ expertData, onSave, isEditing: externalIsEditing, onEdi
     }));
   };
 
+
+
   const handleFileUpload = (
     event: { target: { files: FileList | null } },
     type: "profile" | "portfolio"
@@ -356,10 +360,8 @@ const ExpertProfile = ({ expertData, onSave, isEditing: externalIsEditing, onEdi
   if (!isEditing && expertData?.isProfileComplete) {
     // 프로필 보기 모드 - 사용자 페이지와 비슷한 구성
     return (
-      <div className="min-h-screen bg-gray-50">
-
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div>
+        <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* 메인 컨텐츠 */}
             <div className="lg:col-span-2 space-y-6">
@@ -695,61 +697,84 @@ const ExpertProfile = ({ expertData, onSave, isEditing: externalIsEditing, onEdi
 
               {/* 상담 가능 시간 */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
-              <Calendar className="h-5 w-5 text-blue-600 mr-2" />
-              상담 가능 시간
-                </h3>
-            {(() => {
-                  const availableDays = Object.keys(profileData.availability).filter(
-                    day => profileData.availability[day as keyof typeof profileData.availability]?.available
-              );
-                  
-              if (availableDays.length === 0) {
-                return (
-                  <p className="text-sm text-gray-500">
-                    등록된 상담 가능 시간이 없습니다.
-                  </p>
-                );
-              }
-                  
-                  const dayNames = {
-                    monday: "월요일",
-                    tuesday: "화요일",
-                    wednesday: "수요일",
-                    thursday: "목요일",
-                    friday: "금요일",
-                    saturday: "토요일",
-                    sunday: "일요일",
-                  };
-                  
-              return (
-                    <div className="space-y-2">
-                  {availableDays.map((day) => (
-                    <div
-                      key={day}
-                          className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg"
-                    >
-                      <div className="flex items-center">
-                        <Calendar className="h-4 w-4 text-green-600 mr-2" />
-                        <span className="text-sm font-medium text-gray-800">
-                              {dayNames[day as keyof typeof dayNames]}
-                        </span>
-                      </div>
-                      <span className="text-sm font-semibold text-green-700">
-                            {profileData.availability[day as keyof typeof profileData.availability]?.hours}
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-gray-900 flex items-center">
+                    <Calendar className="h-5 w-5 text-blue-600 mr-2" />
+                    상담 가능 요일
+                  </h3>
+                  {profileData.holidayPolicy && (
+                    <div className="flex items-center space-x-2">
+                      <Calendar className="h-4 w-4 text-orange-500" />
+                      <span className="text-sm text-orange-600 bg-orange-50 px-2 py-1 rounded-full border border-orange-100">
+                        {profileData.holidayPolicy}
                       </span>
                     </div>
-                  ))}
+                  )}
                 </div>
-              );
-            })()}
+
+                {/* 상담 가능 요일 간단 표시 */}
+                <div className="mb-4">
+                  <div className="flex flex-wrap gap-2">
+                    {Object.keys(profileData.availability).map((day) => {
+                      const dayNames: { [key: string]: string } = {
+                        monday: "월",
+                        tuesday: "화",
+                        wednesday: "수",
+                        thursday: "목",
+                        friday: "금",
+                        saturday: "토",
+                        sunday: "일",
+                      };
+                      
+                      const isAvailable = profileData.availability[day as keyof typeof profileData.availability]?.available;
+                      
+                      return isAvailable ? (
+                        <span
+                          key={day}
+                          className="inline-flex items-center px-3 py-1.5 bg-green-100 text-green-800 text-sm font-medium rounded-full border border-green-200"
+                        >
+                          {dayNames[day]}요일
+                        </span>
+                      ) : null;
+                    })}
+                  </div>
+                  {!Object.keys(profileData.availability).some((day) => 
+                    profileData.availability[day as keyof typeof profileData.availability]?.available
+                  ) && (
+                    <p className="text-sm text-gray-500">등록된 상담 가능 요일이 없습니다.</p>
+                  )}
+                </div>
+                
+                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-sm text-blue-800">
+                    <strong>참고:</strong> 상담 가능 요일에는 일반적으로 오전 9시부터 오후 6시까지 상담이 가능합니다.
+                    구체적인 예약 시간은 고객과 직접 조율하여 결정하세요.
+                  </p>
+                </div>
+
+                {/* 공휴일 정책 안내 */}
+                {profileData.holidayPolicy && (
+                  <div className="mt-4 p-3 bg-orange-50 rounded-lg border border-orange-100">
+                    <div className="flex items-start space-x-3">
+                      <Calendar className="h-4 w-4 text-orange-500 mt-0.5" />
+                      <div>
+                        <h4 className="text-sm font-medium text-orange-800 mb-1">공휴일 안내</h4>
+                        <p className="text-sm text-orange-700">
+                          {profileData.holidayPolicy === "공휴일 휴무" && "공휴일에는 상담을 진행하지 않습니다."}
+                          {profileData.holidayPolicy === "공휴일 정상 운영" && "공휴일에도 평소와 동일하게 상담이 가능합니다."}
+                          {profileData.holidayPolicy === "공휴일 오전만 운영" && "공휴일에는 오전 시간대만 상담이 가능합니다."}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
           {/* 포트폴리오 섹션 */}
           {profileData.portfolioFiles.length > 0 && (
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="max-w-6xl mx-auto py-8">
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
                 <FileText className="h-5 w-5 text-blue-600 mr-2" />
@@ -1058,61 +1083,92 @@ const ExpertProfile = ({ expertData, onSave, isEditing: externalIsEditing, onEdi
               <Calendar className="h-5 w-5 text-blue-600 mr-2" />
               상담 가능 시간
             </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {daysOrder.map((day) => {
-                const availabilityForDay = profileData.availability[day];
-                const isAvailable = availabilityForDay?.available;
-                const hours = availabilityForDay?.hours ?? "09:00-18:00";
-                return (
-                  <div
-                    key={day}
-                    className="p-4 border border-gray-200 rounded-lg"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <label className="flex items-center">
-                        <input
-                          type="checkbox"
-                          className="mr-2 h-4 w-4"
-                          checked={!!isAvailable}
-                          onChange={() =>
-                            handleAvailabilityChange(
-                              day,
-                              "available",
-                              !isAvailable
-                            )
-                          }
-                        />
-                        <span className="text-sm font-medium text-gray-800">
-                          {dayNames[day]}
+            
+            {/* 공휴일 정책 선택 */}
+            <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+              <h5 className="text-sm font-medium text-orange-800 mb-3 flex items-center">
+                <Calendar className="h-4 w-4 text-orange-600 mr-2" />
+                공휴일 상담 정책
+              </h5>
+              <div className="space-y-2">
+                {[
+                  { value: "", label: "정책 없음 (기본)" },
+                  { value: "공휴일 휴무", label: "공휴일 휴무" },
+                  { value: "공휴일 정상 운영", label: "공휴일 정상 운영" },
+                  { value: "공휴일 오전만 운영", label: "공휴일 오전만 운영" }
+                ].map((option) => (
+                  <label key={option.value} className="flex items-center cursor-pointer">
+                    <input
+                      type="radio"
+                      name="holidayPolicy"
+                      value={option.value}
+                      checked={profileData.holidayPolicy === option.value}
+                      onChange={(e) => handleInputChange("holidayPolicy", e.target.value)}
+                      className="mr-3 h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300"
+                    />
+                    <span className="text-sm text-gray-700">{option.label}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-orange-600 mt-2">
+                선택한 정책은 고객에게 표시되어 공휴일 상담 가능 여부를 알려줍니다.
+              </p>
+            </div>
+
+            {/* 간단한 요일별 상담 가능 설정 */}
+            <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+              <h5 className="text-sm font-medium text-gray-800 mb-4">주간 상담 가능 요일</h5>
+              
+              {/* 요일 선택 그리드 */}
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+                {daysOrder.map((day) => {
+                  const isAvailable = profileData.availability[day]?.available;
+                  
+                  return (
+                    <div key={day} className="text-center">
+                      <label className="flex flex-col items-center cursor-pointer">
+                        <div className={`w-full p-4 rounded-lg border-2 transition-all duration-200 ${
+                          isAvailable 
+                            ? "border-green-500 bg-green-50 text-green-800" 
+                            : "border-gray-300 bg-white text-gray-600 hover:border-gray-400"
+                        }`}>
+                          <div className="text-sm font-medium mb-2">
+                            {dayNames[day]}
+                          </div>
+                          <input
+                            type="checkbox"
+                            className="h-5 w-5 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                            checked={!!isAvailable}
+                            onChange={() => {
+                              const newAvailable = !isAvailable;
+                              handleAvailabilityChange(day, "available", newAvailable);
+                              // 활성화할 때 기본 시간 설정, 비활성화할 때 시간 초기화
+                              if (newAvailable) {
+                                handleAvailabilityChange(day, "hours", "09:00-18:00");
+                              } else {
+                                handleAvailabilityChange(day, "hours", "");
+                              }
+                            }}
+                          />
+                        </div>
+                        <span className={`mt-2 text-xs font-medium ${
+                          isAvailable ? "text-green-600" : "text-gray-500"
+                        }`}>
+                          {isAvailable ? "상담 가능" : "상담 불가"}
                         </span>
                       </label>
-                      <span
-                        className={
-                          isAvailable
-                            ? "text-green-600 text-sm"
-                            : "text-gray-400 text-sm"
-                        }
-                      >
-                        {isAvailable ? "가능" : "미가능"}
-                      </span>
                     </div>
-                    <input
-                      type="text"
-                      value={hours}
-                      onChange={(e) =>
-                        handleAvailabilityChange(day, "hours", e.target.value)
-                      }
-                      disabled={!isAvailable}
-                      className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
-                        isAvailable
-                          ? "border-gray-300"
-                          : "border-gray-200 bg-gray-100 text-gray-400"
-                      }`}
-                      placeholder="예: 09:00-12:00, 13:00-18:00"
-                    />
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+
+              {/* 설명 */}
+              <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-sm text-blue-800">
+                  <strong>사용법:</strong> 
+                  상담을 제공하고 싶은 요일을 선택하세요. 선택된 요일에는 기본적으로 오전 9시부터 오후 6시까지 상담이 가능한 것으로 설정됩니다.
+                </p>
+              </div>
             </div>
           </div>
 

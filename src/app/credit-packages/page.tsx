@@ -119,27 +119,22 @@ export default function CreditPackagesPage() {
 
   return (
     <ServiceLayout>
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* 헤더 */}
-          <div className="mb-6 sm:mb-8">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex-1">
-                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-                    크레딧 충전
-                  </h1>
-                  <p className="text-sm sm:text-base text-gray-600 mt-2">
-                    상담에 필요한 크레딧을 충전하세요. 충전량이 많을수록 더 많은
-                    보너스 혜택을 받을 수 있습니다.
-                  </p>
-                </div>
-              </div>
+          <div className="mb-6">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                크레딧 충전
+              </h1>
+              <p className="text-gray-600 mt-1">
+                상담에 필요한 크레딧을 충전하세요. 충전량이 많을수록 더 많은
+                보너스 혜택을 받을 수 있습니다.
+              </p>
             </div>
           </div>
 
           {/* 새로운 과금 체계 안내 */}
-          <div className="mb-6 sm:mb-8">
+          <div className="mb-6">
             <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
               <h3 className="text-sm font-semibold text-blue-900 mb-2">
                 💡 새로운 전문가 레벨별 과금 체계
@@ -167,16 +162,16 @@ export default function CreditPackagesPage() {
           </div>
 
           {/* 크레딧 잔액 */}
-          <div className="mb-6 sm:mb-8">
+          <div className="mb-6">
             <CreditBalance credits={remainingAIChatCredits} />
           </div>
 
           {/* 패키지 카드들 */}
-          <div className="mb-6 sm:mb-8">
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">
+          <div className="mb-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">
               크레딧 충전 패키지
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 max-w-4xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {packs.map((pack) => (
                 <PackCard key={pack.id} pack={pack} />
               ))}
@@ -184,7 +179,7 @@ export default function CreditPackagesPage() {
           </div>
 
           {/* 패키지 비교 테이블 - 데스크톱용 */}
-          <div className="hidden lg:block bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden max-w-4xl mx-auto">
+          <div className="hidden lg:block bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-medium text-gray-900">
                 크레딧 충전 비교
@@ -271,7 +266,7 @@ export default function CreditPackagesPage() {
           </div>
 
           {/* 패키지 비교 카드 - 모바일/태블릿용 */}
-          <div className="lg:hidden max-w-4xl mx-auto">
+          <div className="lg:hidden">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6">
               <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
                 <h3 className="text-lg font-medium text-gray-900">
@@ -349,7 +344,6 @@ export default function CreditPackagesPage() {
             </div>
           </div>
         </div>
-      </div>
     </ServiceLayout>
   );
 }

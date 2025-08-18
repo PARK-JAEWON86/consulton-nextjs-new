@@ -12,7 +12,7 @@ import {
   Settings,
   User,
   Bell,
-  BarChart3,
+  Star,
   CreditCard,
   LifeBuoy,
   Megaphone,
@@ -101,7 +101,12 @@ const Sidebar: React.FC<SidebarProps> = ({
           icon: User,
           path: "/dashboard/expert/profile",
         },
-        { id: "analytics", name: "분석", icon: BarChart3, path: "/analytics" },
+        {
+          id: "reviews",
+          name: "리뷰 관리",
+          icon: Star,
+          path: "/dashboard/expert/reviews",
+        },
         {
           id: "payouts",
           name: "정산/출금",

@@ -16,8 +16,12 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
+  Star,
+  ExternalLink,
 } from "lucide-react";
 import { useConsultationsStore } from "@/stores/consultationsStore";
+import { dummyConsultations } from "@/data/dummy/consultations";
+import { dummyReviews } from "@/data/dummy/reviews";
 
 type DetailItem = {
   id: number;
@@ -50,6 +54,22 @@ function getMethodLabel(method?: string) {
   return method;
 }
 
+// 고객이 리뷰를 남겼는지 확인하는 함수
+function hasCustomerLeftReview(customerName: string, expertId: number = 1) {
+  return dummyReviews.some(review => 
+    review.userName === customerName && 
+    review.expertId === expertId
+  );
+}
+
+// 고객이 남긴 리뷰 찾기
+function getCustomerReview(customerName: string, expertId: number = 1) {
+  return dummyReviews.find(review => 
+    review.userName === customerName && 
+    review.expertId === expertId
+  );
+}
+
 export default function ExpertConsultationDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -57,32 +77,34 @@ export default function ExpertConsultationDetailPage() {
   const updateById = useConsultationsStore((s) => s.updateById);
 
   const id = Number(params?.id);
+  
+  // 현재 상담의 고객이 리뷰를 남겼는지 확인
+  const customerHasReview = useMemo(() => {
+    const consultation = dummyConsultations.find(c => c.id === id);
+    if (!consultation) return false;
+    return hasCustomerLeftReview(consultation.customer);
+  }, [id]);
+
+  // 고객이 남긴 리뷰 데이터
+  const customerReview = useMemo(() => {
+    const consultation = dummyConsultations.find(c => c.id === id);
+    if (!consultation) return null;
+    return getCustomerReview(consultation.customer);
+  }, [id]);
 
   const fallbackItems: DetailItem[] = useMemo(
-    () => [
-      {
-        id: 3000,
-        date: "2024-05-09T10:00:00Z",
-        customer: "김민수",
-        topic: "진로 상담",
-        amount: 80,
-        status: "completed",
-        method: "chat",
-        duration: 40,
-        summary: "진로 방향 설정 및 목표 수립에 대한 상담을 진행했습니다.",
-      },
-      {
-        id: 3001,
-        date: "2024-05-05T08:00:00Z",
-        customer: "박지영",
-        topic: "심리 상담",
-        amount: 299,
-        status: "completed",
-        method: "video",
-        duration: 60,
-        summary: "스트레스 관리와 일상 루틴 개선 방안을 논의했습니다.",
-      },
-    ],
+    () => dummyConsultations.map((consultation) => ({
+      id: consultation.id,
+      date: consultation.date,
+      customer: consultation.customer,
+      topic: consultation.topic,
+      amount: consultation.amount,
+      status: consultation.status,
+      method: consultation.method,
+      duration: consultation.duration,
+      summary: consultation.summary,
+      notes: consultation.notes,
+    })),
     []
   );
 
@@ -95,7 +117,7 @@ export default function ExpertConsultationDetailPage() {
   if (!record) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <button
             onClick={() => router.back()}
             className="inline-flex items-center text-gray-700 hover:text-gray-900 mb-6"
@@ -136,7 +158,7 @@ export default function ExpertConsultationDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <button
           onClick={() => router.back()}
           className="inline-flex items-center text-gray-700 hover:text-gray-900 mb-6"
@@ -144,20 +166,47 @@ export default function ExpertConsultationDetailPage() {
           <ArrowLeft className="h-4 w-4 mr-2" /> 뒤로가기
         </button>
 
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold text-gray-900">
-            상담 상세 #{record.id}
-          </h1>
-          <StatusBadge />
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                상담 상세 #{record.id}
+              </h1>
+            </div>
+            <StatusBadge />
+          </div>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
             <div className="p-6 border-b md:border-b-0 md:border-r">
               <div className="text-xs text-gray-500 mb-1">고객</div>
-              <div className="flex items-center text-gray-900">
-                <User className="h-4 w-4 mr-2 text-gray-400" />{" "}
-                {record.customer}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center text-gray-900">
+                  <User className="h-4 w-4 mr-2 text-gray-400" />{" "}
+                  {record.customer}
+                  {customerHasReview && (
+                    <div className="ml-2 flex items-center">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <span className="ml-1 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
+                        리뷰 작성함
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {customerHasReview && customerReview && (
+                  <button
+                    onClick={() => {
+                      // 리뷰 관리 페이지로 이동하면서 해당 리뷰로 스크롤
+                      router.push(`/dashboard/expert/reviews?highlight=${customerReview.id}`);
+                    }}
+                    className="inline-flex items-center px-2 py-1 text-xs text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors"
+                  >
+                    <Star className="h-3 w-3 mr-1" />
+                    리뷰 보기
+                    <ExternalLink className="h-3 w-3 ml-1" />
+                  </button>
+                )}
               </div>
             </div>
             <div className="p-6 border-b">

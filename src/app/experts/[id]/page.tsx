@@ -21,7 +21,8 @@ import {
 } from "lucide-react";
 import { useExpertProfileStore } from "@/stores/expertProfileStore";
 import { initializeDummyExpertsToStore, dummyExperts, convertExpertItemToProfile } from "@/data/dummy/experts";
-import { ExpertProfile } from "@/types";
+import { dummyReviews } from "@/data/dummy/reviews";
+import { ExpertProfile, Review } from "@/types";
 import { calculateExpertLevel, getLevelBadgeStyles, getKoreanLevelName } from "@/utils/expertLevels";
 import MatchedExpertsSection from "@/components/home/MatchedExpertsSection";
 
@@ -33,6 +34,7 @@ export default function ExpertProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'availability'>('overview');
   const [similarExperts, setSimilarExperts] = useState<ExpertProfile[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
   
   // 전문가 프로필 스토어 사용
   const { getProfile, getAllProfiles } = useExpertProfileStore();
@@ -171,6 +173,10 @@ export default function ExpertProfilePage() {
     if (foundExpert) {
       setExpert(foundExpert);
       
+      // 해당 전문가의 리뷰 로드
+      const expertReviews = dummyReviews.filter(review => review.expertId === foundExpert.id);
+      setReviews(expertReviews);
+      
       // 검색 컨텍스트 추출
       const searchContext = {
         fromCategory: searchParams.get('fromCategory'),
@@ -263,9 +269,9 @@ export default function ExpertProfilePage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="relative flex gap-8">
           {/* 메인 컨텐츠 */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="flex-1 min-w-0 w-full lg:w-auto space-y-6">
             {/* 전문가 기본 정보 */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
               <div className="p-6">
@@ -448,7 +454,7 @@ export default function ExpertProfilePage() {
                 </div>
 
               {/* 탭 컨텐츠 */}
-              <div className="px-6">
+              <div className="px-6 pb-8">
                 {activeTab === 'overview' && (
                   <div className="space-y-6">
                     <div>
@@ -506,15 +512,154 @@ export default function ExpertProfilePage() {
                 )}
 
                 {activeTab === 'reviews' && (
-                  <div className="text-center py-8">
-                    <MessageCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500">리뷰 기능은 준비 중입니다.</p>
+                  <div>
+                    {/* 리뷰 통계 */}
+                    <div className="mb-6 p-6 bg-gray-50 rounded-lg">
+                      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+                        <div className="flex-shrink-0">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-2">고객 리뷰</h3>
+                          <div className="flex items-center space-x-4">
+                            <div className="flex items-center">
+                              <Star className="h-5 w-5 text-yellow-500 fill-current" />
+                              <span className="text-xl font-bold text-gray-900 ml-1">{expert.rating}</span>
+                              <span className="text-gray-600 ml-2">({reviews.length}개 리뷰)</span>
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {reviews.filter(r => r.isVerified).length}개 인증된 리뷰
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex-shrink-0 min-w-0">
+                          <div className="space-y-2">
+                            {[5, 4, 3, 2, 1].map((rating) => (
+                              <div key={rating} className="flex items-center text-sm min-w-0">
+                                <span className="w-3 text-gray-600 flex-shrink-0">{rating}</span>
+                                <Star className="h-3 w-3 text-yellow-400 fill-current mx-1 flex-shrink-0" />
+                                <div className="w-20 bg-gray-200 rounded-full h-2 mr-2 flex-shrink-0">
+                                  <div 
+                                    className="bg-yellow-400 h-2 rounded-full" 
+                                    style={{ 
+                                      width: `${reviews.length > 0 ? (reviews.filter(r => r.rating === rating).length / reviews.length) * 100 : 0}%` 
+                                    }}
+                                  ></div>
+                                </div>
+                                <span className="text-xs text-gray-500 w-8 text-right flex-shrink-0">
+                                  {reviews.filter(r => r.rating === rating).length}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 리뷰 목록 */}
+                    <div className="space-y-6">
+                      {reviews.length === 0 ? (
+                        <div className="text-center py-8">
+                          <MessageCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                          <p className="text-gray-500">아직 리뷰가 없습니다.</p>
+                        </div>
+                      ) : (
+                        reviews.map((review) => (
+                          <div key={review.id} className="bg-white border border-gray-200 rounded-lg p-6">
+                            {/* 리뷰 헤더 */}
+                            <div className="flex items-start justify-between mb-4">
+                              <div className="flex items-center">
+                                <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
+                                  <span className="text-sm font-medium text-gray-600">
+                                    {review.userName.charAt(0)}
+                                  </span>
+                                </div>
+                                <div className="ml-3">
+                                  <div className="flex items-center">
+                                    <p className="font-medium text-gray-900">{review.userName}</p>
+                                    {review.isVerified && (
+                                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        인증됨
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center mt-1">
+                                    <div className="flex items-center">
+                                      {[1, 2, 3, 4, 5].map((star) => (
+                                        <Star
+                                          key={star}
+                                          className={`w-4 h-4 ${
+                                            star <= review.rating ? "text-yellow-400 fill-current" : "text-gray-300"
+                                          }`}
+                                        />
+                                      ))}
+                                    </div>
+                                    <span className="ml-2 text-sm text-gray-500">
+                                      {new Date(review.createdAt).toLocaleDateString("ko-KR", {
+                                        year: "numeric",
+                                        month: "long",
+                                        day: "numeric"
+                                      })}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center text-sm text-gray-500">
+                                {review.consultationType === "video" && <Video className="w-4 h-4 text-blue-500 mr-1" />}
+                                {review.consultationType === "voice" && <Phone className="w-4 h-4 text-green-500 mr-1" />}
+                                {review.consultationType === "chat" && <MessageCircle className="w-4 h-4 text-purple-500 mr-1" />}
+                                <span>{review.consultationTopic}</span>
+                              </div>
+                            </div>
+
+                            {/* 리뷰 내용 */}
+                            <div className="mb-4">
+                              <p className="text-gray-700 leading-relaxed">{review.comment}</p>
+                            </div>
+
+                            {/* 전문가 답글 */}
+                            {review.expertReply && (
+                              <div className="bg-blue-50 rounded-lg p-4 border-l-4 border-blue-500">
+                                <div className="flex items-start">
+                                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <span className="text-xs font-medium text-white">
+                                      {expert.name.charAt(0)}
+                                    </span>
+                                  </div>
+                                  <div className="ml-3 flex-1">
+                                    <div className="flex items-center mb-1">
+                                      <p className="font-medium text-blue-900">{expert.name} 전문가</p>
+                                      <span className="ml-2 text-xs text-blue-600">
+                                        {new Date(review.expertReply.createdAt).toLocaleDateString("ko-KR", {
+                                          year: "numeric",
+                                          month: "long",
+                                          day: "numeric"
+                                        })}
+                                      </span>
+                                    </div>
+                                    <p className="text-blue-800">{review.expertReply.message}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </div>
                 )}
 
                 {activeTab === 'availability' && (
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-6">주간 예약 가능 시간</h3>
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-lg font-semibold text-gray-900">주간 상담 가능 요일</h3>
+                      {expert.holidayPolicy && (
+                        <div className="flex items-center space-x-2">
+                          <Calendar className="h-4 w-4 text-orange-500" />
+                          <span className="text-sm text-orange-600 bg-orange-50 px-2 py-1 rounded-full border border-orange-100">
+                            {expert.holidayPolicy}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
                       {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => {
                         const dayNames: { [key: string]: string } = {
@@ -527,26 +672,26 @@ export default function ExpertProfilePage() {
                           sunday: '일요일'
                         };
                         
-                        const hours = expert.weeklyAvailability[day] || [];
+                        const isAvailable = expert.availability && expert.availability[day as keyof typeof expert.availability]?.available;
                         
                         return (
                           <div key={day} className="text-center">
-                            <div className="font-semibold text-gray-900 mb-3 py-2 bg-gray-50 rounded-lg">
-                              {dayNames[day]}
-                            </div>
-                            <div className="space-y-2">
-                              {hours.length > 0 ? (
-                                hours.map((hour, index) => (
-                                  <div 
-                                    key={index} 
-                                    className="px-2 py-1.5 bg-green-50 text-green-700 text-sm rounded border border-green-100 hover:bg-green-100 transition-colors"
-                                  >
-                                    {hour}
-                                  </div>
-                                ))
-                              ) : (
-                                <div className="px-2 py-1.5 bg-gray-50 text-gray-400 text-sm rounded border border-gray-100">
-                                  휴무
+                            <div className={`p-4 rounded-lg border-2 transition-all duration-200 ${
+                              isAvailable 
+                                ? "border-green-500 bg-green-50" 
+                                : "border-gray-300 bg-gray-50"
+                            }`}>
+                              <div className="text-sm font-medium mb-2 text-gray-900">
+                                {dayNames[day]}
+                              </div>
+                              <div className={`text-xs font-medium ${
+                                isAvailable ? "text-green-600" : "text-gray-500"
+                              }`}>
+                                {isAvailable ? "상담 가능" : "상담 불가"}
+                              </div>
+                              {isAvailable && (
+                                <div className="mt-2 text-xs text-green-600 bg-green-100 px-2 py-1 rounded">
+                                  09:00-18:00
                                 </div>
                               )}
                             </div>
@@ -554,6 +699,35 @@ export default function ExpertProfilePage() {
                         );
                       })}
                     </div>
+                    
+                    <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
+                      <div className="flex items-start space-x-3">
+                        <Calendar className="h-5 w-5 text-blue-500 mt-0.5" />
+                        <div>
+                          <h4 className="text-sm font-medium text-blue-800 mb-1">상담 시간 안내</h4>
+                          <p className="text-sm text-blue-700">
+                            상담 가능 요일에는 일반적으로 오전 9시부터 오후 6시까지 상담이 가능합니다. 
+                            구체적인 예약 시간은 전문가와 직접 조율하여 결정됩니다.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {expert.holidayPolicy && (
+                      <div className="mt-4 p-4 bg-orange-50 rounded-lg border border-orange-100">
+                        <div className="flex items-start space-x-3">
+                          <Calendar className="h-5 w-5 text-orange-500 mt-0.5" />
+                          <div>
+                            <h4 className="text-sm font-medium text-orange-800 mb-1">공휴일 안내</h4>
+                            <p className="text-sm text-orange-700">
+                              {expert.holidayPolicy === "공휴일 휴무" && "공휴일에는 상담을 진행하지 않습니다."}
+                              {expert.holidayPolicy === "공휴일 정상 운영" && "공휴일에도 평소와 동일하게 상담이 가능합니다."}
+                              {expert.holidayPolicy === "공휴일 오전만 운영" && "공휴일에는 오전 시간대만 상담이 가능합니다."}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -561,7 +735,7 @@ export default function ExpertProfilePage() {
           </div>
 
           {/* 사이드바 */}
-          <div className="space-y-6">
+          <div className="hidden lg:block w-72 flex-shrink-0 space-y-6">
             {/* 상담 신청 카드 */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <div className="mb-4">

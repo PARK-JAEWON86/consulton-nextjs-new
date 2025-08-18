@@ -220,12 +220,7 @@ const AccountSettings = () => {
   };
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">계정 설정</h2>
-        <p className="text-gray-600 mb-6">계정 정보와 보안을 관리하세요.</p>
-      </div>
-
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
       {/* 이메일 설정 */}
       <div className="bg-gray-50 rounded-lg p-6">
         <div className="flex items-center space-x-3 mb-4">
@@ -238,7 +233,7 @@ const AccountSettings = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               현재 이메일
             </label>
-            <div className="flex items-center space-x-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 space-y-2 sm:space-y-0">
               <input
                 type="email"
                 value={emailSettings.currentEmail}
@@ -246,11 +241,11 @@ const AccountSettings = () => {
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500"
               />
               {emailSettings.emailVerified ? (
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 self-start sm:self-center">
                   인증됨
                 </span>
               ) : (
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 self-start sm:self-center">
                   미인증
                 </span>
               )}
@@ -261,7 +256,7 @@ const AccountSettings = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               새 이메일 주소
             </label>
-            <div className="flex space-x-3">
+            <div className="flex flex-col sm:flex-row sm:space-x-3 space-y-2 sm:space-y-0">
               <input
                 type="email"
                 value={emailSettings.newEmail}
@@ -277,7 +272,7 @@ const AccountSettings = () => {
               <button
                 onClick={handleEmailSave}
                 disabled={saveStatus.email === "saving"}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 whitespace-nowrap"
               >
                 {saveStatus.email === "saving" ? (
                   <>
@@ -450,7 +445,7 @@ const AccountSettings = () => {
             <button
               onClick={handlePasswordSave}
               disabled={saveStatus.password === "saving"}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 whitespace-nowrap"
             >
               {saveStatus.password === "saving" ? (
                 <>

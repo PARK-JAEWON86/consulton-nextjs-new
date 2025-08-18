@@ -89,13 +89,17 @@ const ExpertSearch = () => {
   const [consultationSummary, setConsultationSummary] = useState("");
   const [showRecommendation, setShowRecommendation] = useState(true);
   const [isRecommendationCollapsed, setIsRecommendationCollapsed] =
-    useState(false);
+    useState(true);
   const [showAllCategories, setShowAllCategories] = useState(false);
 
   // 전문가 프로필 스토어 사용
   const { getAllProfiles } = useExpertProfileStore();
 
-  // 스토어에서 전문가 데이터 가져오기
+  // 스토어 초기화 및 전문가 데이터 가져오기
+  useEffect(() => {
+    initializeDummyExpertsToStore();
+  }, []);
+
   const allExperts: ExpertItem[] = getAllProfiles();
 
   // 기존 샘플 데이터는 주석 처리
@@ -473,20 +477,16 @@ const ExpertSearch = () => {
 
   return (
     <ServiceLayout>
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 헤더 */}
-        <div className="mb-8">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex-1">
-                <h1 className="text-3xl font-bold text-gray-900">
-                  전문가 찾기
-                </h1>
-                <p className="text-gray-600 mt-2">
-                  다양한 분야의 전문가들을 찾아 상담받아보세요
-                </p>
-              </div>
-            </div>
+        <div className="mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              전문가 찾기
+            </h1>
+            <p className="text-gray-600 mt-1">
+              다양한 분야의 전문가들을 찾아 상담받아보세요
+            </p>
           </div>
         </div>
 
@@ -500,7 +500,7 @@ const ExpertSearch = () => {
         />
 
         {/* 검색 및 필터 바 */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <div className="flex flex-col lg:flex-row gap-4">
             {/* 검색 입력 */}
             <div className="flex-1 relative">
@@ -918,7 +918,7 @@ const ExpertSearch = () => {
 
         {/* 하단 페이징 */}
         {filteredExperts.length > 0 && totalPages > 1 && (
-          <div className="mt-8">
+          <div className="mt-6">
             <div className="flex items-center justify-center space-x-4">
               <button
                 onClick={handlePrevPage}

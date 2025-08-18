@@ -208,20 +208,20 @@ export default function BecomeExpertPage() {
 
   return (
     <ServiceLayout>
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <header className="mb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-semibold border border-blue-100">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <header className="mb-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-semibold border border-blue-100 mb-3">
             <Sparkles className="w-3.5 h-3.5" />
             전문가 되기
           </div>
-          <h1 className="mt-3 text-3xl font-bold text-gray-900">전문가 등록</h1>
-          <p className="mt-2 text-gray-600">
+          <h1 className="text-2xl font-bold text-gray-900">전문가 등록</h1>
+          <p className="text-gray-600 mt-1">
             경험과 지식을 나누고 수익을 만들어보세요. 4단계로 등록 신청을 완료할 수 있습니다.
           </p>
         </header>
 
         {/* 혜택 카드 */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="p-5 bg-white rounded-xl border border-gray-200 shadow-sm">
             <Users className="w-5 h-5 text-blue-600" />
             <h3 className="mt-3 font-semibold text-gray-900">고객 연결</h3>
