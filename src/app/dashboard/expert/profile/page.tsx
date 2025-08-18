@@ -41,6 +41,7 @@ type ExpertProfileData = {
   totalSessions: number;
   avgRating: number;
   availability: Availability;
+  holidayPolicy?: string; // 공휴일 정책 추가
   contactInfo: {
     phone: string;
     email: string;
@@ -98,6 +99,7 @@ export default function ExpertProfilePage() {
         totalSessions: currentProfile.totalSessions,
         avgRating: currentProfile.avgRating,
         availability: currentProfile.availability,
+        holidayPolicy: currentProfile.holidayPolicy, // 공휴일 정책 추가
         contactInfo: currentProfile.contactInfo,
         profileImage: currentProfile.profileImage,
         portfolioFiles: currentProfile.portfolioFiles,
@@ -128,6 +130,7 @@ export default function ExpertProfilePage() {
           saturday: { available: false, hours: "09:00-18:00" },
           sunday: { available: false, hours: "09:00-18:00" },
         },
+        holidayPolicy: "", // 공휴일 정책 기본값
         contactInfo: { phone: "", email: "", location: "", website: "" },
         profileImage: null,
         portfolioFiles: [],
@@ -165,6 +168,7 @@ export default function ExpertProfilePage() {
       cancellationPolicy: '24시간 전 취소 가능',
       availability: updated.availability,
       weeklyAvailability: convertAvailabilityToWeekly(updated.availability),
+      holidayPolicy: updated.holidayPolicy, // 공휴일 정책 추가
       contactInfo: updated.contactInfo,
       location: updated.contactInfo.location || '서울, 대한민국',
       timeZone: 'KST (UTC+9)',
@@ -195,7 +199,7 @@ export default function ExpertProfilePage() {
   
   // availability를 weeklyAvailability로 변환하는 헬퍼 함수
   const convertAvailabilityToWeekly = (availability: Record<string, { available: boolean; hours: string }>) => {
-    const weeklyAvailability: Record<string, string[]> = {};
+    const weeklyAvailability: any = {};
     
     Object.entries(availability).forEach(([day, config]) => {
       if (config.available && config.hours) {

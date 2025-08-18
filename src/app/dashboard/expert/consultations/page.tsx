@@ -11,8 +11,11 @@ import {
   CreditCard,
   ChevronLeft,
   ChevronRight,
+  CheckCircle,
 } from "lucide-react";
 import { useConsultationsStore } from "@/stores/consultationsStore";
+import { dummyReviews } from "@/data/dummy/reviews";
+import { dummyConsultations } from "@/data/dummy/consultations";
 import { useRouter } from "next/navigation";
 
 type ConsultationStatus = "completed" | "scheduled" | "canceled";
@@ -28,6 +31,16 @@ interface Consultation {
 
 function formatCredits(amount: number) {
   return `${amount.toLocaleString()} 크레딧`;
+}
+
+// 고객이 리뷰를 남겼는지 확인하는 함수
+function hasCustomerLeftReview(customerName: string, expertId: number = 1): boolean {
+  // 더미 데이터에서는 고객 이름으로 매칭 (실제로는 userId로 매칭)
+  // 전문가 ID 1번에 대한 리뷰만 확인 (현재 더미 데이터 기준)
+  return dummyReviews.some(review => 
+    review.userName === customerName && 
+    review.expertId === expertId
+  );
 }
 
 export default function ExpertConsultationsPage() {
@@ -129,57 +142,15 @@ export default function ExpertConsultationsPage() {
         status: it.status,
       }));
     }
-    // 초기 더미 데이터 (스토어 비어있을 때만)
-    return [
-      {
-        id: 3000,
-        date: "2024-05-09T10:00:00Z",
-        customer: "김민수",
-        topic: "진로 상담",
-        amount: 80,
-        status: "completed",
-      },
-      {
-        id: 3001,
-        date: "2024-05-05T08:00:00Z",
-        customer: "박지영",
-        topic: "심리 상담",
-        amount: 299,
-        status: "completed",
-      },
-      {
-        id: 3002,
-        date: "2024-04-28T12:30:00Z",
-        customer: "이서준",
-        topic: "재무 상담",
-        amount: 150,
-        status: "completed",
-      },
-      {
-        id: 3003,
-        date: "2024-04-23T14:00:00Z",
-        customer: "최유진",
-        topic: "건강 상담",
-        amount: 80,
-        status: "canceled",
-      },
-      {
-        id: 3004,
-        date: "2024-04-18T11:00:00Z",
-        customer: "정하늘",
-        topic: "법률 상담",
-        amount: 115,
-        status: "scheduled",
-      },
-      {
-        id: 3005,
-        date: "2024-04-14T09:00:00Z",
-        customer: "한동훈",
-        topic: "부동산 상담",
-        amount: 299,
-        status: "completed",
-      },
-    ];
+    // 별도 더미 파일에서 데이터 가져오기
+    return dummyConsultations.map((it) => ({
+      id: it.id,
+      date: it.date,
+      customer: it.customer,
+      topic: it.topic,
+      amount: it.amount,
+      status: it.status,
+    }));
   }, [storeItems]);
 
   const filtered = consultations.filter((c) => {
@@ -206,14 +177,11 @@ export default function ExpertConsultationsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">상담내역</h1>
-            <p className="text-gray-600 mt-1">
-              상담 날짜, 고객, 주제, 정산 크레딧을 한눈에 확인하세요.
-            </p>
-          </div>
-          {/* 새 상담 등록 버튼 제거 */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">상담내역</h1>
+          <p className="text-gray-600 mt-1">
+            상담 날짜, 고객, 주제, 정산 크레딧을 한눈에 확인하세요.
+          </p>
         </div>
 
         {/* 검색과 필터 */}
@@ -347,7 +315,15 @@ export default function ExpertConsultationsPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                       <div className="flex items-center">
                         <User className="h-4 w-4 text-gray-400 mr-2" />
-                        {row.customer}
+                        <span>{row.customer}</span>
+                        {hasCustomerLeftReview(row.customer) && (
+                          <div className="ml-2 flex items-center">
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                            <span className="ml-1 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
+                              리뷰 작성함
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">

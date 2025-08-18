@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Star, MapPin, Clock, MessageCircle, Calendar } from "lucide-react";
+import { calculateCreditsByLevel } from "@/utils/expertLevels";
 
 interface Expert {
   id?: number;
@@ -18,6 +19,7 @@ interface Expert {
   totalSessions?: number;
   creditsPerMinute?: number;
   pricePerMinute?: number;
+  level?: number;
 }
 
 const ExpertCard = ({
@@ -114,7 +116,9 @@ const ExpertCard = ({
           {/* 가격 정보 */}
           <div className="flex items-center space-x-2">
             <span className="font-bold text-gray-900 text-xl">
-              {expert.creditsPerMinute || expert.pricePerMinute || 100}크레딧
+              {expert.level 
+                ? calculateCreditsByLevel(expert.level) 
+                : expert.creditsPerMinute || expert.pricePerMinute || 100}크레딧
             </span>
             <span className="text-sm text-gray-500">/분</span>
           </div>

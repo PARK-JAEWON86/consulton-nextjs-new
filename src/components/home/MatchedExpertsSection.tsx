@@ -144,7 +144,7 @@ export default function MatchedExpertsSection({
   };
 
   return (
-    <section className={title ? "py-16 bg-white" : "bg-transparent"}>
+    <section className={title ? "py-16 bg-white rounded-2xl border border-gray-200" : "bg-transparent"}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {title && (
           <div className="mb-8">
@@ -160,7 +160,7 @@ export default function MatchedExpertsSection({
             return (
               <div
                 key={expert.id}
-                className="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-lg transition-all duration-300 hover:border-blue-200"
+                className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-lg transition-all duration-300 hover:border-blue-200"
               >
                 <div className="p-6">
                   {/* 전문가 기본 정보 */}

@@ -87,7 +87,7 @@ const Navbar = ({ onBackToLanding, onNavigate }: NavbarProps = {}) => {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm shadow-sm border-b border-gray-200 py-4 h-16 z-40">
+      <nav className="fixed top-0 left-0 right-0 bg-gray-50/95 backdrop-blur-sm shadow-sm border-b border-gray-200 py-4 h-16 z-40">
         <div className="flex items-center justify-between px-14">
           {/* 좌측: 로고+토글 */}
           <div className="flex items-center gap-4">

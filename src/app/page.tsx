@@ -7,7 +7,7 @@
  * - 다양한 상담 분야 소개
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import HeroSection from "../components/home/HeroSection";
 import SearchingSection from "../components/home/SearchingSection";
 import MatchedExpertsSection from "../components/home/MatchedExpertsSection";
@@ -15,7 +15,8 @@ import StatsSection from "../components/home/StatsSection";
 import PopularCategoriesSection from "../components/home/PopularCategoriesSection";
 import AIChatPromoSection from "../components/home/AIChatPromoSection";
 import Footer from "../components/layout/Footer";
-import { dummyExperts } from "../data/dummy/experts";
+import { useExpertProfileStore } from "@/stores/expertProfileStore";
+import { initializeDummyExpertsToStore, convertExpertItemToProfile } from "../data/dummy/experts";
 import {
   Users,
   Target,
@@ -60,6 +61,14 @@ export default function HomePage() {
 
   // 카테고리 표시 상태
   const [showAllCategories, setShowAllCategories] = useState(false);
+
+  // 전문가 프로필 스토어 사용
+  const { getAllProfiles } = useExpertProfileStore();
+
+  // 스토어 초기화
+  useEffect(() => {
+    initializeDummyExpertsToStore();
+  }, []);
 
   // 상담 카테고리 옵션
   const categories = [
@@ -257,7 +266,13 @@ export default function HomePage() {
       let durationMatch = true;
       if (duration && duration !== "decide_after_matching") {
         const requestedDuration = parseInt(duration);
-        durationMatch = expert.pricingTiers.some((tier: any) => tier.duration === requestedDuration);
+        // pricingTiers가 있는 경우에만 필터링, 없으면 기본적으로 매칭됨
+        if (expert.pricingTiers && Array.isArray(expert.pricingTiers)) {
+          durationMatch = expert.pricingTiers.some((tier: any) => tier.duration === requestedDuration);
+        } else {
+          // pricingTiers가 없는 경우 일반적인 상담 시간 (30, 60, 90분)을 지원한다고 가정
+          durationMatch = [30, 60, 90].includes(requestedDuration);
+        }
       }
       
       return categoryMatch && ageMatch && dateMatch && durationMatch;
@@ -281,9 +296,12 @@ export default function HomePage() {
     
     // 실제로는 API 호출하여 전문가 검색
     setTimeout(() => {
+      // 스토어에서 전문가 데이터 가져오기
+      const allExperts = getAllProfiles();
+      
       // 검색 조건에 맞는 전문가 필터링
       const filteredExperts = filterExperts(
-        dummyExperts, 
+        allExperts, 
         searchCategory, 
         searchStartDate, 
         searchEndDate, 
@@ -297,7 +315,7 @@ export default function HomePage() {
       let finalResults = [...filteredExperts];
       if (filteredExperts.length < 3) {
         // 부족한 경우 다른 카테고리 전문가도 추가 (관련 전문가로 표시)
-        const additionalExperts = dummyExperts
+        const additionalExperts = allExperts
           .filter(expert => !filteredExperts.some(filtered => filtered.id === expert.id))
           .slice(0, 5 - filteredExperts.length);
         finalResults = [...filteredExperts, ...additionalExperts];

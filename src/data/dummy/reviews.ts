@@ -1,0 +1,207 @@
+import { Review } from "@/types";
+import { ConsultationItem } from "@/stores/consultationsStore";
+
+// 더미 리뷰 데이터
+export const dummyReviews: Review[] = [
+  {
+    id: 1,
+    userId: "user1",
+    userName: "김민수",
+    userAvatar: undefined,
+    expertId: 1,
+    rating: 5,
+    comment: "정말 도움이 많이 되었습니다. 전문가님의 조언 덕분에 이직에 성공했어요! 구체적이고 실용적인 조언을 해주셔서 감사합니다.",
+    consultationType: "video",
+    consultationTopic: "이직 상담",
+    createdAt: "2024-01-15T10:30:00Z",
+    isVerified: true,
+    expertReply: {
+      message: "좋은 결과가 있어서 정말 기쁩니다! 앞으로도 성공적인 커리어를 응원하겠습니다.",
+      createdAt: "2024-01-16T09:15:00Z"
+    }
+  },
+  {
+    id: 2,
+    userId: "user2",
+    userName: "박지영",
+    userAvatar: undefined,
+    expertId: 1,
+    rating: 4,
+    comment: "친절하고 자세한 설명 감사합니다. 다만 시간이 조금 부족했던 것 같아요.",
+    consultationType: "chat",
+    consultationTopic: "커리어 전환",
+    createdAt: "2024-01-10T14:20:00Z",
+    isVerified: true,
+    expertReply: {
+      message: "소중한 피드백 감사합니다. 다음에는 더 충분한 시간을 갖고 상담해드리겠습니다.",
+      createdAt: "2024-01-11T08:30:00Z"
+    }
+  },
+  {
+    id: 3,
+    userId: "user3",
+    userName: "이준호",
+    userAvatar: undefined,
+    expertId: 1,
+    rating: 5,
+    comment: "업계 인사이트가 정말 뛰어나시네요. 구체적인 로드맵을 제시해주셔서 방향성을 잡을 수 있었습니다.",
+    consultationType: "video",
+    consultationTopic: "스타트업 창업",
+    createdAt: "2024-01-08T16:45:00Z",
+    isVerified: true
+  },
+  {
+    id: 4,
+    userId: "user4",
+    userName: "최수연",
+    userAvatar: undefined,
+    expertId: 1,
+    rating: 3,
+    comment: "조언은 좋았지만 예상보다 일반적인 내용이었어요. 좀 더 구체적인 케이스 스터디가 있었으면 좋겠습니다.",
+    consultationType: "voice",
+    consultationTopic: "마케팅 전략",
+    createdAt: "2024-01-05T11:15:00Z",
+    isVerified: true,
+    expertReply: {
+      message: "피드백 감사합니다. 다음에는 더 구체적인 사례를 준비해서 도움을 드리겠습니다.",
+      createdAt: "2024-01-06T13:20:00Z"
+    }
+  },
+  {
+    id: 5,
+    userId: "user5",
+    userName: "강태현",
+    userAvatar: undefined,
+    expertId: 1,
+    rating: 5,
+    comment: "전문성이 정말 뛰어나시고 설명도 이해하기 쉽게 해주셨어요. 강력 추천합니다!",
+    consultationType: "video",
+    consultationTopic: "기술 컨설팅",
+    createdAt: "2024-01-03T09:30:00Z",
+    isVerified: true
+  },
+  {
+    id: 6,
+    userId: "user6",
+    userName: "윤서진",
+    userAvatar: undefined,
+    expertId: 1,
+    rating: 4,
+    comment: "유익한 상담이었습니다. 시간 관리에 대한 조언이 특히 도움이 되었어요.",
+    consultationType: "chat",
+    consultationTopic: "업무 효율성",
+    createdAt: "2024-01-01T15:45:00Z",
+    isVerified: true
+  },
+  {
+    id: 7,
+    userId: "user7",
+    userName: "정민우",
+    userAvatar: undefined,
+    expertId: 1,
+    rating: 2,
+    comment: "기대했던 것보다 아쉬웠습니다. 좀 더 준비를 하고 상담을 진행해주셨으면 좋겠어요.",
+    consultationType: "video",
+    consultationTopic: "투자 상담",
+    createdAt: "2023-12-28T13:20:00Z",
+    isVerified: true
+  },
+  {
+    id: 8,
+    userId: "user8",
+    userName: "한지우",
+    userAvatar: undefined,
+    expertId: 1,
+    rating: 5,
+    comment: "정말 만족스러운 상담이었습니다. 전문가님 덕분에 많은 것을 배웠어요!",
+    consultationType: "voice",
+    consultationTopic: "자기계발",
+    createdAt: "2023-12-25T10:10:00Z",
+    isVerified: true,
+    expertReply: {
+      message: "좋은 평가 감사합니다. 계속해서 성장하는 모습 응원하겠습니다!",
+      createdAt: "2023-12-26T14:30:00Z"
+    }
+  }
+];
+
+// 실제 상담 기록을 기반으로 리뷰 검증하는 함수 (더미 구현)
+export const verifyReviewEligibility = (
+  userId: string, 
+  expertId: number, 
+  consultations: ConsultationItem[]
+): boolean => {
+  // 실제 서비스에서는 이런 로직이 서버에서 실행됩니다
+  
+  // 1. 해당 사용자가 이 전문가와 완료된 상담이 있는지 확인
+  const userConsultations = consultations.filter(consultation => {
+    // 더미 데이터에서는 customer 이름으로 매칭 (실제로는 userId로 매칭)
+    return consultation.status === 'completed' && 
+           consultation.amount > 0; // 결제가 완료된 상담만
+  });
+  
+  // 2. 완료된 상담이 하나라도 있으면 검증됨
+  return userConsultations.length > 0;
+};
+
+// 동적으로 리뷰 검증 상태를 업데이트하는 함수
+export const updateReviewVerification = (
+  reviews: Review[], 
+  consultations: ConsultationItem[]
+): Review[] => {
+  return reviews.map(review => ({
+    ...review,
+    isVerified: verifyReviewEligibility(review.userId, review.expertId, consultations)
+  }));
+};
+
+// 새 리뷰 생성 시 자동 검증하는 함수
+export const createVerifiedReview = (
+  reviewData: Omit<Review, 'id' | 'isVerified' | 'createdAt'>,
+  consultations: ConsultationItem[]
+): Review => {
+  const isVerified = verifyReviewEligibility(
+    reviewData.userId, 
+    reviewData.expertId, 
+    consultations
+  );
+  
+  return {
+    ...reviewData,
+    id: Date.now(), // 실제로는 서버에서 생성
+    isVerified,
+    createdAt: new Date().toISOString()
+  };
+};
+
+// 리뷰 통계 계산 함수
+export const getReviewStats = (reviews: Review[]) => {
+  const totalReviews = reviews.length;
+  const averageRating = totalReviews > 0 
+    ? reviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews 
+    : 0;
+  
+  const ratingDistribution = {
+    5: reviews.filter(r => r.rating === 5).length,
+    4: reviews.filter(r => r.rating === 4).length,
+    3: reviews.filter(r => r.rating === 3).length,
+    2: reviews.filter(r => r.rating === 2).length,
+    1: reviews.filter(r => r.rating === 1).length,
+  };
+
+  const repliedReviews = reviews.filter(r => r.expertReply).length;
+  const replyRate = totalReviews > 0 ? (repliedReviews / totalReviews) * 100 : 0;
+  
+  // 검증된 리뷰 통계 추가
+  const verifiedReviews = reviews.filter(r => r.isVerified).length;
+  const verificationRate = totalReviews > 0 ? (verifiedReviews / totalReviews) * 100 : 0;
+
+  return {
+    totalReviews,
+    averageRating: Math.round(averageRating * 10) / 10,
+    ratingDistribution,
+    replyRate: Math.round(replyRate),
+    verifiedReviews,
+    verificationRate: Math.round(verificationRate)
+  };
+};

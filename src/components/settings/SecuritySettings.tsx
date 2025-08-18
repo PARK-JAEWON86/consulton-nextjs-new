@@ -168,180 +168,195 @@ const SecuritySettings = () => {
         </p>
       </div>
 
-      {/* 2단계 인증 */}
-      <div className="bg-gray-50 rounded-lg p-6">
-        <div className="flex items-center space-x-3 mb-4">
-          <Shield className="h-5 w-5 text-blue-600" />
-          <h3 className="text-lg font-medium text-gray-900">2단계 인증</h3>
-        </div>
-
-        <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
-            <div>
-              <div className="font-medium text-gray-900">2단계 인증</div>
-              <div className="text-sm text-gray-600">
-                로그인 시 추가 보안 코드를 요구합니다
-              </div>
-            </div>
-            <div className="flex items-center space-x-3">
-              <span
-                className={`text-sm font-medium ${twoFactorEnabled ? "text-green-600" : "text-gray-500"}`}
-              >
-                {twoFactorEnabled ? "활성화됨" : "비활성화됨"}
-              </span>
-              {twoFactorEnabled ? (
-                <button
-                  onClick={handleDisable2FA}
-                  disabled={saveStatus === "saving"}
-                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  비활성화
-                </button>
-              ) : (
-                <button
-                  onClick={handleEnable2FA}
-                  disabled={saveStatus === "saving"}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  활성화
-                </button>
-              )}
-            </div>
+      {/* 상단: 2단계 인증 & 로그인 알림 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* 2단계 인증 */}
+        <div className="bg-gray-50 rounded-lg p-6">
+          <div className="flex items-center space-x-3 mb-4">
+            <Shield className="h-5 w-5 text-blue-600" />
+            <h3 className="text-lg font-medium text-gray-900">2단계 인증</h3>
           </div>
 
-          {twoFactorEnabled && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-start space-x-3">
-                <Smartphone className="h-5 w-5 text-blue-600 mt-0.5" />
-                <div className="flex-1">
-                  <h4 className="font-medium text-blue-900 mb-2">복구 코드</h4>
-                  <p className="text-sm text-blue-700 mb-3">
-                    인증 앱에 접근할 수 없을 때 사용할 수 있는 복구 코드입니다.
-                  </p>
-                  <button
-                    onClick={() => setShowRecoveryCodes(!showRecoveryCodes)}
-                    className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                  >
-                    {showRecoveryCodes ? "숨기기" : "복구 코드 보기"}
-                  </button>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+              <div>
+                <div className="font-medium text-gray-900">2단계 인증</div>
+                <div className="text-sm text-gray-600">
+                  로그인 시 추가 보안 코드를 요구합니다
                 </div>
               </div>
-
-              {showRecoveryCodes && (
-                <div className="mt-4 p-4 bg-white rounded-lg border border-blue-200">
-                  <div className="grid grid-cols-2 gap-2">
-                    {recoveryCodes.map((code, index) => (
-                      <div
-                        key={index}
-                        className="font-mono text-sm bg-gray-100 p-2 rounded text-center"
-                      >
-                        {code}
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-xs text-blue-600 mt-2">
-                    이 코드들을 안전한 곳에 보관하세요. 각 코드는 한 번만 사용할
-                    수 있습니다.
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* 로그인 알림 */}
-      <div className="bg-gray-50 rounded-lg p-6">
-        <div className="flex items-center space-x-3 mb-4">
-          <AlertTriangle className="h-5 w-5 text-blue-600" />
-          <h3 className="text-lg font-medium text-gray-900">로그인 알림</h3>
-        </div>
-
-        <NotificationToggle
-          label="새로운 로그인 알림"
-          description="알 수 없는 기기나 위치에서 로그인할 때 알림을 받습니다"
-          checked={loginAlerts}
-          onChange={setLoginAlerts}
-        />
-      </div>
-
-      {/* 세션 관리 */}
-      <div className="bg-gray-50 rounded-lg p-6">
-        <div className="flex items-center space-x-3 mb-4">
-          <Clock className="h-5 w-5 text-blue-600" />
-          <h3 className="text-lg font-medium text-gray-900">세션 관리</h3>
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              세션 타임아웃
-            </label>
-            <select
-              value={sessionTimeout}
-              onChange={(e) => setSessionTimeout(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="15">15분</option>
-              <option value="30">30분</option>
-              <option value="60">1시간</option>
-              <option value="120">2시간</option>
-              <option value="0">무제한</option>
-            </select>
-            <p className="text-sm text-gray-500 mt-1">
-              활동이 없을 때 자동으로 로그아웃되는 시간을 설정합니다.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* 로그인 기록 */}
-      <div className="bg-gray-50 rounded-lg p-6">
-        <div className="flex items-center space-x-3 mb-4">
-          <Key className="h-5 w-5 text-blue-600" />
-          <h3 className="text-lg font-medium text-gray-900">로그인 기록</h3>
-        </div>
-
-        <div className="space-y-3">
-          {loginHistory.map((session) => (
-            <div
-              key={session.id}
-              className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200"
-            >
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
-                  <MapPin className="h-4 w-4 text-gray-400" />
-                  <span className="text-sm text-gray-600">
-                    {session.location}
-                  </span>
-                </div>
-                <div className="text-sm text-gray-600">{session.ip}</div>
-                <div className="text-sm text-gray-600">{session.time}</div>
-                <span
-                  className={`text-sm font-medium ${getStatusColor(session.status)}`}
-                >
-                  {getStatusText(session.status)}
-                </span>
-              </div>
-
               <div className="flex items-center space-x-3">
-                <span className="text-sm text-gray-500">{session.device}</span>
-                {session.current && (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    현재 세션
-                  </span>
-                )}
-                {!session.current && (
+                <span
+                  className={`text-sm font-medium ${twoFactorEnabled ? "text-green-600" : "text-gray-500"}`}
+                >
+                  {twoFactorEnabled ? "활성화됨" : "비활성화됨"}
+                </span>
+                {twoFactorEnabled ? (
                   <button
-                    onClick={() => handleRevokeSession(session.id)}
-                    className="text-sm text-red-600 hover:text-red-700 font-medium"
+                    onClick={handleDisable2FA}
+                    disabled={saveStatus === "saving"}
+                    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    세션 종료
+                    비활성화
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleEnable2FA}
+                    disabled={saveStatus === "saving"}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    활성화
                   </button>
                 )}
               </div>
             </div>
-          ))}
+
+            {twoFactorEnabled && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start space-x-3">
+                  <Smartphone className="h-5 w-5 text-blue-600 mt-0.5" />
+                  <div className="flex-1">
+                    <h4 className="font-medium text-blue-900 mb-2">복구 코드</h4>
+                    <p className="text-sm text-blue-700 mb-3">
+                      인증 앱에 접근할 수 없을 때 사용할 수 있는 복구 코드입니다.
+                    </p>
+                    <button
+                      onClick={() => setShowRecoveryCodes(!showRecoveryCodes)}
+                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      {showRecoveryCodes ? "숨기기" : "복구 코드 보기"}
+                    </button>
+                  </div>
+                </div>
+
+                {showRecoveryCodes && (
+                  <div className="mt-4 p-4 bg-white rounded-lg border border-blue-200">
+                    <div className="grid grid-cols-2 gap-2">
+                      {recoveryCodes.map((code, index) => (
+                        <div
+                          key={index}
+                          className="font-mono text-sm bg-gray-100 p-2 rounded text-center"
+                        >
+                          {code}
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-blue-600 mt-2">
+                      이 코드들을 안전한 곳에 보관하세요. 각 코드는 한 번만 사용할
+                      수 있습니다.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 로그인 알림 */}
+        <div className="bg-gray-50 rounded-lg p-6">
+          <div className="flex items-center space-x-3 mb-4">
+            <AlertTriangle className="h-5 w-5 text-blue-600" />
+            <h3 className="text-lg font-medium text-gray-900">로그인 알림</h3>
+          </div>
+
+          <NotificationToggle
+            label="새로운 로그인 알림"
+            description="알 수 없는 기기나 위치에서 로그인할 때 알림을 받습니다"
+            checked={loginAlerts}
+            onChange={setLoginAlerts}
+          />
+        </div>
+      </div>
+
+      {/* 하단: 세션 관리 & 로그인 기록 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* 세션 관리 */}
+        <div className="bg-gray-50 rounded-lg p-6">
+          <div className="flex items-center space-x-3 mb-4">
+            <Clock className="h-5 w-5 text-blue-600" />
+            <h3 className="text-lg font-medium text-gray-900">세션 관리</h3>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                세션 타임아웃
+              </label>
+              <select
+                value={sessionTimeout}
+                onChange={(e) => setSessionTimeout(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="15">15분</option>
+                <option value="30">30분</option>
+                <option value="60">1시간</option>
+                <option value="120">2시간</option>
+                <option value="0">무제한</option>
+              </select>
+              <p className="text-sm text-gray-500 mt-1">
+                활동이 없을 때 자동으로 로그아웃되는 시간을 설정합니다.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* 로그인 기록 */}
+        <div className="bg-gray-50 rounded-lg p-6">
+          <div className="flex items-center space-x-3 mb-4">
+            <Key className="h-5 w-5 text-blue-600" />
+            <h3 className="text-lg font-medium text-gray-900">로그인 기록</h3>
+          </div>
+
+          <div className="space-y-3 max-h-80 overflow-y-auto">
+            {loginHistory.map((session) => (
+              <div
+                key={session.id}
+                className="p-3 bg-white rounded-lg border border-gray-200"
+              >
+                <div className="flex flex-col space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <MapPin className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm text-gray-600">
+                        {session.location}
+                      </span>
+                    </div>
+                    <span
+                      className={`text-xs font-medium ${getStatusColor(session.status)}`}
+                    >
+                      {getStatusText(session.status)}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs text-gray-500">
+                      {session.device} • {session.ip}
+                    </div>
+                    <div className="text-xs text-gray-500">{session.time}</div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div></div>
+                    <div className="flex items-center space-x-2">
+                      {session.current && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          현재 세션
+                        </span>
+                      )}
+                      {!session.current && (
+                        <button
+                          onClick={() => handleRevokeSession(session.id)}
+                          className="text-xs text-red-600 hover:text-red-700 font-medium"
+                        >
+                          세션 종료
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 

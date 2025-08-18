@@ -223,21 +223,16 @@ export default function DashboardContent() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 헤더 */}
-        <div className="mb-8">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex-1">
-                <h1 className="text-3xl font-bold text-gray-900">
-                  안녕하세요, {user.name}님!
-                </h1>
-                <p className="text-gray-600 mt-2">
-                  오늘도 전문가와 함께 성장해보세요.
-                </p>
-              </div>
-            </div>
-
+        <div className="mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              안녕하세요, {user.name}님!
+            </h1>
+            <p className="text-gray-600 mt-1">
+              오늘도 전문가와 함께 성장해보세요.
+            </p>
           </div>
         </div>
 

@@ -8,6 +8,26 @@ export interface User {
   updatedAt: Date;
 }
 
+// 리뷰 타입
+export interface Review {
+  id: number;
+  userId: string;
+  userName: string;
+  userAvatar?: string;
+  expertId: number;
+  rating: number; // 1-5 별점
+  comment: string;
+  consultationType: ConsultationType;
+  consultationTopic: string;
+  createdAt: string;
+  updatedAt?: string;
+  isVerified: boolean; // 실제 상담을 받은 사용자인지 검증
+  expertReply?: {
+    message: string;
+    createdAt: string;
+  };
+}
+
 // 상담 방식 타입
 export type ConsultationType = "video" | "chat" | "voice";
 
@@ -63,6 +83,7 @@ export interface ExpertProfile {
   cancellationPolicy: string;
   availability: Availability;
   weeklyAvailability: WeeklyAvailability;
+  holidayPolicy?: string; // 공휴일 휴무 정책 (예: "공휴일 휴무", "공휴일 정상 운영" 등)
   contactInfo: {
     phone: string;
     email: string;

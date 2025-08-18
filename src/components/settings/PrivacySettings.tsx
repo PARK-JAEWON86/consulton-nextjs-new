@@ -138,203 +138,208 @@ const PrivacySettings = () => {
         </p>
       </div>
 
-      {/* 프로필 공개 설정 */}
-      <div className="bg-gray-50 rounded-lg p-6">
-        <div className="flex items-center space-x-3 mb-4">
-          <Eye className="h-5 w-5 text-blue-600" />
-          <h3 className="text-lg font-medium text-gray-900">
-            프로필 공개 설정
-          </h3>
-        </div>
+      {/* 프로필 공개 설정 & 데이터 수집 설정 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* 프로필 공개 설정 */}
+        <div className="bg-gray-50 rounded-lg p-6">
+          <div className="flex items-center space-x-3 mb-4">
+            <Eye className="h-5 w-5 text-blue-600" />
+            <h3 className="text-lg font-medium text-gray-900">
+              프로필 공개 설정
+            </h3>
+          </div>
 
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              프로필 공개 범위
-            </label>
-            <div className="space-y-3">
-              {[
-                {
-                  value: "public",
-                  label: "전체 공개",
-                  description: "모든 사용자가 프로필을 볼 수 있습니다",
-                },
-                {
-                  value: "experts",
-                  label: "전문가만",
-                  description: "전문가와 매칭 시에만 프로필이 공개됩니다",
-                },
-                {
-                  value: "private",
-                  label: "비공개",
-                  description: "프로필이 공개되지 않습니다",
-                },
-              ].map((option) => {
-                const isActive =
-                  privacySettings.profileVisibility === option.value;
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                프로필 공개 범위
+              </label>
+              <div className="space-y-2">
+                {[
+                  {
+                    value: "public",
+                    label: "전체 공개",
+                    description: "모든 사용자가 볼 수 있음",
+                  },
+                  {
+                    value: "experts",
+                    label: "전문가만",
+                    description: "매칭 시에만 공개",
+                  },
+                  {
+                    value: "private",
+                    label: "비공개",
+                    description: "프로필 비공개",
+                  },
+                ].map((option) => {
+                  const isActive =
+                    privacySettings.profileVisibility === option.value;
 
-                return (
-                  <button
-                    key={option.value}
-                    onClick={() =>
-                      handlePrivacyChange("profileVisibility", option.value)
-                    }
-                    className={`w-full p-4 rounded-lg border-2 transition-all duration-200 text-left ${
-                      isActive
-                        ? "border-blue-500 bg-blue-50"
-                        : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
-                    }`}
-                  >
-                    <div
-                      className={`font-medium ${isActive ? "text-blue-900" : "text-gray-900"}`}
+                  return (
+                    <button
+                      key={option.value}
+                      onClick={() =>
+                        handlePrivacyChange("profileVisibility", option.value)
+                      }
+                      className={`w-full p-3 rounded-lg border-2 transition-all duration-200 text-left ${
+                        isActive
+                          ? "border-blue-500 bg-blue-50"
+                          : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
+                      }`}
                     >
-                      {option.label}
-                    </div>
-                    <div
-                      className={`text-sm ${isActive ? "text-blue-700" : "text-gray-600"}`}
-                    >
-                      {option.description}
-                    </div>
-                    {isActive && (
-                      <div className="mt-2 flex justify-end">
-                        <Check className="h-4 w-4 text-blue-600" />
+                      <div
+                        className={`font-medium text-sm ${isActive ? "text-blue-900" : "text-gray-900"}`}
+                      >
+                        {option.label}
                       </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
-            <div>
-              <div className="font-medium text-gray-900">상담 기록 공개</div>
-              <div className="text-sm text-gray-600">
-                전문가와의 상담 기록을 다른 사용자에게 공개합니다
+                      <div
+                        className={`text-xs ${isActive ? "text-blue-700" : "text-gray-600"}`}
+                      >
+                        {option.description}
+                      </div>
+                      {isActive && (
+                        <div className="mt-1 flex justify-end">
+                          <Check className="h-3 w-3 text-blue-600" />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
-            <NotificationToggle
-              label=""
-              description=""
-              checked={privacySettings.consultationHistory}
-              onChange={(value) =>
-                handlePrivacyChange("consultationHistory", value)
-              }
-            />
-          </div>
 
-          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
-            <div>
-              <div className="font-medium text-gray-900">검색 노출</div>
-              <div className="text-sm text-gray-600">
-                전문가 검색 시 프로필이 검색 결과에 표시됩니다
+            <div className="space-y-2">
+              <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200">
+                <div>
+                  <div className="font-medium text-sm text-gray-900">상담 기록 공개</div>
+                  <div className="text-xs text-gray-600">
+                    상담 기록을 다른 사용자에게 공개
+                  </div>
+                </div>
+                <NotificationToggle
+                  label=""
+                  description=""
+                  checked={privacySettings.consultationHistory}
+                  onChange={(value) =>
+                    handlePrivacyChange("consultationHistory", value)
+                  }
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200">
+                <div>
+                  <div className="font-medium text-sm text-gray-900">검색 노출</div>
+                  <div className="text-xs text-gray-600">
+                    검색 결과에 프로필 표시
+                  </div>
+                </div>
+                <NotificationToggle
+                  label=""
+                  description=""
+                  checked={privacySettings.searchVisibility}
+                  onChange={(value) =>
+                    handlePrivacyChange("searchVisibility", value)
+                  }
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200">
+                <div>
+                  <div className="font-medium text-sm text-gray-900">활동 상태 표시</div>
+                  <div className="text-xs text-gray-600">
+                    온라인 상태와 최근 활동 표시
+                  </div>
+                </div>
+                <NotificationToggle
+                  label=""
+                  description=""
+                  checked={privacySettings.activityStatus}
+                  onChange={(value) => handlePrivacyChange("activityStatus", value)}
+                />
               </div>
             </div>
-            <NotificationToggle
-              label=""
-              description=""
-              checked={privacySettings.searchVisibility}
-              onChange={(value) =>
-                handlePrivacyChange("searchVisibility", value)
-              }
-            />
-          </div>
-
-          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
-            <div>
-              <div className="font-medium text-gray-900">활동 상태 표시</div>
-              <div className="text-sm text-gray-600">
-                온라인 상태와 최근 활동을 다른 사용자에게 표시합니다
-              </div>
-            </div>
-            <NotificationToggle
-              label=""
-              description=""
-              checked={privacySettings.activityStatus}
-              onChange={(value) => handlePrivacyChange("activityStatus", value)}
-            />
           </div>
         </div>
-      </div>
 
-      {/* 데이터 수집 설정 */}
-      <div className="bg-gray-50 rounded-lg p-6">
-        <div className="flex items-center space-x-3 mb-4">
-          <Shield className="h-5 w-5 text-blue-600" />
-          <h3 className="text-lg font-medium text-gray-900">
-            데이터 수집 설정
-          </h3>
-        </div>
-
-        <div className="space-y-3">
-          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
-            <div>
-              <div className="font-medium text-gray-900">
-                서비스 개선을 위한 분석
-              </div>
-              <div className="text-sm text-gray-600">
-                서비스 사용 패턴을 분석하여 개선에 활용합니다
-              </div>
-            </div>
-            <NotificationToggle
-              label=""
-              description=""
-              checked={privacySettings.dataCollection.analytics}
-              onChange={(value) =>
-                handleDataCollectionChange("analytics", value)
-              }
-            />
+        {/* 데이터 수집 설정 */}
+        <div className="bg-gray-50 rounded-lg p-6">
+          <div className="flex items-center space-x-3 mb-4">
+            <Shield className="h-5 w-5 text-blue-600" />
+            <h3 className="text-lg font-medium text-gray-900">
+              데이터 수집 설정
+            </h3>
           </div>
 
-          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
-            <div>
-              <div className="font-medium text-gray-900">개인화 서비스</div>
-              <div className="text-sm text-gray-600">
-                사용자 맞춤형 추천과 서비스를 제공합니다
+          <div className="space-y-2">
+            <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200">
+              <div>
+                <div className="font-medium text-sm text-gray-900">
+                  서비스 개선 분석
+                </div>
+                <div className="text-xs text-gray-600">
+                  사용 패턴 분석으로 서비스 개선
+                </div>
               </div>
+              <NotificationToggle
+                label=""
+                description=""
+                checked={privacySettings.dataCollection.analytics}
+                onChange={(value) =>
+                  handleDataCollectionChange("analytics", value)
+                }
+              />
             </div>
-            <NotificationToggle
-              label=""
-              description=""
-              checked={privacySettings.dataCollection.personalization}
-              onChange={(value) =>
-                handleDataCollectionChange("personalization", value)
-              }
-            />
-          </div>
 
-          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
-            <div>
-              <div className="font-medium text-gray-900">마케팅 목적</div>
-              <div className="text-sm text-gray-600">
-                관련 서비스와 이벤트 정보를 제공합니다
+            <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200">
+              <div>
+                <div className="font-medium text-sm text-gray-900">개인화 서비스</div>
+                <div className="text-xs text-gray-600">
+                  맞춤형 추천과 서비스 제공
+                </div>
               </div>
+              <NotificationToggle
+                label=""
+                description=""
+                checked={privacySettings.dataCollection.personalization}
+                onChange={(value) =>
+                  handleDataCollectionChange("personalization", value)
+                }
+              />
             </div>
-            <NotificationToggle
-              label=""
-              description=""
-              checked={privacySettings.dataCollection.marketing}
-              onChange={(value) =>
-                handleDataCollectionChange("marketing", value)
-              }
-            />
-          </div>
 
-          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
-            <div>
-              <div className="font-medium text-gray-900">제3자 공유</div>
-              <div className="text-sm text-gray-600">
-                신뢰할 수 있는 파트너사와 데이터를 공유합니다
+            <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200">
+              <div>
+                <div className="font-medium text-sm text-gray-900">마케팅 목적</div>
+                <div className="text-xs text-gray-600">
+                  관련 서비스와 이벤트 정보 제공
+                </div>
               </div>
+              <NotificationToggle
+                label=""
+                description=""
+                checked={privacySettings.dataCollection.marketing}
+                onChange={(value) =>
+                  handleDataCollectionChange("marketing", value)
+                }
+              />
             </div>
-            <NotificationToggle
-              label=""
-              description=""
-              checked={privacySettings.dataCollection.thirdParty}
-              onChange={(value) =>
-                handleDataCollectionChange("thirdParty", value)
-              }
-            />
+
+            <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200">
+              <div>
+                <div className="font-medium text-sm text-gray-900">제3자 공유</div>
+                <div className="text-xs text-gray-600">
+                  신뢰할 수 있는 파트너사와 공유
+                </div>
+              </div>
+              <NotificationToggle
+                label=""
+                description=""
+                checked={privacySettings.dataCollection.thirdParty}
+                onChange={(value) =>
+                  handleDataCollectionChange("thirdParty", value)
+                }
+              />
+            </div>
           </div>
         </div>
       </div>
