@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { 
   Star, 
   MapPin, 
@@ -19,24 +19,189 @@ import {
   Heart,
   Share2
 } from "lucide-react";
-import { dummyExperts, type ExpertItem } from "@/data/dummy/experts";
+import { useExpertProfileStore } from "@/stores/expertProfileStore";
+import { initializeDummyExpertsToStore, dummyExperts, convertExpertItemToProfile } from "@/data/dummy/experts";
+import { ExpertProfile } from "@/types";
+import { calculateExpertLevel, getLevelBadgeStyles, getKoreanLevelName } from "@/utils/expertLevels";
+import MatchedExpertsSection from "@/components/home/MatchedExpertsSection";
 
 export default function ExpertProfilePage() {
   const params = useParams();
   const router = useRouter();
-  const [expert, setExpert] = useState<ExpertItem | null>(null);
+  const searchParams = useSearchParams();
+  const [expert, setExpert] = useState<ExpertProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'availability'>('overview');
+  const [similarExperts, setSimilarExperts] = useState<ExpertProfile[]>([]);
+  
+  // 전문가 프로필 스토어 사용
+  const { getProfile, getAllProfiles } = useExpertProfileStore();
+
+  // 비슷한 전문가 찾기 함수 (검색 컨텍스트 고려)
+  const findSimilarExperts = (currentExpert: ExpertProfile, allExperts: ExpertProfile[], searchContext?: any) => {
+    // 먼저 동일한 specialty를 가진 전문가들을 찾기
+    const sameSpecialtyExperts = allExperts.filter(expert => 
+      expert.id !== currentExpert.id && expert.specialty === currentExpert.specialty
+    );
+    
+    // 다른 specialty를 가진 전문가들
+    const otherExperts = allExperts.filter(expert => 
+      expert.id !== currentExpert.id && expert.specialty !== currentExpert.specialty
+    );
+    
+    const scoreExpert = (expert: ExpertProfile) => {
+      let score = 0;
+      
+      // 1. 같은 specialty (최우선 - 매우 높은 점수)
+      if (expert.specialty === currentExpert.specialty) {
+        score += 1000; // 매우 높은 기본 점수
+      }
+      
+      // 2. 검색 컨텍스트 고려 (검색에서 온 경우 추가 가점)
+      if (searchContext) {
+        // 검색된 카테고리와 일치하는 경우
+        if (searchContext.fromCategory && expert.specialty === currentExpert.specialty) {
+          score += 100;
+        }
+        
+        // 검색된 연령대와 일치하는 경우
+        if (searchContext.fromAgeGroup) {
+          const ageGroup = searchContext.fromAgeGroup;
+          let ageMatch = false;
+          
+          if (ageGroup === "teen") {
+            ageMatch = expert.targetAudience.some((target: string) => 
+              target.includes("청소년") || target.includes("중학생") || target.includes("고등학생")
+            );
+          } else if (ageGroup === "student") {
+            ageMatch = expert.targetAudience.some((target: string) => 
+              target.includes("대학생") || target.includes("취준생") || target.includes("학생")
+            );
+          } else if (ageGroup === "adult") {
+            ageMatch = expert.targetAudience.some((target: string) => 
+              target.includes("성인") || target.includes("직장인") || target.includes("자영업자")
+            );
+          } else if (ageGroup === "senior") {
+            ageMatch = expert.targetAudience.some((target: string) => 
+              target.includes("시니어") || target.includes("은퇴")
+            );
+          }
+          
+          if (ageMatch) {
+            score += 50;
+          }
+        }
+      }
+      
+      // 3. 공통 태그 개수
+      const commonTags = expert.tags.filter(tag => currentExpert.tags.includes(tag));
+      score += commonTags.length * 20;
+      
+      // 4. 비슷한 평점 (±0.5 범위)
+      if (Math.abs(expert.rating - currentExpert.rating) <= 0.5) {
+        score += 30;
+      }
+      
+      // 5. 비슷한 경력 (±3년 범위)
+      if (Math.abs(expert.experience - currentExpert.experience) <= 3) {
+        score += 25;
+      }
+      
+      // 6. 공통 상담 방식
+      const commonConsultationTypes = expert.consultationTypes.filter(type => 
+        currentExpert.consultationTypes.includes(type)
+      );
+      score += commonConsultationTypes.length * 15;
+      
+      // 7. 공통 대상 고객
+      const commonTargetAudience = expert.targetAudience.filter(audience => 
+        currentExpert.targetAudience.includes(audience)
+      );
+      score += commonTargetAudience.length * 20;
+      
+      return score;
+    };
+    
+    // 동일한 specialty 전문가들 점수 계산
+    const scoredSameSpecialty = sameSpecialtyExperts.map(expert => ({
+      ...expert,
+      similarityScore: scoreExpert(expert)
+    }));
+    
+    // 다른 specialty 전문가들 점수 계산
+    const scoredOtherExperts = otherExperts.map(expert => ({
+      ...expert,
+      similarityScore: scoreExpert(expert)
+    }));
+    
+    // 동일한 specialty 전문가만 추천 (우선 순위)
+    if (scoredSameSpecialty.length > 0) {
+      const result = scoredSameSpecialty
+        .sort((a, b) => b.similarityScore - a.similarityScore);
+      
+      // 동일한 specialty가 6명 미만이면 그만큼만 반환
+      return result.slice(0, Math.min(6, result.length));
+    } else {
+      // 동일한 specialty가 전혀 없는 경우에만 다른 specialty 포함
+      const result = scoredOtherExperts
+        .sort((a, b) => b.similarityScore - a.similarityScore)
+        .slice(0, 6);
+      return result;
+    }
+  };
 
   useEffect(() => {
+    // 스토어 초기화 (한 번만 실행)
+    const allProfiles = getAllProfiles();
+    if (allProfiles.length === 0) {
+      initializeDummyExpertsToStore();
+    }
+    
     const expertId = parseInt(params.id as string);
-    const foundExpert = dummyExperts.find(exp => exp.id === expertId);
+    let foundExpert = getProfile(expertId);
+    
+    // 스토어에서 찾을 수 없으면 더미 데이터에서 찾아서 변환
+    if (!foundExpert) {
+      const dummyExpert = dummyExperts.find(exp => exp.id === expertId);
+      if (dummyExpert) {
+        foundExpert = convertExpertItemToProfile(dummyExpert);
+      }
+    }
     
     if (foundExpert) {
       setExpert(foundExpert);
+      
+      // 검색 컨텍스트 추출
+      const searchContext = {
+        fromCategory: searchParams.get('fromCategory'),
+        fromAgeGroup: searchParams.get('fromAgeGroup'),
+        fromStartDate: searchParams.get('fromStartDate'),
+        fromEndDate: searchParams.get('fromEndDate'),
+      };
+      
+      // 모든 전문가 프로필 가져오기
+      const allExpertProfiles = getAllProfiles();
+      
+      // 비슷한 전문가 찾기 (검색 컨텍스트 고려)
+      const similar = findSimilarExperts(foundExpert, allExpertProfiles, searchContext);
+      setSimilarExperts(similar);
     }
     setIsLoading(false);
-  }, [params.id]);
+  }, [params.id, searchParams, getProfile, getAllProfiles]);
+
+  // 페이지 로드 완료 후 스크롤 리셋
+  useEffect(() => {
+    if (!isLoading) {
+      // 약간의 지연을 두어 DOM이 완전히 렌더링된 후 스크롤
+      setTimeout(() => {
+        window.scrollTo({
+          top: 0,
+          left: 0,
+          behavior: 'instant'
+        });
+      }, 0);
+    }
+  }, [isLoading]);
 
   if (isLoading) {
     return (
@@ -103,62 +268,165 @@ export default function ExpertProfilePage() {
           <div className="lg:col-span-2 space-y-6">
             {/* 전문가 기본 정보 */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="relative h-48 bg-gradient-to-br from-blue-100 to-indigo-100">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center">
-                    <span className="text-white text-3xl font-bold">
-                      {expert.name.charAt(0)}
-                    </span>
-                  </div>
-                </div>
-                {expert.isOnline && (
-                  <div className="absolute top-4 right-4">
-                    <div className="flex items-center bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
-                      <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                      온라인
+              <div className="p-6">
+                {/* 헤더: 왼쪽 프로필 사진, 오른쪽 모든 정보 */}
+                <div className="flex items-start space-x-6">
+                  {/* 왼쪽: 프로필 사진 */}
+                  <div className="flex-shrink-0">
+                    <div className="relative">
+                      <div className="w-36 h-48 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl flex items-center justify-center overflow-hidden border-2 border-gray-100 shadow-md">
+                        {expert.profileImage ? (
+                          <img
+                            src={expert.profileImage}
+                            alt={expert.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-blue-600 text-4xl font-bold">
+                            {expert.name.charAt(0)}
+                          </span>
+                        )}
+                      </div>
+                      
+                      {/* 전문가 레벨 배지 */}
+                      {(() => {
+                        // 실제 레벨 숫자 계산
+                        const actualLevel = Math.min(
+                          999,
+                          Math.max(1, Math.floor(expert.totalSessions / 10) + Math.floor(expert.avgRating * 10))
+                        );
+
+                        // 색상 결정
+                        let bgColor = "bg-blue-500";
+                        if (actualLevel >= 800) bgColor = "bg-purple-500";
+                        else if (actualLevel >= 600) bgColor = "bg-red-500";
+                        else if (actualLevel >= 400) bgColor = "bg-orange-500";
+                        else if (actualLevel >= 200) bgColor = "bg-yellow-500";
+                        else if (actualLevel >= 100) bgColor = "bg-green-500";
+
+                        return (
+                          <div className={`absolute -bottom-2 -right-2 border-2 border-white rounded-full shadow-sm flex items-center justify-center ${
+                            actualLevel >= 100 ? "w-14 h-7 px-2" : "w-12 h-7 px-1"
+                          } ${bgColor}`}>
+                            <span className="text-xs font-bold text-white">
+                              Lv.{actualLevel}
+                            </span>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
-                )}
+
+                  {/* 오른쪽: 모든 정보 */}
+                  <div className="flex-1 min-w-0 space-y-4">
+                    {/* 상단: 이름과 온라인 상태 */}
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center space-x-2">
+                        <h1 className="text-xl font-bold text-gray-900 truncate">{expert.name}</h1>
+                      </div>
+                      {expert.isOnline && (
+                        <div className="flex items-center bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs flex-shrink-0">
+                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1"></div>
+                          온라인
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* 전문 분야 */}
+                    <p className="text-base text-gray-600 font-medium">{expert.specialty}</p>
+                    
+                    {/* 평점 및 정보 */}
+                    <div className="flex items-center space-x-4">
+                      <div className="flex items-center">
+                        <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                        <span className="text-sm font-semibold text-gray-900 ml-1">{expert.rating}</span>
+                        <span className="text-sm text-gray-500 ml-1">({expert.reviewCount}개 리뷰)</span>
+                      </div>
+                      <div className="flex items-center text-sm text-gray-500">
+                        <Award className="h-4 w-4 mr-1" />
+                        {expert.experience}년 경력
+                      </div>
+                    </div>
+
+                    {/* 설명 */}
+                    <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
+                      {expert.description}
+                    </p>
+
+                    {/* 전문 분야 태그 */}
+                    <div className="flex gap-1.5 overflow-hidden">
+                      {expert.tags.slice(0, 4).map((tag, index) => (
+                        <span
+                          key={index}
+                          className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs rounded-full border border-blue-100 flex-shrink-0"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                      {expert.tags.length > 4 && (
+                        <span className="px-2.5 py-1 bg-gray-50 text-gray-600 text-xs rounded-full border border-gray-100 flex-shrink-0">
+                          +{expert.tags.length - 4}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* 상담 방식 및 답변 시간 */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        {expert.consultationTypes.map((type) => {
+                          let Icon = MessageCircle;
+                          let label = "채팅";
+                          
+                          if (type === "video") {
+                            Icon = Video;
+                            label = "화상";
+                          } else if (type === "voice") {
+                            Icon = Phone;
+                            label = "음성";
+                          }
+
+                          return (
+                            <div
+                              key={type}
+                              className="flex items-center text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded"
+                              title={`${label} 상담`}
+                            >
+                              <Icon className="h-3 w-3 mr-1" />
+                              {label}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* 답변 시간 표시 */}
+                      <div className="flex items-center space-x-1 text-xs text-gray-600">
+                        <Clock className="h-3 w-3 text-green-500" />
+                        <span>{expert.responseTime}</span>
+                      </div>
+                    </div>
+
+                    {/* 통계 정보 */}
+                    <div className="flex items-center space-x-6 text-sm text-gray-600 pt-4 border-t border-gray-100">
+                      <div className="flex items-center">
+                        <Users className="h-4 w-4 mr-1" />
+                        <span>{expert.totalSessions}회 상담</span>
+                      </div>
+                      <div className="flex items-center">
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        <span>{expert.completionRate}% 완료율</span>
+                      </div>
+                      <div className="flex items-center">
+                        <Award className="h-4 w-4 mr-1" />
+                        <span>{expert.repeatClients}명 재방문</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="p-6">
-                <div className="mb-4">
-                  <h1 className="text-2xl font-bold text-gray-900 mb-2">{expert.name}</h1>
-                  <p className="text-lg text-gray-600 mb-3">{expert.specialty}</p>
-                  
-                  {/* 평점 및 리뷰 */}
-                  <div className="flex items-center space-x-4 mb-4">
-                    <div className="flex items-center">
-                      <Star className="h-5 w-5 text-yellow-500 fill-current" />
-                      <span className="ml-1 font-semibold text-gray-900">{expert.rating}</span>
-                      <span className="ml-1 text-gray-500">({expert.reviewCount}개 리뷰)</span>
-                    </div>
-                    <div className="flex items-center text-gray-600">
-                      <Users className="h-4 w-4 mr-1" />
-                      <span>{expert.totalSessions}회 상담</span>
-                    </div>
-                    <div className="flex items-center text-gray-600">
-                      <Award className="h-4 w-4 mr-1" />
-                      <span>{expert.experience}년 경력</span>
-                    </div>
-                  </div>
-
-                  {/* 전문 분야 태그 */}
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {expert.tags.map((tag, index) => (
-                      <span
-                        key={index}
-                        className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-50 text-blue-700 border border-blue-100"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 탭 네비게이션 */}
-                <div className="border-b border-gray-200 mb-6">
-                  <nav className="flex space-x-8">
+              {/* 탭 네비게이션 */}
+              <div className="border-b border-gray-200 mb-6 px-6">
+                <nav className="flex space-x-8">
                     {[
                       { id: 'overview', label: '개요' },
                       { id: 'reviews', label: '리뷰' },
@@ -179,7 +447,8 @@ export default function ExpertProfilePage() {
                   </nav>
                 </div>
 
-                {/* 탭 컨텐츠 */}
+              {/* 탭 컨텐츠 */}
+              <div className="px-6">
                 {activeTab === 'overview' && (
                   <div className="space-y-6">
                     <div>
@@ -296,10 +565,26 @@ export default function ExpertProfilePage() {
             {/* 상담 신청 카드 */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <div className="mb-4">
-                <div className="text-2xl font-bold text-gray-900 mb-1">
-                  {expert.pricePerMinute}크레딧<span className="text-base font-normal text-gray-500">/분</span>
-                </div>
-                <p className="text-sm text-gray-600">평균 세션 시간: {expert.averageSessionDuration}분</p>
+                {(() => {
+                  const level = calculateExpertLevel(expert.totalSessions, expert.avgRating);
+                  const creditsPerMinute = level.creditsPerMinute;
+                  const actualLevel = Math.min(
+                    999,
+                    Math.max(1, Math.floor(expert.totalSessions / 10) + Math.floor(expert.avgRating * 10))
+                  );
+                  
+                  return (
+                    <>
+                      <div className="text-2xl font-bold text-gray-900 mb-1">
+                        {creditsPerMinute}크레딧<span className="text-base font-normal text-gray-500">/분</span>
+                      </div>
+                      <p className="text-sm text-gray-600">평균 세션 시간: {expert.averageSessionDuration}분</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Lv.{actualLevel} 레벨 요금
+                      </p>
+                    </>
+                  );
+                })()}
               </div>
 
               <div className="space-y-3 mb-6">
@@ -379,6 +664,21 @@ export default function ExpertProfilePage() {
             </div>
           </div>
         </div>
+
+        {/* 비슷한 전문가 섹션 */}
+        {similarExperts.length > 0 && (
+          <div className="mt-12">
+            <MatchedExpertsSection
+              title={searchParams.get('fromCategory') ? "검색 조건에 맞는 다른 전문가" : "비슷한 전문가"}
+              subtitle={
+                searchParams.get('fromCategory') 
+                  ? `검색하신 조건에 맞는 ${expert?.specialty} 분야의 다른 전문가들입니다.`
+                  : `${expert?.specialty} 분야의 다른 전문가들을 확인해보세요.`
+              }
+              experts={similarExperts}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

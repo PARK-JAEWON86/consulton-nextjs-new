@@ -78,10 +78,14 @@ interface ExpertProfileData {
 interface ExpertProfileProps {
   expertData?: Partial<ExpertProfileData> & { isProfileComplete?: boolean };
   onSave: (updated: ExpertProfileData & { isProfileComplete: boolean }) => void;
+  isEditing?: boolean;
+  onEditingChange?: (editing: boolean) => void;
 }
 
-const ExpertProfile = ({ expertData, onSave }: ExpertProfileProps) => {
-  const [isEditing, setIsEditing] = useState(!expertData?.isProfileComplete);
+const ExpertProfile = ({ expertData, onSave, isEditing: externalIsEditing, onEditingChange }: ExpertProfileProps) => {
+  const [internalIsEditing, setInternalIsEditing] = useState(!expertData?.isProfileComplete);
+  const isEditing = externalIsEditing !== undefined ? externalIsEditing : internalIsEditing;
+  const setIsEditing = onEditingChange || setInternalIsEditing;
   const [profileData, setProfileData] = useState({
     name: expertData?.name || "",
     specialty: expertData?.specialty || "",
@@ -350,277 +354,356 @@ const ExpertProfile = ({ expertData, onSave }: ExpertProfileProps) => {
   };
 
   if (!isEditing && expertData?.isProfileComplete) {
-    // 프로필 보기 모드
+    // 프로필 보기 모드 - 사용자 페이지와 비슷한 구성
     return (
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-          <h3 className="text-lg font-medium text-gray-900 flex items-center">
-            <User className="h-5 w-5 text-blue-600 mr-2" />
-            전문가 프로필
-          </h3>
-          <button
-            onClick={() => setIsEditing(true)}
-            className="flex items-center px-3 py-1.5 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
-          >
-            <Edit className="h-4 w-4 mr-1" />
-            편집
-          </button>
-        </div>
+      <div className="min-h-screen bg-gray-50">
 
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* 메인 컨텐츠 */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* 전문가 기본 정보 - 카드와 비슷한 레이아웃 */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="p-6">
-          {/* 프로필 헤더 */}
-          <div className="flex flex-col lg:flex-row lg:items-start space-y-4 lg:space-y-0 lg:space-x-6 mb-8">
-            <div className="flex-shrink-0 self-center lg:self-start">
+                  {/* 헤더: 왼쪽 프로필 사진, 오른쪽 모든 정보 */}
+                  <div className="flex items-start space-x-6">
+                    {/* 왼쪽: 프로필 사진 */}
+                    <div className="flex-shrink-0">
+                      <div className="relative">
+                        <div className="w-36 h-48 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl flex items-center justify-center overflow-hidden border-2 border-gray-100 shadow-md">
               {profileData.profileImage ? (
                 <img
                   src={profileData.profileImage}
-                  alt="프로필"
-                  className="w-24 h-24 rounded-full object-cover border-4 border-gray-200 shadow-md"
+                              alt={profileData.name}
+                              className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center shadow-md">
-                  <User className="h-12 w-12 text-gray-400" />
-                </div>
+                            <span className="text-blue-600 text-4xl font-bold">
+                              {profileData.name.charAt(0)}
+                            </span>
               )}
             </div>
 
-            <div className="flex-1 text-center lg:text-left">
-              {/* 이름과 레벨 배지 */}
-              <div className="flex flex-col lg:flex-row lg:items-center lg:space-x-3 space-y-2 lg:space-y-0 mb-3">
-                <h4 className="text-2xl font-bold text-gray-900">
-                  {profileData.name}
-                </h4>
-                <div
-                  className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium self-center lg:self-auto ${levelBadgeStyles.background} ${levelBadgeStyles.textColor}`}
-                >
-                  <span>★</span>
-                  <span>{getKoreanLevelName(currentLevel.name)}</span>
+                        {/* 전문가 레벨 배지 */}
+                        {(() => {
+                          // 실제 레벨 숫자 계산
+                          const actualLevel = Math.min(
+                            999,
+                            Math.max(1, Math.floor((profileData.totalSessions || 0) / 10) + Math.floor((profileData.avgRating || 0) * 10))
+                          );
+
+                          // 색상 결정
+                          let bgColor = "bg-blue-500";
+                          if (actualLevel >= 800) bgColor = "bg-purple-500";
+                          else if (actualLevel >= 600) bgColor = "bg-red-500";
+                          else if (actualLevel >= 400) bgColor = "bg-orange-500";
+                          else if (actualLevel >= 200) bgColor = "bg-yellow-500";
+                          else if (actualLevel >= 100) bgColor = "bg-green-500";
+
+                          return (
+                            <div className={`absolute -bottom-2 -right-2 border-2 border-white rounded-full shadow-sm flex items-center justify-center ${
+                              actualLevel >= 100 ? "w-14 h-7 px-2" : "w-12 h-7 px-1"
+                            } ${bgColor}`}>
+                              <span className="text-xs font-bold text-white">
+                                Lv.{actualLevel}
+                  </span>
+                </div>
+                          );
+                        })()}
                 </div>
               </div>
 
-              {/* 전문 분야 */}
-              <p className="text-lg text-blue-600 font-semibold mb-4">
-                {profileData.specialty}
-              </p>
-
-              {/* 통계 정보 */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-                <div className="flex items-center justify-center lg:justify-start space-x-2 p-3 bg-gray-50 rounded-lg">
-                  <Briefcase className="h-5 w-5 text-gray-500" />
-                  <span className="text-sm font-medium text-gray-700">
-                    경력 {profileData.experience}년
-                  </span>
-                </div>
-                <div className="flex items-center justify-center lg:justify-start space-x-2 p-3 bg-gray-50 rounded-lg">
-                  <Star className="h-5 w-5 text-yellow-500" />
-                  <span className="text-sm font-medium text-gray-700">
-                    평점 {(profileData.avgRating || 0).toFixed(1)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-center lg:justify-start space-x-2 p-3 bg-gray-50 rounded-lg">
-                  <Users className="h-5 w-5 text-gray-500" />
-                  <span className="text-sm font-medium text-gray-700">
-                    {profileData.totalSessions || 0}회 상담
-                  </span>
+                    {/* 오른쪽: 모든 정보 */}
+                    <div className="flex-1 min-w-0 space-y-4">
+                      {/* 상단: 이름과 활성 상태 */}
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center space-x-2">
+                          <h1 className="text-xl font-bold text-gray-900 truncate">{profileData.name}</h1>
+                        </div>
+                        <div className="flex items-center bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs flex-shrink-0">
+                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1"></div>
+                          활성화됨
                 </div>
               </div>
 
-              {/* 분당 요금 */}
-              <div className="bg-blue-50 rounded-lg p-4 mb-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-700">
-                    분당 요금
-                  </span>
-                  <span className="text-lg font-bold text-blue-600">
-                    {creditsPerMinute} 크레딧/분
-                  </span>
-                </div>
+                      {/* 전문 분야 */}
+                      <p className="text-base text-gray-600 font-medium">{profileData.specialty}</p>
+                      
+                      {/* 평점 및 정보 */}
+                      <div className="flex items-center space-x-4">
+                        <div className="flex items-center">
+                          <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                          <span className="text-sm font-semibold text-gray-900 ml-1">{(profileData.avgRating || 0).toFixed(1)}</span>
+                          <span className="text-sm text-gray-500 ml-1">(리뷰 시스템 준비중)</span>
               </div>
-
-              {/* 자기소개 */}
-              <div className="text-left">
-                <p className="text-gray-700 leading-relaxed">
-                  {profileData.description}
-                </p>
-              </div>
+                        <div className="flex items-center text-sm text-gray-500">
+                          <Award className="h-4 w-4 mr-1" />
+                          {profileData.experience}년 경력
             </div>
           </div>
 
-          {/* 레벨 진행률 정보 */}
-          {!nextLevelProgress.isMaxTier && nextLevelProgress.nextTier && (
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 mb-6">
-              <h5 className="font-semibold text-gray-900 mb-3 flex items-center">
-                <TrendingUp className="h-5 w-5 text-blue-600 mr-2" />
-                다음 레벨까지의 진행률
-              </h5>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">
-                    다음 레벨:{" "}
-                    {getKoreanLevelName(nextLevelProgress.nextTier.name)}
+                      {/* 설명 */}
+                      <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
+                        {profileData.description}
+                      </p>
+
+                      {/* 전문 분야 태그 */}
+                      <div className="flex gap-1.5 overflow-hidden">
+                        {profileData.specialties.filter(s => s).slice(0, 4).map((tag, index) => (
+                          <span
+                            key={index}
+                            className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs rounded-full border border-blue-100 flex-shrink-0"
+                          >
+                            {tag}
                   </span>
-                  <span className="font-medium text-blue-600">
-                    {Math.round(nextLevelProgress.progress)}%
+                        ))}
+                        {profileData.specialties.filter(s => s).length > 4 && (
+                          <span className="px-2.5 py-1 bg-gray-50 text-gray-600 text-xs rounded-full border border-gray-100 flex-shrink-0">
+                            +{profileData.specialties.filter(s => s).length - 4}
                   </span>
+                        )}
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className="bg-gradient-to-r from-blue-500 to-indigo-600 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${nextLevelProgress.progress}%` }}
-                  ></div>
+
+                      {/* 상담 방식 및 답변 시간 */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          {profileData.consultationTypes.map((type) => {
+                            let Icon = MessageCircle;
+                            let label = "채팅";
+                            
+                            if (type === "video") {
+                              Icon = Video;
+                              label = "화상";
+                            } else if (type === "voice") {
+                              Icon = Phone;
+                              label = "음성";
+                            }
+
+                            return (
+                              <div
+                                key={type}
+                                className="flex items-center text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded"
+                                title={`${label} 상담`}
+                              >
+                                <Icon className="h-3 w-3 mr-1" />
+                                {label}
                 </div>
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                            );
+                          })}
+                        </div>
+
+                        {/* 답변 시간 표시 */}
+                        <div className="flex items-center space-x-1 text-xs text-gray-600">
+                          <Clock className="h-3 w-3 text-green-500" />
+                          <span>{"2시간 내"}</span>
+                        </div>
+                      </div>
+
+                      {/* 통계 정보 */}
+                      <div className="flex items-center space-x-6 text-sm text-gray-600 pt-4 border-t border-gray-100">
                   <div className="flex items-center">
-                    <Target className="h-4 w-4 text-green-600 mr-1" />
-                    <span className="text-gray-600">
-                      다음 티어까지 레벨 {nextLevelProgress.levelsNeeded} 필요
-                    </span>
+                          <Users className="h-4 w-4 mr-1" />
+                          <span>{profileData.totalSessions || 0}회 상담</span>
                   </div>
                   <div className="flex items-center">
-                    <Star className="h-4 w-4 text-yellow-500 mr-1" />
-                    <span className="text-gray-600">지금 페이스 좋아요!</span>
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          <span>95% 완료율</span>
                   </div>
+                        <div className="flex items-center">
+                          <Award className="h-4 w-4 mr-1" />
+                          <span>재방문 고객</span>
                 </div>
               </div>
             </div>
-          )}
-
-          {/* 최고 레벨 달성 메시지 */}
-          {nextLevelProgress.isMaxTier && (
-            <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg p-4 mb-6 border border-yellow-200">
-              <h5 className="font-semibold text-gray-900 mb-3 flex items-center">
-                <Award className="h-5 w-5 text-yellow-600 mr-2" />
-                최고 레벨 달성! 🎉
-              </h5>
-              <p className="text-sm text-gray-700">
-                축하합니다! 최고 레벨인{" "}
-                <strong>{getKoreanLevelName(currentLevel.name)}</strong> 레벨에
-                도달하셨습니다. 지속적인 우수한 서비스로 고객들에게 최고의
-                상담을 제공해주세요.
-              </p>
             </div>
-          )}
+                </div>
+              </div>
 
-          {/* 전문 정보 섹션 */}
+              {/* 전문 분야 및 자격 정보 */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* 전문 분야 및 상담 방식 */}
-            <div className="space-y-6">
+                  {/* 전문 분야 */}
               <div>
-                <h5 className="font-semibold text-gray-900 mb-4 flex items-center">
-                  <Star className="h-5 w-5 text-blue-600 mr-2" />
-                  전문 분야
-                </h5>
-                <div className="flex flex-wrap gap-2">
-                  {profileData.specialties
-                    .filter((s) => s)
-                    .map((specialty, index) => (
-                      <span
-                        key={index}
-                        className="px-3 py-2 bg-blue-100 text-blue-800 rounded-lg text-sm font-medium"
-                      >
-                        {specialty}
-                      </span>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                      <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
+                      전문 분야
+                    </h3>
+                    <div className="space-y-2">
+                      {profileData.specialties.filter(s => s).map((specialty, index) => (
+                        <div key={index} className="flex items-center p-3 bg-blue-50 rounded-lg">
+                          <CheckCircle className="h-4 w-4 text-blue-500 mr-2" />
+                          <span className="text-sm font-medium text-gray-700">{specialty}</span>
+                        </div>
                     ))}
                 </div>
               </div>
 
+                  {/* 상담 방식 */}
               <div>
-                <h5 className="font-semibold text-gray-900 mb-4 flex items-center">
-                  <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
-                  상담 방식
-                </h5>
-                <div className="flex flex-wrap gap-2">
-                  {profileData.consultationTypes.map((typeId) => {
-                    const type = consultationTypeOptions.find(
-                      (t) => t.id === typeId
-                    );
-
-                    // 아이콘 결정
-                    let IconComponent;
-                    if (typeId === "video") {
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                      <MessageCircle className="h-5 w-5 text-blue-600 mr-2" />
+                      상담 방식
+                    </h3>
+                    <div className="space-y-2">
+                      {profileData.consultationTypes.map((type) => {
+                        let IconComponent = MessageCircle;
+                        let label = "채팅 상담";
+                        
+                        if (type === "video") {
                       IconComponent = Video;
-                    } else if (typeId === "chat") {
-                      IconComponent = MessageCircle;
-                    } else if (typeId === "voice") {
+                          label = "화상 상담";
+                        } else if (type === "voice") {
                       IconComponent = Phone;
+                          label = "음성 상담";
                     }
 
                     return (
-                      <span
-                        key={typeId}
-                        className="px-3 py-2 bg-green-100 text-green-800 rounded-lg text-sm font-medium flex items-center"
-                      >
-                        {IconComponent && (
-                          <IconComponent className="h-4 w-4 mr-2" />
-                        )}
-                        {type?.label}
-                      </span>
+                          <div key={type} className="flex items-center p-3 bg-green-50 rounded-lg">
+                            <IconComponent className="h-4 w-4 text-green-500 mr-2" />
+                            <span className="text-sm font-medium text-gray-700">{label}</span>
+                          </div>
                     );
                   })}
                 </div>
               </div>
             </div>
 
-            {/* 학력 및 자격증 */}
-            <div className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
               {/* 학력 */}
               <div>
-                <h5 className="font-semibold text-gray-900 mb-4 flex items-center">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
                   <Award className="h-5 w-5 text-blue-600 mr-2" />
                   학력
-                </h5>
+                    </h3>
                 <div className="space-y-2">
-                  {profileData.education
-                    .filter((edu) => edu)
-                    .map((edu, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center p-3 bg-gray-50 rounded-lg"
-                      >
-                        <Award className="h-5 w-5 text-gray-500 mr-3" />
-                        <span className="text-sm font-medium text-gray-700">
-                          {edu}
-                        </span>
+                      {profileData.education.filter(edu => edu).map((edu, index) => (
+                        <div key={index} className="flex items-center p-3 bg-gray-50 rounded-lg">
+                          <Award className="h-4 w-4 text-gray-500 mr-2" />
+                          <span className="text-sm font-medium text-gray-700">{edu}</span>
                       </div>
                     ))}
                 </div>
               </div>
 
-              {/* 자격증 및 인증 */}
+                  {/* 자격증 */}
               <div>
-                <h5 className="font-semibold text-gray-900 mb-4 flex items-center">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
                   <CheckCircle className="h-5 w-5 text-blue-600 mr-2" />
                   자격증 및 인증
-                </h5>
+                    </h3>
                 <div className="space-y-2">
-                  {profileData.certifications
-                    .filter((cert) => cert)
-                    .map((cert, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center p-3 bg-gray-50 rounded-lg"
-                      >
-                        <CheckCircle className="h-5 w-5 text-green-500 mr-3" />
-                        <span className="text-sm font-medium text-gray-700">
-                          {cert}
-                        </span>
+                      {profileData.certifications.filter(cert => cert).map((cert, index) => (
+                        <div key={index} className="flex items-center p-3 bg-gray-50 rounded-lg">
+                          <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                          <span className="text-sm font-medium text-gray-700">{cert}</span>
                       </div>
                     ))}
+                    </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* 상담 가능 시간 섹션 */}
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <h5 className="font-semibold text-gray-900 mb-4 flex items-center">
+            {/* 사이드바 */}
+            <div className="space-y-6">
+              {/* 레벨 및 요금 정보 */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="mb-4">
+                  {(() => {
+                    const actualLevel = Math.min(
+                      999,
+                      Math.max(1, Math.floor((profileData.totalSessions || 0) / 10) + Math.floor((profileData.avgRating || 0) * 10))
+                    );
+                    
+                    return (
+                      <>
+                        <div className="text-2xl font-bold text-gray-900 mb-1">
+                          {creditsPerMinute} 크레딧<span className="text-base font-normal text-gray-500">/분</span>
+                        </div>
+                        <p className="text-sm text-gray-600">내 전문가 레벨 요금</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Lv.{actualLevel} 레벨 요금
+                        </p>
+                      </>
+                    );
+                  })()}
+                </div>
+
+                <div className="space-y-3 mb-6">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">총 상담 횟수</span>
+                    <span className="font-medium text-gray-900">{profileData.totalSessions || 0}회</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">평균 평점</span>
+                    <span className="font-medium text-gray-900">{(profileData.avgRating || 0).toFixed(1)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">경력</span>
+                    <span className="font-medium text-gray-900">{profileData.experience}년</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 레벨 진행률 정보 */}
+              {!nextLevelProgress.isMaxTier && nextLevelProgress.nextTier && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
+                    <TrendingUp className="h-5 w-5 text-blue-600 mr-2" />
+                    다음 레벨까지의 진행률
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">
+                        다음 티어: {nextLevelProgress.nextTier.name}
+                      </span>
+                      <span className="font-medium text-blue-600">
+                        {Math.round(nextLevelProgress.progress)}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-gradient-to-r from-blue-500 to-indigo-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${nextLevelProgress.progress}%` }}
+                      ></div>
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      <div className="flex items-center">
+                        <Target className="h-4 w-4 text-green-600 mr-1" />
+                        <span>다음 티어까지 레벨 {nextLevelProgress.levelsNeeded} 필요</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 최고 레벨 달성 메시지 */}
+              {nextLevelProgress.isMaxTier && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
+                    <Award className="h-5 w-5 text-yellow-600 mr-2" />
+                    최고 레벨 달성! 🎉
+                  </h3>
+                  <p className="text-sm text-gray-700">
+                    축하합니다! 최고 티어인{" "}
+                    <strong>{currentLevel.name}</strong>에
+                    도달하셨습니다.
+                  </p>
+                </div>
+              )}
+
+              {/* 상담 가능 시간 */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
               <Calendar className="h-5 w-5 text-blue-600 mr-2" />
               상담 가능 시간
-            </h5>
+                </h3>
             {(() => {
-              const availableDays = daysOrder.filter(
-                (d) => profileData.availability[d]?.available
+                  const availableDays = Object.keys(profileData.availability).filter(
+                    day => profileData.availability[day as keyof typeof profileData.availability]?.available
               );
+                  
               if (availableDays.length === 0) {
                 return (
                   <p className="text-sm text-gray-500">
@@ -628,41 +711,55 @@ const ExpertProfile = ({ expertData, onSave }: ExpertProfileProps) => {
                   </p>
                 );
               }
+                  
+                  const dayNames = {
+                    monday: "월요일",
+                    tuesday: "화요일",
+                    wednesday: "수요일",
+                    thursday: "목요일",
+                    friday: "금요일",
+                    saturday: "토요일",
+                    sunday: "일요일",
+                  };
+                  
               return (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="space-y-2">
                   {availableDays.map((day) => (
                     <div
                       key={day}
-                      className="p-3 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between"
+                          className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg"
                     >
                       <div className="flex items-center">
                         <Calendar className="h-4 w-4 text-green-600 mr-2" />
                         <span className="text-sm font-medium text-gray-800">
-                          {dayNames[day]}
+                              {dayNames[day as keyof typeof dayNames]}
                         </span>
                       </div>
                       <span className="text-sm font-semibold text-green-700">
-                        {profileData.availability[day]?.hours}
+                            {profileData.availability[day as keyof typeof profileData.availability]?.hours}
                       </span>
                     </div>
                   ))}
                 </div>
               );
             })()}
+              </div>
+            </div>
           </div>
 
           {/* 포트폴리오 섹션 */}
           {profileData.portfolioFiles.length > 0 && (
-            <div className="mt-8 pt-6 border-t border-gray-200">
-              <h5 className="font-semibold text-gray-900 mb-6 flex items-center">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
                 <FileText className="h-5 w-5 text-blue-600 mr-2" />
                 포트폴리오 및 자료
-              </h5>
+                </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {profileData.portfolioFiles.map((file) => (
                   <div
                     key={file.id}
-                    className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow duration-200 bg-white"
+                      className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow duration-200 bg-gray-50"
                   >
                     <div className="text-center">
                       {file.type.startsWith("image/") ? (
@@ -688,6 +785,7 @@ const ExpertProfile = ({ expertData, onSave }: ExpertProfileProps) => {
                     </div>
                   </div>
                 ))}
+                </div>
               </div>
             </div>
           )}

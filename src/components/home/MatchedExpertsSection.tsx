@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { calculateCreditsByLevel } from "@/utils/expertLevels";
+import { ExpertProfile } from "@/types";
 import {
   Users,
   Star,
@@ -16,8 +17,14 @@ import {
 interface MatchedExpertsSectionProps {
   title: string;
   subtitle?: string;
-  experts: any[];
-  onClickProfile?: (expert: any) => void;
+  experts: ExpertProfile[];
+  onClickProfile?: (expert: ExpertProfile) => void;
+  searchContext?: {
+    category?: string;
+    ageGroup?: string;
+    startDate?: string;
+    endDate?: string;
+  };
 }
 
 const getConsultationTypeIcon = (type: string) => {
@@ -97,6 +104,7 @@ export default function MatchedExpertsSection({
   subtitle,
   experts,
   onClickProfile,
+  searchContext,
 }: MatchedExpertsSectionProps) {
   const router = useRouter();
   const [favorites, setFavorites] = useState<number[]>([]);
@@ -116,19 +124,34 @@ export default function MatchedExpertsSection({
 
   const handleProfileView = (expert: any) => {
     if (expert.id) {
-      router.push(`/experts/${expert.id}`);
+      // 검색 컨텍스트가 있으면 URL 파라미터로 전달
+      let url = `/experts/${expert.id}`;
+      if (searchContext) {
+        const params = new URLSearchParams();
+        if (searchContext.category) params.set('fromCategory', searchContext.category);
+        if (searchContext.ageGroup) params.set('fromAgeGroup', searchContext.ageGroup);
+        if (searchContext.startDate) params.set('fromStartDate', searchContext.startDate);
+        if (searchContext.endDate) params.set('fromEndDate', searchContext.endDate);
+        
+        if (params.toString()) {
+          url += `?${params.toString()}`;
+        }
+      }
+      router.push(url);
     } else if (onClickProfile) {
       onClickProfile(expert);
     }
   };
 
   return (
-    <section className="py-16 bg-white">
+    <section className={title ? "py-16 bg-white" : "bg-transparent"}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">{title}</h2>
-          {subtitle && <p className="text-gray-600">{subtitle}</p>}
-        </div>
+        {title && (
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">{title}</h2>
+            {subtitle && <p className="text-gray-600">{subtitle}</p>}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {normalizedExperts.map((expert) => {
@@ -298,14 +321,16 @@ export default function MatchedExpertsSection({
           })}
         </div>
 
-        <div className="text-center mt-10">
-          <a
-            href="/experts"
-            className="inline-flex items-center px-6 py-3 border-2 border-blue-600 text-blue-600 rounded-lg font-medium hover:bg-blue-50 transition-colors"
-          >
-            더 많은 전문가 찾기
-          </a>
-        </div>
+        {title && (
+          <div className="text-center mt-10">
+            <a
+              href="/experts"
+              className="inline-flex items-center px-6 py-3 border-2 border-blue-600 text-blue-600 rounded-lg font-medium hover:bg-blue-50 transition-colors"
+            >
+              더 많은 전문가 찾기
+            </a>
+          </div>
+        )}
       </div>
     </section>
   );
