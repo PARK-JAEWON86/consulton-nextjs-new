@@ -19,6 +19,8 @@ interface AppState {
     name: string | null;
     credits: number;
     expertLevel: string | null;
+    role?: 'expert' | 'client' | 'admin';
+    expertProfile?: any; // 전문가 프로필 정보
   } | null;
 
   // 액션들

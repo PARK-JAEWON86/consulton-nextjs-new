@@ -9,24 +9,16 @@ import {
   User,
   Bot,
 } from "lucide-react";
-
-interface ExpertInfo {
-  name: string;
-  avatar?: string;
-  title?: string;
-}
-
-interface Message {
-  id: string;
-  type: "user" | "expert" | "ai" | "system";
-  content: string;
-  timestamp: Date;
-  expertInfo?: ExpertInfo;
-}
+import { AIChatMessage, ExtendedChatMessage } from "@/types";
 
 interface ChatBubbleProps {
-  message: Message;
+  message: AIChatMessage | ExtendedChatMessage;
 }
+
+// 타입 가드 함수
+const isExtendedChatMessage = (message: AIChatMessage | ExtendedChatMessage): message is ExtendedChatMessage => {
+  return 'expertInfo' in message;
+};
 
 const ChatBubble = ({ message }: ChatBubbleProps) => {
   const [showActions, setShowActions] = useState(false);
@@ -91,7 +83,7 @@ const ChatBubble = ({ message }: ChatBubbleProps) => {
               <div className="w-8 h-8 bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-sm">
                 <Bot className="text-white w-4 h-4" />
               </div>
-            ) : message.expertInfo?.avatar ? (
+            ) : isExtendedChatMessage(message) && message.expertInfo?.avatar ? (
               <img
                 src={message.expertInfo.avatar}
                 alt={message.expertInfo.name}
@@ -100,7 +92,7 @@ const ChatBubble = ({ message }: ChatBubbleProps) => {
             ) : (
               <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
                 <span className="text-white text-sm font-medium">
-                  {message.expertInfo?.name?.charAt(0) || "E"}
+                  {isExtendedChatMessage(message) && message.expertInfo?.name?.charAt(0) || "E"}
                 </span>
               </div>
             )}
@@ -124,7 +116,7 @@ const ChatBubble = ({ message }: ChatBubbleProps) => {
                   <span className="text-xs text-cyan-600">컨설트온 AI</span>
                 </>
               ) : (
-                message.expertInfo && (
+                isExtendedChatMessage(message) && message.expertInfo && (
                   <>
                     <span className="text-sm font-medium text-gray-900">
                       {message.expertInfo.name}

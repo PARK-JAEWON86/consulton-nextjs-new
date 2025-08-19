@@ -13,14 +13,17 @@ import {
   Plus,
   Download,
   Share2,
+  LogIn,
 } from "lucide-react";
 import ServiceLayout from "@/components/layout/ServiceLayout";
 import { dummyConsultationSummaries, ConsultationSummary } from "@/data/dummy";
+import { useAppStore } from "@/stores/appStore";
 
 // ConsultationSummary 타입은 더미 데이터에서 import
 
 export default function SummaryPage() {
   const router = useRouter();
+  const { user, isAuthenticated } = useAppStore();
   const [summaries, setSummaries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -32,65 +35,7 @@ export default function SummaryPage() {
     status: summary.status === 'pending' ? 'failed' as const : summary.status as 'completed' | 'processing' | 'failed'
   }));
 
-  // 기존 더미 데이터는 주석 처리
-  /*const mockSummaries: ConsultationSummary[] = [
-    {
-      id: "123",
-      title: "온라인 쇼핑몰 마케팅 전략 상담",
-      date: new Date("2024-01-15T14:30:00"),
-      duration: 45,
-      expert: {
-        name: "이민수",
-        title: "디지털 마케팅 전문가",
-      },
-      status: "completed",
-      creditsUsed: 25,
-      hasRecording: true,
-      tags: ["마케팅", "디지털마케팅", "SNS"],
-    },
-    {
-      id: "124",
-      title: "창업 아이템 검증 및 사업계획 수립",
-      date: new Date("2024-01-10T10:00:00"),
-      duration: 60,
-      expert: {
-        name: "박영희",
-        title: "창업 컨설턴트",
-      },
-      status: "completed",
-      creditsUsed: 30,
-      hasRecording: true,
-      tags: ["창업", "사업계획", "검증"],
-    },
-    {
-      id: "125",
-      title: "개인 브랜딩 및 SNS 전략",
-      date: new Date("2024-01-08T16:00:00"),
-      duration: 30,
-      expert: {
-        name: "김지원",
-        title: "브랜딩 전문가",
-      },
-      status: "processing",
-      creditsUsed: 20,
-      hasRecording: false,
-      tags: ["브랜딩", "SNS", "개인마케팅"],
-    },
-    {
-      id: "126",
-      title: "투자 유치 전략 및 피칭 준비",
-      date: new Date("2024-01-05T11:30:00"),
-      duration: 90,
-      expert: {
-        name: "최동현",
-        title: "투자 컨설턴트",
-      },
-      status: "completed",
-      creditsUsed: 40,
-      hasRecording: true,
-      tags: ["투자", "피칭", "전략"],
-    },
-  ];*/
+
 
   useEffect(() => {
     // 실제로는 API에서 데이터 가져오기
@@ -144,6 +89,41 @@ export default function SummaryPage() {
   const handleSummaryClick = (id: string) => {
     router.push(`/summary/${id}`);
   };
+
+  // 로그인하지 않은 사용자에 대한 접근 제한
+  if (!isAuthenticated || !user) {
+    return (
+      <ServiceLayout>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-center justify-center py-24">
+            <div className="text-center max-w-md">
+              <LogIn className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                로그인이 필요합니다
+              </h2>
+              <p className="text-gray-600 mb-6">
+                상담 요약을 보려면 먼저 로그인해주세요.
+              </p>
+              <div className="space-y-3">
+                <button
+                  onClick={() => router.push("/auth/login")}
+                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  로그인하기
+                </button>
+                <button
+                  onClick={() => router.push("/")}
+                  className="w-full bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  홈으로 돌아가기
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </ServiceLayout>
+    );
+  }
 
   if (loading) {
     return (

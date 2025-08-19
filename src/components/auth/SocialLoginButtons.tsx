@@ -2,8 +2,13 @@
 
 import { useState } from "react";
 
-const SocialLoginButtons = () => {
+interface SocialLoginButtonsProps {
+  mode?: "login" | "register";
+}
+
+const SocialLoginButtons = ({ mode = "login" }: SocialLoginButtonsProps) => {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
+  const actionText = mode === "register" ? "회원가입" : "로그인";
 
   const socialProviders = [
     {
@@ -94,19 +99,19 @@ const SocialLoginButtons = () => {
           {loadingProvider === provider.id ? (
             <div className="flex items-center">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
-              로그인 중...
+              {actionText} 중...
             </div>
           ) : (
             <div className="flex items-center">
               {provider.icon}
-              <span className="ml-2">{provider.name}로 로그인</span>
+              <span className="ml-2">{provider.name}로 {actionText}</span>
             </div>
           )}
         </button>
       ))}
 
       <div className="mt-4 text-xs text-gray-500 text-center">
-        소셜 로그인을 통해 계속하시면{" "}
+        소셜 {actionText}을 통해 계속하시면{" "}
         <a href="#" className="text-blue-600 hover:text-blue-500">
           이용약관
         </a>{" "}

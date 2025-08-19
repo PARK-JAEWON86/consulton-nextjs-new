@@ -11,6 +11,7 @@ import {
   CreditCard,
 } from "lucide-react";
 import { useAIChatCreditsStore } from "@/stores/aiChatCreditsStore";
+import { useAppStore } from "@/stores/appStore";
 import React from "react"; // Added missing import
 
 interface NavbarProps {
@@ -26,12 +27,22 @@ const Navbar = ({ onBackToLanding, onNavigate }: NavbarProps = {}) => {
   // AI 채팅 크레딧 스토어에서 크레딧 정보 가져오기
   const { remainingAIChatCredits, checkAndResetMonthly, setCreditsTo7300 } =
     useAIChatCreditsStore();
+    
+  // 앱 스토어에서 사용자 정보 가져오기
+  const { user, isAuthenticated } = useAppStore();
+  
+  // 사용자 정보 계산
+  const userName = user?.name || "게스트";
+  const userEmail = user?.email || "guest@example.com";
+  const userInitial = userName.charAt(0).toUpperCase();
 
-  // 컴포넌트 마운트 시 월간 리셋 체크 및 크레딧을 7300으로 설정
+  // 컴포넌트 마운트 시 월간 리셋 체크 및 로그인된 사용자만 크레딧을 7300으로 설정
   React.useEffect(() => {
-    checkAndResetMonthly();
-    setCreditsTo7300(); // 크레딧을 7300으로 설정
-  }, [checkAndResetMonthly, setCreditsTo7300]);
+    if (isAuthenticated && user) {
+      checkAndResetMonthly();
+      setCreditsTo7300(); // 로그인된 사용자만 크레딧을 7300으로 설정
+    }
+  }, [checkAndResetMonthly, setCreditsTo7300, isAuthenticated, user]);
 
   const handleLogout = () => {
     // 로그아웃 로직
@@ -149,23 +160,25 @@ const Navbar = ({ onBackToLanding, onNavigate }: NavbarProps = {}) => {
 
           {/* 우측: 크레딧 + 프로필 */}
           <div className="flex items-center space-x-6">
-            {/* 크레딧 잔액 표시 - 데스크탑에서만 표시 */}
-            <div className="hidden lg:flex items-center space-x-3">
-              <div className="flex items-center space-x-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
-                <CreditCard className="h-4 w-4 text-blue-600" />
-                <span
-                  className={`text-sm font-medium ${getCreditColor(remainingAIChatCredits)}`}
+            {/* 크레딧 잔액 표시 - 데스크탑에서만 표시, 로그인된 사용자에게만 */}
+            {isAuthenticated && user && (
+              <div className="hidden lg:flex items-center space-x-3">
+                <div className="flex items-center space-x-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                  <CreditCard className="h-4 w-4 text-blue-600" />
+                  <span
+                    className={`text-sm font-medium ${getCreditColor(remainingAIChatCredits)}`}
+                  >
+                    {remainingAIChatCredits} 크레딧
+                  </span>
+                </div>
+                <button
+                  onClick={() => handleNavigate("creditPackages")}
+                  className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors font-medium"
                 >
-                  {remainingAIChatCredits} 크레딧
-                </span>
+                  충전
+                </button>
               </div>
-              <button
-                onClick={() => handleNavigate("creditPackages")}
-                className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-              >
-                충전
-              </button>
-            </div>
+            )}
 
             {/* 모바일에서 햄버거 버튼과 프로필을 함께 배치 - 오른쪽 정렬 */}
             <div className="flex items-center justify-end lg:hidden">
@@ -203,28 +216,30 @@ const Navbar = ({ onBackToLanding, onNavigate }: NavbarProps = {}) => {
                         <span>커뮤니티</span>
                       </button>
 
-                      {/* 모바일에서 크레딧 정보 표시 */}
-                      <div className="px-4 py-2 border-t border-gray-200">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm text-gray-700">
-                            크레딧 잔액
-                          </span>
-                          <span
-                            className={`text-sm font-medium ${getCreditColor(remainingAIChatCredits)}`}
+                      {/* 모바일에서 크레딧 정보 표시 - 로그인된 사용자에게만 */}
+                      {isAuthenticated && user && (
+                        <div className="px-4 py-2 border-t border-gray-200">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm text-gray-700">
+                              크레딧 잔액
+                            </span>
+                            <span
+                              className={`text-sm font-medium ${getCreditColor(remainingAIChatCredits)}`}
+                            >
+                              {remainingAIChatCredits} 크레딧
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => {
+                              handleNavigate("creditPackages");
+                              setShowNavMenu(false);
+                            }}
+                            className="w-full bg-blue-600 text-white text-sm font-medium py-2 px-3 rounded-lg hover:bg-blue-700 transition-colors"
                           >
-                            {remainingAIChatCredits} 크레딧
-                          </span>
+                            크레딧 충전
+                          </button>
                         </div>
-                        <button
-                          onClick={() => {
-                            handleNavigate("creditPackages");
-                            setShowNavMenu(false);
-                          }}
-                          className="w-full bg-blue-600 text-white text-sm font-medium py-2 px-3 rounded-lg hover:bg-blue-700 transition-colors"
-                        >
-                          크레딧 충전
-                        </button>
-                      </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -237,10 +252,10 @@ const Navbar = ({ onBackToLanding, onNavigate }: NavbarProps = {}) => {
                   className="flex items-center space-x-3"
                 >
                   <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                    <span className="text-white text-sm font-medium">김</span>
+                    <span className="text-white text-sm font-medium">{userInitial}</span>
                   </div>
                   <span className="text-sm text-gray-700 font-medium hidden lg:block">
-                    김철수님
+                    {userName}님
                   </span>
                 </button>
 
@@ -249,9 +264,9 @@ const Navbar = ({ onBackToLanding, onNavigate }: NavbarProps = {}) => {
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
                     <div className="p-4 border-b border-gray-200">
                       <p className="text-sm font-medium text-gray-900">
-                        김철수님
+                        {userName}님
                       </p>
-                      <p className="text-sm text-gray-500">user@example.com</p>
+                      <p className="text-sm text-gray-500">{userEmail}</p>
                     </div>
 
                     <div className="py-2">
@@ -293,10 +308,10 @@ const Navbar = ({ onBackToLanding, onNavigate }: NavbarProps = {}) => {
                 className="flex items-center space-x-3"
               >
                 <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-medium">김</span>
+                  <span className="text-white text-sm font-medium">{userInitial}</span>
                 </div>
                 <span className="text-sm text-gray-700 font-medium">
-                  김철수님
+                  {userName}님
                 </span>
               </button>
 
@@ -305,9 +320,9 @@ const Navbar = ({ onBackToLanding, onNavigate }: NavbarProps = {}) => {
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
                   <div className="p-4 border-b border-gray-200">
                     <p className="text-sm font-medium text-gray-900">
-                      김철수님
+                      {userName}님
                     </p>
-                    <p className="text-sm text-gray-500">user@example.com</p>
+                    <p className="text-sm text-gray-500">{userEmail}</p>
                   </div>
 
                   <div className="py-2">

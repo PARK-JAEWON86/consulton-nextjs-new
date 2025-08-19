@@ -1,6 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
+import DatePicker from "react-datepicker";
+import { ko } from "date-fns/locale";
+import "react-datepicker/dist/react-datepicker.css";
 import {
   Calendar,
   Target,
@@ -219,21 +222,37 @@ export default function SearchFields(props: SearchFieldsProps) {
             />
           </button>
 
-          {/* 날짜 선택 드롭다운 */}
+          {/* 달력 드롭다운 */}
           {activeDropdown === "startDate" && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-2xl shadow-lg z-50 p-4">
+            <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-2xl shadow-lg z-50 p-4">
               <div className="mb-4">
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
                   상담 희망일 선택
                 </h3>
-                <input
-                  type="date"
-                  value={searchStartDate}
-                  onChange={(e) => {
-                    setSearchStartDate(e.target.value);
-                    closeDropdown();
+                <DatePicker
+                  selected={searchStartDate ? new Date(searchStartDate) : null}
+                  onChange={(date) => {
+                    if (date) {
+                      const formattedDate = date.toISOString().split('T')[0];
+                      setSearchStartDate(formattedDate);
+                      closeDropdown();
+                    }
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  minDate={new Date()}
+                  dateFormat="yyyy-MM-dd"
+                  locale={ko}
+                  inline
+                  calendarClassName="custom-calendar"
+                  dayClassName={(date) => {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    date.setHours(0, 0, 0, 0);
+                    
+                    if (date < today) {
+                      return "text-gray-300 cursor-not-allowed";
+                    }
+                    return "hover:bg-blue-100 text-gray-700";
+                  }}
                 />
               </div>
             </div>

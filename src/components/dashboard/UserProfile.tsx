@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useAppStore } from "@/stores/appStore";
 import {
   User,
   Mail,
@@ -43,22 +44,25 @@ interface UserProfileProps {
 const UserProfile = ({ userData, onSave }: UserProfileProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [saveStatus, setSaveStatus] = useState("idle");
+  const { user: loggedInUser } = useAppStore();
+  
+  // 로그인한 사용자 데이터를 우선 사용
+  const currentUserData = userData || loggedInUser;
+  
   const [profileData, setProfileData] = useState<UserData>({
-    name: userData?.name || "김철수",
-    email: userData?.email || "user@example.com",
-    phone: userData?.phone || "010-1234-5678",
-    location: userData?.location || "서울특별시 강남구",
-    birthDate: userData?.birthDate || "1990-01-01",
-    interests: userData?.interests || ["진로상담", "심리상담", "재무상담"],
-    bio:
-      userData?.bio ||
-      "다양한 분야의 전문가들과 상담을 통해 성장하고 있습니다.",
-    profileImage: userData?.profileImage || null,
+    name: currentUserData?.name || "사용자",
+    email: currentUserData?.email || "user@example.com",
+    phone: "010-0000-0000", // 기본값
+    location: "서울특별시", // 기본값
+    birthDate: "1990-01-01", // 기본값
+    interests: ["심리상담", "진로상담"], // 기본값
+    bio: "전문가들과의 상담을 통해 성장하고 있습니다.",
+    profileImage: null,
     // 통계 정보
-    totalConsultations: userData?.totalConsultations || 12,
-    favoriteExperts: userData?.favoriteExperts || 5,
-    completedGoals: userData?.completedGoals || 3,
-    joinDate: userData?.joinDate || "2024-01-15",
+    totalConsultations: 0, // 실제로는 상담 기록에서 계산해야 함
+    favoriteExperts: 0, // 실제로는 즐겨찾기에서 계산해야 함
+    completedGoals: 0, // 기본값
+    joinDate: "2024-01-01", // 기본값
   });
 
   const handleInputChange = (field: keyof UserData, value: string) => {
@@ -97,20 +101,18 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
     setSaveStatus("idle");
     // 원래 데이터로 복원
     setProfileData({
-      name: userData?.name || "김철수",
-      email: userData?.email || "user@example.com",
-      phone: userData?.phone || "010-1234-5678",
-      location: userData?.location || "서울특별시 강남구",
-      birthDate: userData?.birthDate || "1990-01-01",
-      interests: userData?.interests || ["진로상담", "심리상담", "재무상담"],
-      bio:
-        userData?.bio ||
-        "다양한 분야의 전문가들과 상담을 통해 성장하고 있습니다.",
-      profileImage: userData?.profileImage || null,
-      totalConsultations: userData?.totalConsultations || 12,
-      favoriteExperts: userData?.favoriteExperts || 5,
-      completedGoals: userData?.completedGoals || 3,
-      joinDate: userData?.joinDate || "2024-01-15",
+      name: currentUserData?.name || "사용자",
+      email: currentUserData?.email || "user@example.com",
+      phone: "010-0000-0000",
+      location: "서울특별시",
+      birthDate: "1990-01-01",
+      interests: ["심리상담", "진로상담"],
+      bio: "전문가들과의 상담을 통해 성장하고 있습니다.",
+      profileImage: null,
+      totalConsultations: 0,
+      favoriteExperts: 0,
+      completedGoals: 0,
+      joinDate: "2024-01-01",
     });
   };
 

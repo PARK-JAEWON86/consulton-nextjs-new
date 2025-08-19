@@ -1,9 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { useAppStore } from "@/stores/appStore";
-import { useRouter } from "next/navigation";
+import { useConsultationsStore } from "@/stores/consultationsStore";
+import { useRouter, useSearchParams } from "next/navigation";
+import { expertDataService } from "@/services/ExpertDataService";
+import { userDataService } from "@/services/UserDataService";
+import Link from "next/link";
 
 interface FormData {
   email: string;
@@ -19,7 +23,9 @@ interface FormErrors {
 
 const LoginForm = () => {
   const router = useRouter();
-  const { setAuthenticated, setUser, enterService } = useAppStore();
+  const searchParams = useSearchParams();
+  const { setAuthenticated, setUser, enterService, setViewMode } = useAppStore();
+  const { loadExpertConsultations } = useConsultationsStore();
   const [formData, setFormData] = useState<FormData>({
     email: "",
     password: "",
@@ -28,6 +34,17 @@ const LoginForm = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
+
+
+  useEffect(() => {
+    // 개발 환경에서 계정 정보 출력
+    if (process.env.NODE_ENV === 'development') {
+      setTimeout(() => {
+        expertDataService.printLoginCredentials();
+        userDataService.printDummyUsers();
+      }, 1000);
+    }
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -74,23 +91,80 @@ const LoginForm = () => {
     setIsLoading(true);
 
     try {
-      // 로그인 API 호출 시뮬레이션
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // 중앙 데이터 서비스를 통한 전문가 계정 검증
+      const account = expertDataService.validateLogin(formData.email, formData.password);
+      
+      if (account) {
+        // 전문가 로그인 처리
+        // 로그인 시뮬레이션 딜레이
+        await new Promise((resolve) => setTimeout(resolve, 1500));
 
-      // 로그인 성공 처리: 전역 스토어 업데이트 및 리다이렉트
-      setAuthenticated(true);
-      setUser({
-        id: "demo-user",
-        email: formData.email,
-        name: formData.email?.split("@")[0] || "사용자",
-        credits: 0,
-        expertLevel: null,
-      });
-      enterService();
-      router.push("/dashboard");
+        // 중앙 서비스에서 완전한 사용자 데이터 생성
+        const userData = expertDataService.createUserFromExpert(account.id);
+
+        if (userData) {
+          // 로그인 성공 처리: 전역 스토어 업데이트 및 리다이렉트
+          setAuthenticated(true);
+          setUser(userData);
+          
+          // 전문가로 로그인하면 viewMode를 expert로 설정
+          setViewMode('expert');
+          
+          enterService();
+          
+          // 전문가 상담 내역 로드
+          loadExpertConsultations(account.id);
+          
+          // redirect 파라미터가 있으면 해당 URL로, 없으면 전문가 대시보드로 이동
+          const redirectUrl = searchParams.get('redirect') || "/dashboard/expert";
+          router.push(redirectUrl);
+        } else {
+          setErrors({ general: "전문가 데이터를 불러올 수 없습니다." });
+          return;
+        }
+      } else {
+        // 일반 사용자 로그인 처리 (더미 데이터 또는 자동 생성)
+        if (formData.email && formData.password.length >= 4) {
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          
+          // 기존 더미 사용자 찾기 또는 새로 생성
+          let userData = userDataService.getUserByEmail(formData.email);
+          if (!userData) {
+            userData = userDataService.createRandomUser(formData.email);
+            console.log('🆕 새로운 사용자 생성:', userData);
+          } else {
+            console.log('✅ 기존 더미 사용자 로그인:', userData);
+          }
+          
+          setAuthenticated(true);
+          setUser({
+            id: userData.id,
+            email: userData.email,
+            name: userData.name,
+            credits: userData.credits,
+            expertLevel: null,
+            role: 'client',
+            expertProfile: null
+          });
+          
+          // 일반 사용자로 로그인하면 viewMode를 user로 설정
+          setViewMode('user');
+          
+          enterService();
+          
+          // redirect 파라미터가 있으면 해당 URL로, 없으면 일반 사용자 대시보드로 이동
+          const redirectUrl = searchParams.get('redirect') || "/dashboard";
+          router.push(redirectUrl);
+        } else {
+          setErrors({
+            general: "이메일 또는 비밀번호가 올바르지 않습니다.",
+          });
+          return;
+        }
+      }
     } catch (error) {
       setErrors({
-        general: "로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.",
+        general: "로그인 처리 중 오류가 발생했습니다. 다시 시도해주세요.",
       });
     } finally {
       setIsLoading(false);
@@ -98,12 +172,13 @@ const LoginForm = () => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {errors.general && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <div className="text-sm text-red-600">{errors.general}</div>
-        </div>
-      )}
+    <div className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {errors.general && (
+          <div className="bg-red-50 border border-red-200 rounded-md p-4">
+            <div className="text-sm text-red-600">{errors.general}</div>
+          </div>
+        )}
 
       {/* 이메일 입력 */}
       <div>
@@ -228,12 +303,13 @@ const LoginForm = () => {
       <div className="text-center">
         <p className="text-sm text-gray-600">
           아직 계정이 없으신가요?{" "}
-          <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
+          <Link href="/auth/register" className="font-medium text-blue-600 hover:text-blue-500">
             회원가입하기
-          </a>
+          </Link>
         </p>
       </div>
-    </form>
+      </form>
+    </div>
   );
 };
 

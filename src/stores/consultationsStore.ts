@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { getConsultationsByExpert, type ConsultationRecord } from "@/data/dummy/consultationHistory";
 
 export type ConsultationStatus = "completed" | "scheduled" | "canceled";
 
@@ -47,6 +48,7 @@ interface ConsultationsState {
   updateById: (id: number, payload: Partial<ConsultationItem>) => void;
   clearCurrent: () => void;
   clearAll: () => void;
+  loadExpertConsultations: (expertId: number) => void;
 }
 
 export const useConsultationsStore = create<ConsultationsState>()(
@@ -116,6 +118,26 @@ export const useConsultationsStore = create<ConsultationsState>()(
       },
       clearCurrent: () => set({ currentConsultationId: null }),
       clearAll: () => set({ items: [], currentConsultationId: null }),
+      
+      // 전문가 상담 내역 로드
+      loadExpertConsultations: (expertId: number) => {
+        const consultations = getConsultationsByExpert(expertId);
+        const items: ConsultationItem[] = consultations.map((consultation, index) => ({
+          id: parseInt(consultation.id.replace(/\D/g, '')) || Date.now() + index,
+          date: consultation.createdAt,
+          customer: consultation.clientName,
+          topic: consultation.topic,
+          amount: Math.floor(consultation.expertGrossKrw / 10), // KRW to Credits
+          status: consultation.status as ConsultationStatus,
+          method: consultation.consultationType as "chat" | "video" | "voice",
+          duration: consultation.durationMin,
+          summary: consultation.review || `${consultation.durationMin}분 ${consultation.consultationType} 상담 완료`,
+          notes: consultation.rating ? `평점: ${consultation.rating}⭐` : undefined
+        }));
+        
+        set({ items, currentConsultationId: null });
+        console.log(`✅ Loaded ${items.length} consultations for expert ${expertId}`);
+      },
     }),
     {
       name: "consulton-consultations",
