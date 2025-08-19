@@ -129,7 +129,7 @@ const PackCard = ({ pack }: PackCardProps) => {
 
   return (
     <div
-      className={`relative bg-white rounded-xl shadow-sm border transition-all duration-300 overflow-hidden ${
+      className={`relative bg-white rounded-xl shadow-sm border transition-all duration-300 overflow-hidden flex flex-col h-full ${
         isHovered ? "shadow-lg transform -translate-y-1" : ""
       } ${
         pack.isRecommended
@@ -178,13 +178,13 @@ const PackCard = ({ pack }: PackCardProps) => {
         </div>
       )}
 
-      <div className="p-6">
+      <div className="p-6 flex flex-col flex-1">
         {/* 헤더 */}
-        <div className="flex items-center space-x-3 mb-4">
+        <div className="flex items-center space-x-3 mb-4 min-h-[5rem]">
           <div className={`p-3 rounded-lg ${colors.bg}`}>
             <div className={colors.icon}>{getPackIcon(pack)}</div>
           </div>
-          <div>
+          <div className="flex-1">
             <h3 className="text-xl font-bold text-gray-900">{pack.name}</h3>
             <p className="text-sm text-gray-600">{pack.description}</p>
             {isSubscription && (
@@ -198,7 +198,7 @@ const PackCard = ({ pack }: PackCardProps) => {
 
         {/* 가격 */}
         <div className="mb-6">
-          <div className="flex items-baseline space-x-2">
+          <div className="flex items-baseline space-x-2 min-h-[3rem]">
             {isFree ? (
               <span className="text-3xl font-bold text-green-600">무료</span>
             ) : (
@@ -236,33 +236,20 @@ const PackCard = ({ pack }: PackCardProps) => {
             )}
           </div>
 
-          {!isFree && (
-            <div className="mt-2 text-sm text-gray-600">
-              {isSubscription ? (
-                <>
-                  세션당{" "}
-                  {Math.round(
-                    pack.price / (pack.sessions || 1)
-                  ).toLocaleString()}
-                  원
-                  <span className="ml-2 text-green-600 font-medium">
-                    (분당{" "}
-                    {Math.round(
-                      pack.price / ((pack.sessions || 1) * (pack.duration || 1))
-                    )}
-                    원)
-                  </span>
-                </>
-              ) : isCredit ? (
-                <>
-                  크레딧당 {Math.round(pack.price / pack.credits)}원
-                  {pack.credits > 100 && (
-                    <span className="ml-2 text-green-600 font-medium">
-                      (할인혜택)
-                    </span>
-                  )}
-                </>
-              ) : null}
+          {!isFree && isSubscription && (
+            <div className="mt-2 text-sm text-gray-600 min-h-[1.5rem] flex items-center">
+              세션당{" "}
+              {Math.round(
+                pack.price / (pack.sessions || 1)
+              ).toLocaleString()}
+              원
+              <span className="ml-2 text-green-600 font-medium">
+                (분당{" "}
+                {Math.round(
+                  pack.price / ((pack.sessions || 1) * (pack.duration || 1))
+                )}
+                원)
+              </span>
             </div>
           )}
         </div>
@@ -350,7 +337,8 @@ const PackCard = ({ pack }: PackCardProps) => {
           </div>
         )}
 
-        {/* 구매 버튼 */}
+        {/* 구매 버튼 - 하단에 고정 */}
+        <div className="mt-auto">
         <button
           onClick={handlePurchase}
           disabled={isLoading}
@@ -392,6 +380,7 @@ const PackCard = ({ pack }: PackCardProps) => {
                 : "VAT 포함 • 즉시 사용 가능 • 7일 환불 보장")}
             {isCredit && "VAT 포함 • 즉시 충전 • 사용기한 없음"}
           </p>
+        </div>
         </div>
       </div>
 

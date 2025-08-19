@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type React from "react";
 import {
   User,
@@ -47,7 +47,15 @@ interface ExpertProfileData {
   consultationTypes: ConsultationType[];
   languages: string[];
   hourlyRate: number | string;
+  pricePerMinute?: number;
   totalSessions: number;
+  level?: string | number; // 전문가 레벨
+  completionRate?: number; // 완료율
+  repeatClients?: number; // 재방문 고객 수
+  responseTime?: string; // 응답 시간
+  averageSessionDuration?: number; // 평균 상담 시간
+  reviewCount?: number; // 리뷰 수
+  cancellationPolicy?: string; // 취소 정책
   avgRating: number;
   availability: Record<
     | "monday"
@@ -87,6 +95,7 @@ const ExpertProfile = ({ expertData, onSave, isEditing: externalIsEditing, onEdi
   const [internalIsEditing, setInternalIsEditing] = useState(!expertData?.isProfileComplete);
   const isEditing = externalIsEditing !== undefined ? externalIsEditing : internalIsEditing;
   const setIsEditing = onEditingChange || setInternalIsEditing;
+
   const [profileData, setProfileData] = useState({
     name: expertData?.name || "",
     specialty: expertData?.specialty || "",
@@ -101,6 +110,14 @@ const ExpertProfile = ({ expertData, onSave, isEditing: externalIsEditing, onEdi
     // 레벨 관련 데이터
     totalSessions: expertData?.totalSessions || 0,
     avgRating: expertData?.avgRating || 0,
+    level: expertData?.level,
+    completionRate: expertData?.completionRate || 95,
+    repeatClients: expertData?.repeatClients || 0,
+    responseTime: expertData?.responseTime || '2시간 내',
+    averageSessionDuration: expertData?.averageSessionDuration || 60,
+    reviewCount: expertData?.reviewCount || 0,
+    cancellationPolicy: expertData?.cancellationPolicy || '24시간 전 취소 가능',
+    pricePerMinute: expertData?.pricePerMinute,
     availability: expertData?.availability || {
       monday: { available: false, hours: "09:00-18:00" },
       tuesday: { available: false, hours: "09:00-18:00" },
@@ -120,6 +137,40 @@ const ExpertProfile = ({ expertData, onSave, isEditing: externalIsEditing, onEdi
     profileImage: expertData?.profileImage || null,
     portfolioFiles: expertData?.portfolioFiles || [],
   });
+
+  // expertData가 변경될 때 profileData 업데이트
+  useEffect(() => {
+    if (expertData) {
+      setProfileData(prev => ({
+        ...prev,
+        name: expertData?.name || prev.name,
+        specialty: expertData?.specialty || prev.specialty,
+        experience: expertData?.experience || prev.experience,
+        description: expertData?.description || prev.description,
+        education: expertData?.education || prev.education,
+        certifications: expertData?.certifications || prev.certifications,
+        specialties: expertData?.specialties || prev.specialties,
+        consultationTypes: expertData?.consultationTypes || prev.consultationTypes,
+        languages: expertData?.languages || prev.languages,
+        hourlyRate: expertData?.hourlyRate || prev.hourlyRate,
+        totalSessions: expertData?.totalSessions || prev.totalSessions,
+        avgRating: expertData?.avgRating || prev.avgRating,
+        level: expertData?.level || prev.level,
+        completionRate: expertData?.completionRate || prev.completionRate,
+        repeatClients: expertData?.repeatClients || prev.repeatClients,
+        responseTime: expertData?.responseTime || prev.responseTime,
+        averageSessionDuration: expertData?.averageSessionDuration || prev.averageSessionDuration,
+        reviewCount: expertData?.reviewCount || prev.reviewCount,
+        cancellationPolicy: expertData?.cancellationPolicy || prev.cancellationPolicy,
+        pricePerMinute: expertData?.pricePerMinute || prev.pricePerMinute,
+        availability: expertData?.availability || prev.availability,
+        holidayPolicy: expertData?.holidayPolicy || prev.holidayPolicy,
+        contactInfo: expertData?.contactInfo || prev.contactInfo,
+        profileImage: expertData?.profileImage || prev.profileImage,
+        portfolioFiles: expertData?.portfolioFiles || prev.portfolioFiles,
+      }));
+    }
+  }, [expertData]);
 
   // 현재 전문가의 레벨 정보 계산 (안전한 기본값 사용)
   const currentLevel = calculateExpertLevel(
@@ -437,7 +488,7 @@ const ExpertProfile = ({ expertData, onSave, isEditing: externalIsEditing, onEdi
                         <div className="flex items-center">
                           <Star className="h-4 w-4 text-yellow-500 fill-current" />
                           <span className="text-sm font-semibold text-gray-900 ml-1">{(profileData.avgRating || 0).toFixed(1)}</span>
-                          <span className="text-sm text-gray-500 ml-1">(리뷰 시스템 준비중)</span>
+                          <span className="text-sm text-gray-500 ml-1">({profileData.reviewCount || 0}개 리뷰)</span>
               </div>
                         <div className="flex items-center text-sm text-gray-500">
                           <Award className="h-4 w-4 mr-1" />
@@ -510,11 +561,11 @@ const ExpertProfile = ({ expertData, onSave, isEditing: externalIsEditing, onEdi
                   </div>
                   <div className="flex items-center">
                           <CheckCircle className="h-4 w-4 mr-1" />
-                          <span>95% 완료율</span>
+                          <span>{profileData.completionRate || 95}% 완료율</span>
                   </div>
                         <div className="flex items-center">
                           <Award className="h-4 w-4 mr-1" />
-                          <span>재방문 고객</span>
+                          <span>{profileData.repeatClients || 0}명 재방문</span>
                 </div>
               </div>
             </div>

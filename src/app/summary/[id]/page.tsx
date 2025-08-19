@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   Download,
   Share2,
@@ -12,12 +12,14 @@ import {
   Video,
   CheckSquare,
   Tag,
+  LogIn,
 } from "lucide-react";
 import RecordingStatus from "@/components/summary/RecordingStatus";
 import RecordingPlayer from "@/components/summary/RecordingPlayer";
 import SummaryCard from "@/components/summary/SummaryCard";
 import ToDoList from "@/components/summary/ToDoList";
 import ServiceLayout from "@/components/layout/ServiceLayout";
+import { useAppStore } from "@/stores/appStore";
 
 interface Recommendation {
   title: string;
@@ -65,7 +67,9 @@ interface SummaryData {
 
 export default function ConsultationSummaryPage() {
   const params = useParams();
+  const router = useRouter();
   const id = params.id as string;
+  const { user, isAuthenticated } = useAppStore();
   const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("summary");
@@ -178,6 +182,41 @@ export default function ConsultationSummaryPage() {
     setSummaryData((prev) => (prev ? { ...prev, rating } : null));
     // API로 평점 전송
   };
+
+  // 로그인하지 않은 사용자에 대한 접근 제한
+  if (!isAuthenticated || !user) {
+    return (
+      <ServiceLayout>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-center justify-center py-24">
+            <div className="text-center max-w-md">
+              <LogIn className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                로그인이 필요합니다
+              </h2>
+              <p className="text-gray-600 mb-6">
+                상담 요약을 보려면 먼저 로그인해주세요.
+              </p>
+              <div className="space-y-3">
+                <button
+                  onClick={() => router.push("/auth/login")}
+                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  로그인하기
+                </button>
+                <button
+                  onClick={() => router.push("/")}
+                  className="w-full bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  홈으로 돌아가기
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </ServiceLayout>
+    );
+  }
 
   if (loading) {
     return (

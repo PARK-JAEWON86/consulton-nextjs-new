@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useExpertProfileStore, initializeExpertProfiles } from "@/stores/expertProfileStore";
+import { useAppStore } from "@/stores/appStore";
+import { expertDataService } from "@/services/ExpertDataService";
 import { ExpertProfile as ExpertProfileType } from "@/types";
 import ExpertProfile from "@/components/dashboard/ExpertProfile";
 
@@ -38,8 +40,16 @@ type ExpertProfileData = {
   consultationTypes: ConsultationType[];
   languages: string[];
   hourlyRate: number | string;
+  pricePerMinute?: number;
   totalSessions: number;
   avgRating: number;
+  level?: string | number; // 전문가 레벨
+  completionRate?: number; // 완료율
+  repeatClients?: number; // 재방문 고객 수
+  responseTime?: string; // 응답 시간
+  averageSessionDuration?: number; // 평균 상담 시간
+  reviewCount?: number; // 리뷰 수
+  cancellationPolicy?: string; // 취소 정책
   availability: Availability;
   holidayPolicy?: string; // 공휴일 정책 추가
   contactInfo: {
@@ -58,6 +68,9 @@ export default function ExpertProfilePage() {
   >();
   const [isEditing, setIsEditing] = useState(false);
   
+  // 현재 로그인한 사용자 정보
+  const { user } = useAppStore();
+  
   // 프로필이 완성되지 않았으면 편집 모드로 시작
   useEffect(() => {
     if (initialData && !initialData.isProfileComplete) {
@@ -74,70 +87,87 @@ export default function ExpertProfilePage() {
   } = useExpertProfileStore();
 
   useEffect(() => {
+    // 로그인한 전문가가 없으면 리턴
+    if (!user || user.role !== 'expert' || !user.expertProfile) {
+      return;
+    }
+    
     // 기존 localStorage 데이터 마이그레이션
     initializeExpertProfiles();
     
-    // 더미 데이터 중 법률상담 전문가 (ID: 2)를 현재 전문가로 설정
-    setCurrentExpertId(2);
-    
-    // 현재 전문가 프로필 가져오기
-    let currentProfile = getCurrentExpertProfile();
-    
-    if (currentProfile) {
-      // ExpertProfileType을 ExpertProfileData로 변환
-      const convertedData = {
-        name: currentProfile.name,
-        specialty: currentProfile.specialty,
-        experience: currentProfile.experience,
-        description: currentProfile.description,
-        education: currentProfile.education,
-        certifications: currentProfile.certifications,
-        specialties: currentProfile.specialties,
-        consultationTypes: currentProfile.consultationTypes,
-        languages: currentProfile.languages,
-        hourlyRate: currentProfile.hourlyRate,
-        totalSessions: currentProfile.totalSessions,
-        avgRating: currentProfile.avgRating,
-        availability: currentProfile.availability,
-        holidayPolicy: currentProfile.holidayPolicy, // 공휴일 정책 추가
-        contactInfo: currentProfile.contactInfo,
-        profileImage: currentProfile.profileImage,
-        portfolioFiles: currentProfile.portfolioFiles,
-        isProfileComplete: currentProfile.isProfileComplete,
-      };
-      setInitialData(convertedData);
-    } else {
-      // 새로운 전문가인 경우 기본 데이터 설정
-      setInitialData({
-        name: "",
-        specialty: "",
-        experience: 0,
-        description: "",
-        education: [""],
-        certifications: [""],
-        specialties: [""],
-        consultationTypes: [],
-        languages: ["한국어"],
-        hourlyRate: "",
-        totalSessions: 0,
-        avgRating: 0,
-        availability: {
-          monday: { available: false, hours: "09:00-18:00" },
-          tuesday: { available: false, hours: "09:00-18:00" },
-          wednesday: { available: false, hours: "09:00-18:00" },
-          thursday: { available: false, hours: "09:00-18:00" },
-          friday: { available: false, hours: "09:00-18:00" },
-          saturday: { available: false, hours: "09:00-18:00" },
-          sunday: { available: false, hours: "09:00-18:00" },
-        },
-        holidayPolicy: "", // 공휴일 정책 기본값
-        contactInfo: { phone: "", email: "", location: "", website: "" },
-        profileImage: null,
-        portfolioFiles: [],
-        isProfileComplete: false,
-      });
+    // 로그인한 전문가의 ID 추출
+    const expertId = parseInt(user.id?.replace('expert_', '') || '0');
+    if (expertId > 0) {
+      setCurrentExpertId(expertId);
     }
-  }, [getCurrentExpertProfile, setCurrentExpertId]);
+    
+    // 중앙 서비스에서 최신 전문가 프로필 정보 가져오기
+    const latestProfile = expertDataService.getExpertProfileById(expertId);
+    
+    console.log('🔄 전문가 프로필 페이지 - 중앙 서비스 데이터:', {
+      expertId,
+      latestProfile: latestProfile ? {
+        name: latestProfile.name,
+        level: latestProfile.level,
+        totalSessions: latestProfile.totalSessions,
+        completionRate: latestProfile.completionRate
+      } : null,
+      userProfile: user.expertProfile ? {
+        name: user.expertProfile.name,
+        level: user.expertProfile.level,
+        totalSessions: user.expertProfile.totalSessions
+      } : null
+    });
+
+    const expertProfile = latestProfile || user.expertProfile;
+    if (!expertProfile) {
+      console.error('전문가 프로필을 찾을 수 없습니다:', expertId);
+      return;
+    }
+
+    const convertedData = {
+      name: user.name || expertProfile.name || "",
+      specialty: expertProfile.specialty || "",
+      experience: expertProfile.experience || 0,
+      description: expertProfile.description || "",
+      education: expertProfile.education || [""],
+      certifications: expertProfile.certifications || [""],
+      specialties: expertProfile.specialties || [expertProfile.specialty || ""],
+      consultationTypes: expertProfile.consultationTypes || [],
+      languages: expertProfile.languages || ["한국어"],
+      hourlyRate: expertProfile.hourlyRate || (expertProfile.pricePerMinute ? expertProfile.pricePerMinute * 60 : ""),
+      pricePerMinute: expertProfile.pricePerMinute || 0,
+      totalSessions: expertProfile.totalSessions || 0,
+      avgRating: expertProfile.avgRating || expertProfile.rating || 0,
+      level: expertProfile.level || user.expertLevel || "",
+      completionRate: expertProfile.completionRate || 95,
+      repeatClients: expertProfile.repeatClients || Math.floor((expertProfile.totalSessions || 0) * 0.3),
+      responseTime: expertProfile.responseTime || '2시간 내',
+      averageSessionDuration: expertProfile.averageSessionDuration || 60,
+      reviewCount: expertProfile.reviewCount || Math.floor((expertProfile.totalSessions || 0) * 0.7),
+      cancellationPolicy: expertProfile.cancellationPolicy || '24시간 전 취소 가능',
+      availability: expertProfile.availability || {
+        monday: { available: false, hours: "09:00-18:00" },
+        tuesday: { available: false, hours: "09:00-18:00" },
+        wednesday: { available: false, hours: "09:00-18:00" },
+        thursday: { available: false, hours: "09:00-18:00" },
+        friday: { available: false, hours: "09:00-18:00" },
+        saturday: { available: false, hours: "09:00-18:00" },
+        sunday: { available: false, hours: "09:00-18:00" },
+      },
+      holidayPolicy: expertProfile.holidayPolicy || "",
+      contactInfo: expertProfile.contactInfo || { 
+        phone: "", 
+        email: user.email || "", 
+        location: expertProfile.location || "", 
+        website: "" 
+      },
+      profileImage: expertProfile.profileImage || null,
+      portfolioFiles: expertProfile.portfolioFiles || [],
+      isProfileComplete: expertProfile?.isProfileComplete !== false,
+    };
+    setInitialData(convertedData);
+  }, [user]);
 
   const handleSave = (
     updated: ExpertProfileData & { isProfileComplete: boolean }
@@ -156,16 +186,17 @@ export default function ExpertProfilePage() {
       consultationTypes: updated.consultationTypes,
       languages: updated.languages,
       hourlyRate: Number(updated.hourlyRate),
-      pricePerMinute: Math.ceil(Number(updated.hourlyRate) / 60),
+      pricePerMinute: updated.pricePerMinute || Math.ceil(Number(updated.hourlyRate) / 60),
       totalSessions: updated.totalSessions,
       avgRating: updated.avgRating,
       rating: updated.avgRating,
-      reviewCount: Math.floor(updated.totalSessions * 0.7),
-      completionRate: 95,
-      repeatClients: Math.floor(updated.totalSessions * 0.3),
-      responseTime: '2시간 내',
-      averageSessionDuration: 60,
-      cancellationPolicy: '24시간 전 취소 가능',
+      level: updated.level,
+      reviewCount: updated.reviewCount || Math.floor(updated.totalSessions * 0.7),
+      completionRate: updated.completionRate || 95,
+      repeatClients: updated.repeatClients || Math.floor(updated.totalSessions * 0.3),
+      responseTime: updated.responseTime || '2시간 내',
+      averageSessionDuration: updated.averageSessionDuration || 60,
+      cancellationPolicy: updated.cancellationPolicy || '24시간 전 취소 가능',
       availability: updated.availability,
       weeklyAvailability: convertAvailabilityToWeekly(updated.availability),
       holidayPolicy: updated.holidayPolicy, // 공휴일 정책 추가
@@ -183,17 +214,27 @@ export default function ExpertProfilePage() {
       updatedAt: new Date(),
     };
 
-    // 스토어에 업데이트
-    addOrUpdateProfile(expertProfile);
+    // 중앙 서비스에 업데이트
+    const success = expertDataService.updateExpertProfile(currentExpertId || Date.now(), expertProfile);
     
-    // 로컬 상태도 업데이트
-    setInitialData(updated);
-    
-    // 기존 localStorage도 유지 (호환성을 위해)
-    try {
-      localStorage.setItem("approvedExpertProfile", JSON.stringify(updated));
-    } catch {
-      // ignore
+    if (success) {
+      // 스토어에도 업데이트 (기존 호환성)
+      addOrUpdateProfile(expertProfile);
+      
+      // 로컬 상태도 업데이트
+      setInitialData(updated);
+      
+      // 기존 localStorage도 유지 (호환성을 위해)
+      try {
+        localStorage.setItem("approvedExpertProfile", JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
+      
+      console.log('✅ 중앙 서비스에 프로필 저장 완료:', currentExpertId);
+    } else {
+      console.error('❌ 프로필 저장 실패:', currentExpertId);
+      alert("프로필 저장에 실패했습니다.");
     }
   };
   
@@ -226,6 +267,26 @@ export default function ExpertProfilePage() {
     
     return weeklyAvailability;
   };
+
+  // 로그인하지 않은 경우
+  if (!user || user.role !== 'expert') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="bg-white border rounded-lg p-8 text-center max-w-md">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">전문가 로그인 필요</h2>
+          <p className="text-gray-600 mb-6">
+            프로필 페이지는 전문가 계정으로 로그인해야 이용할 수 있습니다.
+          </p>
+          <a 
+            href="/auth/login"
+            className="inline-block bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors"
+          >
+            로그인하러 가기
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   if (!initialData) return null;
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useAppStore } from "@/stores/appStore";
 
 interface ProtectedRouteProps {
@@ -14,6 +14,7 @@ export default function ProtectedRoute({
   requireAuth = false, // 기본값을 false로 변경
 }: ProtectedRouteProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { hasEnteredService, isAuthenticated } = useAppStore();
 
   useEffect(() => {
@@ -25,7 +26,7 @@ export default function ProtectedRoute({
 
     // 인증이 필요한 경우에만 인증 상태 확인
     if (requireAuth && !isAuthenticated) {
-      router.push("/auth/login");
+      router.push(`/auth/login?redirect=${encodeURIComponent(pathname)}`);
       return;
     }
   }, [hasEnteredService, isAuthenticated, requireAuth, router]);

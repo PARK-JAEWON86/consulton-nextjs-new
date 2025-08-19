@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useConsultationsStore } from "@/stores/consultationsStore";
+import { useAppStore } from "@/stores/appStore";
+import { getRequestsByExpert, getRequestStats, getRequestsByStatus, type ConsultationRequest } from "@/data/dummy/consultationRequests";
+import { expertDataService } from "@/services/ExpertDataService";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 // 전문가 프로필은 전용 라우트에서 관리합니다
@@ -57,7 +60,12 @@ export default function ExpertDashboardProfilePage() {
     Partial<ExpertProfileData> & { isProfileComplete?: boolean }
   >();
   const items = useConsultationsStore((s) => s.items);
+  const { user } = useAppStore();
   const router = useRouter();
+  
+  // 상담 요청 데이터
+  const [requests, setRequests] = useState<ConsultationRequest[]>([]);
+  const [requestStats, setRequestStats] = useState<any>(null);
 
   type PeriodKey = "today" | "last7" | "last30" | "thisMonth" | "lastWeek";
   const [period, setPeriod] = useState<PeriodKey>("lastWeek");
@@ -200,7 +208,29 @@ export default function ExpertDashboardProfilePage() {
     } catch {
       // ignore
     }
-  }, []);
+    
+    // 상담 요청 데이터 로드 및 중앙 서비스 동기화
+    if (user && user.role === 'expert' && user.expertProfile) {
+      const expertId = parseInt(user.id?.replace('expert_', '') || '0');
+      if (expertId > 0) {
+        // 중앙 서비스에서 최신 전문가 데이터 확인
+        const latestProfile = expertDataService.getExpertProfileById(expertId);
+        if (latestProfile) {
+          console.log('🔄 전문가 대시보드 - 중앙 서비스 데이터 동기화:', {
+            expertId,
+            name: latestProfile.name,
+            level: latestProfile.level,
+            totalSessions: latestProfile.totalSessions
+          });
+        }
+        
+        const expertRequests = getRequestsByExpert(expertId);
+        const stats = getRequestStats(expertId);
+        setRequests(expertRequests);
+        setRequestStats(stats);
+      }
+    }
+  }, [user]);
 
   // 프로필 편집은 전용 페이지에서 처리합니다.
 
@@ -213,7 +243,7 @@ export default function ExpertDashboardProfilePage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              안녕하세요, {initialData?.name || "전문가"}님
+              안녕하세요, {user?.name || initialData?.name || "전문가"}님
             </h1>
             <p className="text-gray-600 mt-1">전문가 대시보드</p>
           </div>
@@ -230,124 +260,145 @@ export default function ExpertDashboardProfilePage() {
           </select>
         </div>
 
-        {/* KPI 카드 */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-          {/* 총 정산액 */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <div className="text-sm text-gray-600 mb-2">총 정산액</div>
-            <div className="text-2xl font-bold text-gray-900">
-              {totalRevenue.toLocaleString()} 크레딧
-            </div>
-            <div
-              className={`mt-2 text-xs inline-flex items-center px-2 py-0.5 rounded-full font-medium ${
-                changeRevenue >= 0
-                  ? "bg-green-100 text-green-700"
-                  : "bg-rose-100 text-rose-700"
-              }`}
-            >
-              {changeRevenue >= 0 ? "+" : ""}
-              {changeRevenue}%{" "}
-              <span className="ml-1 text-gray-500">이전 기간 대비</span>
-            </div>
-          </div>
-
-          {/* 평균 정산액 */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <div className="text-sm text-gray-600 mb-2">평균 정산액</div>
-            <div className="text-2xl font-bold text-gray-900">
-              {avgOrder.toLocaleString()} 크레딧
-            </div>
-            <div
-              className={`mt-2 text-xs inline-flex items-center px-2 py-0.5 rounded-full font-medium ${
-                changeAvg >= 0
-                  ? "bg-green-100 text-green-700"
-                  : "bg-rose-100 text-rose-700"
-              }`}
-            >
-              {changeAvg >= 0 ? "+" : ""}
-              {changeAvg}%{" "}
-              <span className="ml-1 text-gray-500">이전 기간 대비</span>
-            </div>
-          </div>
-
-          {/* 완료된 상담 수 */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <div className="text-sm text-gray-600 mb-2">완료된 상담</div>
-            <div className="text-2xl font-bold text-gray-900">
-              {sold.toLocaleString()} 건
-            </div>
-            <div
-              className={`mt-2 text-xs inline-flex items-center px-2 py-0.5 rounded-full font-medium ${
-                changeSold >= 0
-                  ? "bg-green-100 text-green-700"
-                  : "bg-rose-100 text-rose-700"
-              }`}
-            >
-              {changeSold >= 0 ? "+" : ""}
-              {changeSold}%{" "}
-              <span className="ml-1 text-gray-500">이전 기간 대비</span>
-            </div>
-          </div>
-
-          {/* 기간 표시 */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <div className="text-sm text-gray-600 mb-2">선택된 기간</div>
-            <div className="text-2xl font-bold text-gray-900">
-              {format(currentStart, "yyyy-MM-dd")} ~{" "}
-              {format(currentEnd, "yyyy-MM-dd")}
-            </div>
-            <div className="mt-2 text-xs text-gray-500">총 {windowDays}일</div>
-          </div>
-        </div>
-
-        {/* 오늘/다가오는 일정 요약 + 알림 요약 */}
-        {(() => {
-          const now = new Date();
-          const upcoming = items
-            .filter(
-              (it) =>
-                it.status === "scheduled" &&
-                new Date(it.date).getTime() >= now.getTime()
-            )
-            .sort(
-              (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-            )
-            .slice(0, 5);
-          const openIssues = items.filter(
-            (it) => it.issue && it.issue.status === "open"
-          );
-          const openRefunds = openIssues.filter(
-            (it) => it.issue?.type === "refund"
-          );
-
-          return (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
-              {/* 일정 요약 */}
-              <div className="bg-white rounded-xl border border-gray-200 p-5 lg:col-span-2">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    다가오는 일정
-                  </h3>
-                  <span className="text-sm text-gray-500">최대 5개 표시</span>
+        {/* 로그인된 전문가 정보 표시 */}
+        {user && user.role === 'expert' && user.expertProfile && (
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 mb-8">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                  <span className="text-blue-600 font-bold text-xl">
+                    {user.name?.charAt(0)}
+                  </span>
                 </div>
-                {upcoming.length > 0 ? (
+                <div className="ml-4">
+                  <h2 className="text-xl font-bold text-blue-900">{user.name} ({user.expertProfile.specialty} 전문가)</h2>
+                  <div className="flex items-center mt-2 space-x-4 text-sm">
+                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                      레벨 {user.expertProfile.level}
+                    </span>
+                    <span className="text-blue-600">
+                      {user.expertProfile.pricePerMinute?.toLocaleString()}원/분
+                    </span>
+                    <span className="text-blue-600">
+                      총 {user.expertProfile.totalSessions}회 상담
+                    </span>
+                    <span className="text-blue-600">
+                      평점 {user.expertProfile.avgRating}⭐
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-sm text-blue-600 mb-2">이메일</div>
+                <div className="font-medium text-blue-900">{user.email}</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 상담 요청 관리 KPI 카드 */}
+        {requestStats && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+            {/* 전체 요청 */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <div className="text-sm text-gray-600 mb-2">전체 요청</div>
+              <div className="text-2xl font-bold text-gray-900">
+                {requestStats.totalRequests} 건
+              </div>
+              <div className="mt-2 text-xs text-gray-500">
+                총 예산: {requestStats.totalBudget.toLocaleString()} 크레딧
+              </div>
+            </div>
+
+            {/* 신규 요청 (대기 중) */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <div className="text-sm text-gray-600 mb-2">신규 요청</div>
+              <div className="text-2xl font-bold text-orange-600">
+                {requestStats.pendingRequests} 건
+              </div>
+              <div className="mt-2 text-xs inline-flex items-center px-2 py-0.5 rounded-full font-medium bg-orange-100 text-orange-700">
+                {requestStats.urgentRequests}건 긴급
+              </div>
+            </div>
+
+            {/* 요청 수락 */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <div className="text-sm text-gray-600 mb-2">요청 수락</div>
+              <div className="text-2xl font-bold text-green-600">
+                {requestStats.acceptedRequests} 건
+              </div>
+              <div className="mt-2 text-xs inline-flex items-center px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700">
+                수락률 {requestStats.acceptanceRate}%
+              </div>
+            </div>
+
+            {/* 완료된 상담 */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <div className="text-sm text-gray-600 mb-2">완료된 상담</div>
+              <div className="text-2xl font-bold text-blue-600">
+                {requestStats.completedRequests} 건
+              </div>
+              <div className="mt-2 text-xs text-gray-500">
+                평균 {requestStats.avgBudget.toLocaleString()} 크레딧
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 상담 요청 관리 섹션 */}
+        {requests.length > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
+            {/* 신규 요청 목록 */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5 lg:col-span-2">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  신규 상담 요청
+                </h3>
+                <span className="text-sm text-gray-500">최신순</span>
+              </div>
+              {(() => {
+                const pendingRequests = getRequestsByStatus(
+                  parseInt(user?.id?.replace('expert_', '') || '0'), 
+                  'pending'
+                ).slice(0, 5);
+                
+                return pendingRequests.length > 0 ? (
                   <ul className="divide-y divide-gray-200">
-                    {upcoming.map((u) => (
-                      <li
-                        key={u.id}
-                        className="py-3 flex items-center justify-between"
-                      >
-                        <div className="min-w-0">
-                          <div className="text-sm font-medium text-gray-900 truncate">
-                            {u.customer} · {u.topic}
+                    {pendingRequests.map((req) => (
+                      <li key={req.id} className="py-3">
+                        <div className="flex items-start justify-between">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className="text-sm font-medium text-gray-900 truncate">
+                                {req.clientName} · {req.topic}
+                              </div>
+                              {req.priority === 'urgent' && (
+                                <span className="px-2 py-0.5 text-xs bg-red-100 text-red-700 rounded-full">
+                                  긴급
+                                </span>
+                              )}
+                              {req.priority === 'high' && (
+                                <span className="px-2 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
+                                  높음
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-500 mb-1">
+                              {req.description.substring(0, 50)}...
+                            </div>
+                            <div className="text-xs text-gray-400">
+                              {format(new Date(req.requestedAt), "MM/dd HH:mm")} · 
+                              {req.consultationType} · {req.duration}분 · 
+                              {req.budget.toLocaleString()}크레딧
+                            </div>
                           </div>
-                          <div className="text-xs text-gray-500">
-                            {format(new Date(u.date), "yyyy-MM-dd HH:mm")}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm text-gray-800">
-                            {u.amount.toLocaleString()} 크레딧
+                          <div className="ml-4 flex gap-2">
+                            <button className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700">
+                              수락
+                            </button>
+                            <button className="px-3 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300">
+                              거절
+                            </button>
                           </div>
                         </div>
                       </li>
@@ -355,114 +406,155 @@ export default function ExpertDashboardProfilePage() {
                   </ul>
                 ) : (
                   <div className="text-sm text-gray-500">
-                    예정된 일정이 없습니다.
+                    새로운 상담 요청이 없습니다.
                   </div>
-                )}
-              </div>
+                );
+              })()}
+            </div>
 
-              {/* 알림/이슈 요약 */}
-              <div className="bg-white rounded-xl border border-gray-200 p-5">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  알림 요약
-                </h3>
+            {/* 요청 통계 요약 */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                요청 현황
+              </h3>
+              {requestStats && (
                 <div className="space-y-3 text-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-600">미해결 이슈</span>
-                    <span className="font-semibold text-gray-900">
-                      {openIssues.length}건
+                    <span className="text-gray-600">대기 중</span>
+                    <span className="font-semibold text-orange-600">
+                      {requestStats.pendingRequests}건
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-600">환불 요청</span>
-                    <span className="font-semibold text-gray-900">
-                      {openRefunds.length}건
+                    <span className="text-gray-600">수락됨</span>
+                    <span className="font-semibold text-green-600">
+                      {requestStats.acceptedRequests}건
                     </span>
                   </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">완료됨</span>
+                    <span className="font-semibold text-blue-600">
+                      {requestStats.completedRequests}건
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">거절됨</span>
+                    <span className="font-semibold text-gray-600">
+                      {requestStats.rejectedRequests}건
+                    </span>
+                  </div>
+                  <div className="pt-2 border-t">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">수락률</span>
+                      <span className="font-semibold text-gray-900">
+                        {requestStats.acceptanceRate}%
+                      </span>
+                    </div>
+                  </div>
                   <div className="pt-2 border-t text-xs text-gray-500">
-                    상세 처리는 이슈/환불 페이지에서 진행하세요.
+                    전체 요청 관리는 상담내역 페이지에서 확인하세요.
                   </div>
                 </div>
-              </div>
+              )}
             </div>
-          );
-        })()}
+          </div>
+        )}
 
-        {/* 목표 진행률 */}
-        {(() => {
-          // 간단한 목표(변경 필요 시 별도 페이지에서 관리)
-          const goalRevenue = 1000; // 크레딧 목표
-          const minPayoutCredits = 1000; // 최소 정산 기준
-          const goalSold = 10; // 건수 목표
-          const revenuePct = Math.min(
-            100,
-            Math.round((totalRevenue / goalRevenue) * 100)
-          );
-          const soldPct = Math.min(100, Math.round((sold / goalSold) * 100));
-          const canPayout = totalRevenue >= minPayoutCredits;
-          return (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
-              <div className="bg-white rounded-xl border border-gray-200 p-5">
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      정산 목표 진행률
-                    </h3>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      최소 정산기준 {minPayoutCredits.toLocaleString()} 크레딧
-                    </p>
-                  </div>
-                  <span className="text-sm text-gray-500">
-                    목표 {goalRevenue.toLocaleString()} 크레딧
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className="bg-blue-600 h-2 rounded-full"
-                    style={{ width: `${revenuePct}%` }}
-                  />
-                </div>
-                <div className="mt-2 flex items-center justify-between">
-                  <div className="text-sm text-gray-700">
-                    {revenuePct}% 달성
-                  </div>
-                  <button
-                    disabled={!canPayout}
-                    onClick={() => {
-                      if (!canPayout) return;
-                      router.push("/dashboard/expert/payouts");
-                    }}
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors border ${
-                      canPayout
-                        ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
-                        : "bg-gray-200 text-gray-500 border-gray-200 cursor-not-allowed"
-                    }`}
-                  >
-                    정산하러 가기
-                  </button>
-                </div>
-              </div>
-              <div className="bg-white rounded-xl border border-gray-200 p-5">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    완료 건수 목표
-                  </h3>
-                  <span className="text-sm text-gray-500">
-                    목표 {goalSold} 건
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className="bg-green-600 h-2 rounded-full"
-                    style={{ width: `${soldPct}%` }}
-                  />
-                </div>
-                <div className="mt-2 text-sm text-gray-700">
-                  {soldPct}% 달성
-                </div>
-              </div>
+        {/* 빠른 액션 버튼 */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">
+              빠른 액션
+            </h3>
+            <div className="space-y-3">
+              <button
+                onClick={() => router.push("/dashboard/expert/consultations")}
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                전체 요청 관리
+              </button>
+              <button
+                onClick={() => router.push("/dashboard/expert/profile")}
+                className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+              >
+                프로필 수정
+              </button>
+              <button
+                onClick={() => router.push("/dashboard/expert/payouts")}
+                className="w-full px-4 py-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors"
+              >
+                정산/출금 확인
+              </button>
             </div>
-          );
-        })()}
+          </div>
+
+          {/* 오늘의 일정 */}
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">
+              오늘의 일정
+            </h3>
+            {(() => {
+              const today = new Date();
+              const todayScheduled = items.filter(item => {
+                const itemDate = new Date(item.date);
+                return item.status === 'scheduled' && 
+                       itemDate.toDateString() === today.toDateString();
+              });
+              
+              return todayScheduled.length > 0 ? (
+                <div className="space-y-2">
+                  {todayScheduled.slice(0, 3).map(item => (
+                    <div key={item.id} className="text-sm">
+                      <div className="font-medium text-gray-900">{item.customer}</div>
+                      <div className="text-gray-500">{item.topic} · {format(new Date(item.date), "HH:mm")}</div>
+                    </div>
+                  ))}
+                  {todayScheduled.length > 3 && (
+                    <div className="text-xs text-gray-400">
+                      +{todayScheduled.length - 3}개 더
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-sm text-gray-500">
+                  오늘 예정된 상담이 없습니다.
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* 알림 요약 */}
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">
+              알림
+            </h3>
+            <div className="space-y-2 text-sm">
+              {requestStats && (
+                <>
+                  {requestStats.pendingRequests > 0 && (
+                    <div className="flex items-center justify-between p-2 bg-orange-50 rounded">
+                      <span className="text-orange-700">새 요청</span>
+                      <span className="font-semibold text-orange-800">
+                        {requestStats.pendingRequests}건
+                      </span>
+                    </div>
+                  )}
+                  {requestStats.urgentRequests > 0 && (
+                    <div className="flex items-center justify-between p-2 bg-red-50 rounded">
+                      <span className="text-red-700">긴급 요청</span>
+                      <span className="font-semibold text-red-800">
+                        {requestStats.urgentRequests}건
+                      </span>
+                    </div>
+                  )}
+                  {requestStats.pendingRequests === 0 && requestStats.urgentRequests === 0 && (
+                    <div className="text-gray-500">새로운 알림이 없습니다.</div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
 
         {/* 최근 활동 타임라인 & 주제별 성과 */}
         {(() => {
@@ -499,8 +591,8 @@ export default function ExpertDashboardProfilePage() {
             .slice(0, 3);
 
           return (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="bg-white rounded-xl border border-gray-200 p-5 lg:col-span-2">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 min-w-0">
+              <div className="bg-white rounded-xl border border-gray-200 p-5 lg:col-span-2 min-w-0">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   최근 활동
                 </h3>
@@ -525,29 +617,29 @@ export default function ExpertDashboardProfilePage() {
                 )}
               </div>
 
-              <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <div className="bg-white rounded-xl border border-gray-200 p-5 min-w-0">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   주제별 성과
                 </h3>
                 {topTopics.length > 0 ? (
-                  <div className="space-y-4">
+                  <div className="space-y-4 min-w-0">
                     {topTopics.map(([name, v]) => {
                       const pct =
                         totalRevenue > 0
                           ? Math.round((v.revenue / totalRevenue) * 100)
                           : 0;
                       return (
-                        <div key={name}>
+                        <div key={name} className="min-w-0">
                           <div className="flex items-center justify-between text-sm mb-1">
-                            <span className="text-gray-700">{name}</span>
-                            <span className="text-gray-900 font-medium">
+                            <span className="text-gray-700 truncate flex-1 mr-2">{name}</span>
+                            <span className="text-gray-900 font-medium flex-shrink-0">
                               {v.revenue.toLocaleString()} 크레딧
                             </span>
                           </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
                             <div
-                              className="bg-purple-600 h-2 rounded-full"
-                              style={{ width: `${pct}%` }}
+                              className="bg-purple-600 h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
                             />
                           </div>
                         </div>

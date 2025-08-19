@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useAppStore } from "@/stores/appStore";
 import {
   BarChart3,
   MessageCircle,
@@ -24,22 +25,36 @@ export default function DashboardContent() {
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const { user: loggedInUser } = useAppStore();
 
-  // 사용자 데이터
-  const [user, setUser] = useState({
-    name: "김철수",
-    credits: 150,
-    email: "kimcheolsu@example.com",
-    phone: "010-1234-5678",
-    location: "서울특별시 강남구",
-    birthDate: "1990-05-15",
-    interests: ["진로상담", "심리상담", "재무상담"],
-    bio: "다양한 분야의 전문가들과 상담을 통해 성장하고 있습니다. 특히 진로와 심리 분야에 관심이 많습니다.",
-    totalConsultations: 12,
-    favoriteExperts: 5,
-    completedGoals: 3,
-    joinDate: "2024-01-15",
-  });
+  // 로그인한 사용자 데이터 사용, 없으면 기본값
+  const user = loggedInUser ? {
+    name: loggedInUser.name || "사용자",
+    credits: loggedInUser.credits || 0,
+    email: loggedInUser.email || "user@example.com",
+    phone: "010-0000-0000", // 기본값
+    location: "서울특별시", // 기본값
+    birthDate: "1990-01-01", // 기본값
+    interests: ["심리상담", "진로상담"], // 기본값
+    bio: "전문가들과의 상담을 통해 성장하고 있습니다.",
+    totalConsultations: 0, // 실제로는 상담 기록에서 계산해야 함
+    favoriteExperts: 0, // 실제로는 즐겨찾기에서 계산해야 함
+    completedGoals: 0, // 기본값
+    joinDate: "2024-01-01", // 기본값
+  } : {
+    name: "게스트",
+    credits: 0,
+    email: "guest@example.com",
+    phone: "010-0000-0000",
+    location: "서울특별시",
+    birthDate: "1990-01-01",
+    interests: ["심리상담"],
+    bio: "로그인하여 전문가 상담을 시작해보세요.",
+    totalConsultations: 0,
+    favoriteExperts: 0,
+    completedGoals: 0,
+    joinDate: "2024-01-01",
+  };
 
 
 

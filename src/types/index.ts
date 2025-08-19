@@ -40,6 +40,28 @@ export type WeeklyAvailability = Record<WeekDay, string[]>;
 // 가용성 설정 타입
 export type Availability = Record<WeekDay, { available: boolean; hours: string }>;
 
+// 상담 요약 타입
+export interface ConsultationSummary {
+  id: string;
+  title: string;
+  date: Date;
+  duration: number;
+  expert: {
+    name: string;
+    title: string;
+    avatar: string | null;
+  };
+  client: {
+    name: string;
+    company?: string;
+  };
+  status: 'completed' | 'processing' | 'failed' | 'pending';
+  summary: string;
+  tags: string[];
+  creditsUsed: number;
+  rating?: number;
+}
+
 // 포트폴리오 파일 타입
 export interface PortfolioFile {
   id: number;
@@ -142,6 +164,27 @@ export interface ChatMessage {
   type: "text" | "image" | "file";
 }
 
+// AI 채팅 메시지 타입 (AI 상담 어시스턴트용)
+export interface AIChatMessage {
+  id: string;
+  type: "user" | "ai" | "system";
+  content: string;
+  timestamp: Date;
+}
+
+// 전문가와의 채팅 메시지 타입 (확장된 기능용)
+export interface ExtendedChatMessage {
+  id: string;
+  type: "user" | "expert" | "ai" | "system";
+  content: string;
+  timestamp: Date;
+  expertInfo?: {
+    name: string;
+    avatar?: string;
+    title?: string;
+  };
+}
+
 export interface Post {
   id: string;
   authorId: string;
@@ -187,3 +230,6 @@ export interface MatchingRecord {
   matchingTimeMinutes: number;
   createdAt: Date;
 }
+
+// 정산 시스템 타입 re-export
+export * from './settlement';

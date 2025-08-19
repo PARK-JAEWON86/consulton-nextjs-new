@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAIChatCreditsStore } from "../../stores/aiChatCreditsStore";
 import { useAppStore } from "../../stores/appStore";
+import { expertDataService } from "@/services/ExpertDataService";
 import {
   Home,
   MessageCircle,
@@ -64,19 +65,43 @@ const Sidebar: React.FC<SidebarProps> = ({
     useAIChatCreditsStore();
 
   // 유저 역할/저장된 뷰 모드 기반으로 variant 결정
-  const { user, viewMode, setViewMode } = useAppStore();
+  const { user, viewMode, setViewMode, isAuthenticated } = useAppStore();
+  
+  // 하이드레이션 완료 상태 체크
+  const [isHydrated, setIsHydrated] = useState(false);
   const effectiveVariant: "user" | "expert" = useMemo(() => {
+    // 하이드레이션이 완료되지 않았으면 URL 기반으로 먼저 판단
+    if (!isHydrated) {
+      if (pathname.startsWith("/dashboard/expert")) return "expert";
+      return "user";
+    }
+    
+    // 1. 명시적으로 전달된 variant가 있으면 우선
     if (variant) return variant;
+    
+    // 2. 사용자가 설정한 viewMode가 있으면 그것을 사용
     if (viewMode) return viewMode;
+    
+    // 3. 사용자 role에 따라 결정 (로그인 직후 자동 결정)
+    if (user?.role === 'expert') return "expert";
+    if (user?.role === 'client' || user?.role === 'admin') return "user";
+    
+    // 4. URL 경로 기반 추론
     if (pathname.startsWith("/dashboard/expert")) return "expert";
-    if (user?.expertLevel) return "expert";
+    
+    // 5. 기본값
     return "user";
-  }, [variant, viewMode, pathname, user]);
+  }, [variant, viewMode, user, pathname, isHydrated]);
 
   useEffect(() => {
     checkAndResetMonthly();
     setCreditsTo7300();
   }, [checkAndResetMonthly, setCreditsTo7300]);
+
+  // 하이드레이션 완료 체크
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   useEffect(() => {
     // 간단한 테마 토글 (class 전략)
@@ -134,14 +159,22 @@ const Sidebar: React.FC<SidebarProps> = ({
       ];
     }
 
-    return [
+    // 사용자 모드 메뉴 - 로그인 상태에 따라 다르게 표시
+    const userMenu = [
       { id: "home", name: "홈", icon: Home, path: "/dashboard" },
       { id: "experts", name: "전문가 찾기", icon: Users, path: "/experts" },
       { id: "chat", name: "AI 상담", icon: MessageCircle, path: "/chat" },
-      { id: "summary", name: "상담 요약", icon: FileText, path: "/summary" },
+    ];
+
+    // 로그인된 사용자에게만 상담 요약 메뉴 표시
+    if (user && isAuthenticated) {
+      userMenu.push({ id: "summary", name: "상담 요약", icon: FileText, path: "/summary" });
+    }
+
+    userMenu.push(
       {
         id: "billing",
-        name: "크레딧",
+        name: "결제 및 크레딧",
         icon: CreditCard,
         path: "/credit-packages",
       },
@@ -150,9 +183,11 @@ const Sidebar: React.FC<SidebarProps> = ({
         name: "설정",
         icon: Settings,
         path: "/dashboard/settings",
-      },
-    ];
-  }, [effectiveVariant]);
+      }
+    );
+
+    return userMenu;
+  }, [effectiveVariant, user, isAuthenticated]);
 
   const secondaryMenu: MenuItem[] = useMemo(
     () => [
@@ -179,6 +214,13 @@ const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const handleNavigate = (item: MenuItem) => {
+    // 로그아웃 상태에서 설정 페이지 접근 시 로그인 페이지로 이동
+    if (item.id === "settings" && !isAuthenticated) {
+      router.push("/auth/login?redirect=/dashboard/settings");
+      if (onClose) onClose();
+      return;
+    }
+    
     if (item.id === "chat" && pathname === "/chat") {
       sessionStorage.setItem("showQuickChatModal", "true");
       window.location.reload();
@@ -252,49 +294,20 @@ const Sidebar: React.FC<SidebarProps> = ({
 
           <div className="flex-1 overflow-y-auto px-3 py-4">
             <nav className="space-y-1">
-              {primaryMenu.map((item) => {
-                const Icon = item.icon;
-                const active = isActivePath(item.path);
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => handleNavigate(item)}
-                    className={`w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                      active
-                        ? "bg-gray-100 text-gray-900"
-                        : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
-                    }`}
+              {!isHydrated ? (
+                // 로딩 상태의 메뉴 스켈레톤
+                Array.from({ length: effectiveVariant === "expert" ? 7 : 6 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="w-full flex items-center gap-3 rounded-md px-3 py-2"
                   >
-                    <Icon
-                      className={`h-5 w-5 ${active ? "text-gray-900" : "text-gray-500"}`}
-                    />
-                    <span>{item.name}</span>
-                  </button>
-                );
-              })}
-            </nav>
-
-            <div className="mt-6">
-              <p className="px-3 text-xs font-semibold text-gray-400">
-                다가오는 일정
-              </p>
-              <ul className="mt-2 space-y-1">
-                {["팀 코칭", "이직 상담", "프로필 검수", "세션 리뷰"].map(
-                  (label, i) => (
-                    <li
-                      key={i}
-                      className="px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      {label}
-                    </li>
-                  )
-                )}
-              </ul>
-            </div>
-
-            <div className="mt-6">
-              <nav className="space-y-1">
-                {secondaryMenu.map((item) => {
+                    <div className="h-5 w-5 bg-gray-300 rounded animate-pulse"></div>
+                    <div className="h-4 bg-gray-300 rounded animate-pulse flex-1 max-w-24"></div>
+                  </div>
+                ))
+              ) : (
+                // 실제 메뉴
+                primaryMenu.map((item) => {
                   const Icon = item.icon;
                   const active = isActivePath(item.path);
                   return (
@@ -313,56 +326,148 @@ const Sidebar: React.FC<SidebarProps> = ({
                       <span>{item.name}</span>
                     </button>
                   );
-                })}
-              </nav>
-            </div>
+                })
+              )}
+            </nav>
+
+            {/* 로그인된 사용자에게만 다가오는 일정과 보조 메뉴 표시 */}
+            {isAuthenticated && (
+              <>
+                <div className="mt-6">
+                  <p className="px-3 text-xs font-semibold text-gray-400">
+                    다가오는 일정
+                  </p>
+                  <ul className="mt-2 space-y-1">
+                    {["팀 코칭", "이직 상담", "프로필 검수", "세션 리뷰"].map(
+                      (label, i) => (
+                        <li
+                          key={i}
+                          className="px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          {label}
+                        </li>
+                      )
+                    )}
+                  </ul>
+                </div>
+
+                <div className="mt-6">
+                  <nav className="space-y-1">
+                    {secondaryMenu.map((item) => {
+                      const Icon = item.icon;
+                      const active = isActivePath(item.path);
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => handleNavigate(item)}
+                          className={`w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                            active
+                              ? "bg-gray-100 text-gray-900"
+                              : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                          }`}
+                        >
+                          <Icon
+                            className={`h-5 w-5 ${active ? "text-gray-900" : "text-gray-500"}`}
+                          />
+                          <span>{item.name}</span>
+                        </button>
+                      );
+                    })}
+                  </nav>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="border-t border-gray-200 p-3">
             <div className="relative">
-              <button
-                onClick={() => setShowProfileMenu((v) => !v)}
-                className="w-full flex items-center gap-3 rounded-md px-3 py-2 hover:bg-gray-50"
-              >
-                <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-medium">
-                  {(user?.name || "사용자").charAt(0)}
-                </div>
-                <div className="flex-1 text-left">
-                  <div className="text-sm font-medium text-gray-900">
-                    {user?.name || "게스트"}
+              {!isHydrated ? (
+                // 로딩 상태
+                <div className="w-full flex items-center gap-3 rounded-md px-2 py-2">
+                  <div className="relative w-9 h-9 rounded-full overflow-hidden bg-gray-300 animate-pulse" style={{minWidth: '36px', minHeight: '36px'}}>
+                    <div className="w-full h-full flex items-center justify-center">
+                      <div className="w-4 h-4 bg-gray-400 rounded-full"></div>
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-500">
-                    {user?.email || "guest@example.com"}
+                  <div className="flex-1 text-left min-w-0">
+                    <div className="flex items-center gap-2">
+                      <div className="h-4 bg-gray-300 rounded animate-pulse w-16"></div>
+                    </div>
+                    <div className="mt-1">
+                      <div className="h-3 bg-gray-200 rounded animate-pulse w-24"></div>
+                    </div>
+                  </div>
+                  <div className="flex-shrink-0 ml-2">
+                    <div className="h-4 w-4 bg-gray-300 rounded animate-pulse"></div>
                   </div>
                 </div>
-                <ChevronRight
-                  className={`h-4 w-4 text-gray-400 transition-transform ${showProfileMenu ? "rotate-90" : ""}`}
-                />
-              </button>
+              ) : (
+                // 실제 프로필
+                <button
+                  onClick={() => setShowProfileMenu((v) => !v)}
+                  className="w-full flex items-center gap-3 rounded-md px-2 py-2 hover:bg-gray-50"
+                >
+                  <div className="relative w-9 h-9 rounded-full overflow-hidden bg-blue-600" style={{minWidth: '36px', minHeight: '36px'}}>
+                    <div className="w-full h-full flex items-center justify-center text-white text-sm font-medium">
+                      {user?.name ? user.name.charAt(0).toUpperCase() : "G"}
+                    </div>
+                  </div>
+                  <div className="flex-1 text-left min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-900 truncate">
+                        {user?.name || "게스트"}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-500 truncate">
+                      {user?.email || "guest@example.com"}
+                    </div>
+                  </div>
+                  <div className="flex-shrink-0 ml-2">
+                    <ChevronRight
+                      className={`h-4 w-4 text-gray-500 transition-transform ${showProfileMenu ? "rotate-90" : ""}`}
+                    />
+                  </div>
+                </button>
+              )}
 
               {showProfileMenu && (
                 <div className="absolute bottom-12 left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg z-40 overflow-hidden">
                   <div className="py-1">
-                    <button
-                      onClick={() => {
-                        router.push("/credit-packages");
-                        setShowProfileMenu(false);
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      <CreditCard className="h-4 w-4 text-gray-600" />
-                      <span>결제 및 크레딧</span>
-                    </button>
-
-                    <button
-                      onClick={() =>
-                        setTheme((t) => (t === "light" ? "dark" : "light"))
-                      }
-                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      <Sun className="h-4 w-4 text-gray-600" />
-                      <span>테마</span>
-                    </button>
+                    {/* 전문가 계정이면 모드 전환, 일반 사용자면 전문가 지원 */}
+                    {user?.role === 'expert' ? (
+                      <button
+                        onClick={() => {
+                          const nextMode =
+                            effectiveVariant === "expert" ? "user" : "expert";
+                          setViewMode(nextMode);
+                          const target =
+                            nextMode === "expert"
+                              ? "/dashboard/expert"
+                              : "/dashboard";
+                          router.push(target);
+                          setShowProfileMenu(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        <ArrowLeftRight className="h-4 w-4 text-gray-600" />
+                        <span>
+                          {effectiveVariant === "expert"
+                            ? "사용자 모드로 전환"
+                            : "전문가 모드로 전환"}
+                        </span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          router.push("/experts/become");
+                          setShowProfileMenu(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        <ArrowLeftRight className="h-4 w-4 text-gray-600" />
+                        <span>전문가 지원하기</span>
+                      </button>
+                    )}
 
                     <button
                       onClick={() => {
@@ -386,43 +491,35 @@ const Sidebar: React.FC<SidebarProps> = ({
                       <span>도움말 및 지원</span>
                     </button>
 
-                    <button
-                      onClick={() => {
-                        const nextMode =
-                          effectiveVariant === "expert" ? "user" : "expert";
-                        setViewMode(nextMode);
-                        const target =
-                          nextMode === "expert"
-                            ? "/dashboard/expert"
-                            : "/dashboard";
-                        router.push(target);
-                        setShowProfileMenu(false);
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      <ArrowLeftRight className="h-4 w-4 text-gray-600" />
-                      <span>
-                        {effectiveVariant === "expert"
-                          ? "사용자 모드로 전환"
-                          : "전문가 모드로 전환"}
-                      </span>
-                    </button>
-
                     <div className="my-1 border-t border-gray-200" />
 
-                    <button
-                      onClick={() => {
-                        try {
-                          useAppStore.getState().logout();
-                        } catch {}
-                        router.push("/auth/login");
-                        setShowProfileMenu(false);
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-gray-50"
-                    >
-                      <LogOut className="h-4 w-4" />
-                      <span>로그아웃</span>
-                    </button>
+                    {/* 인증 상태에 따라 다른 메뉴 표시 */}
+                    {isAuthenticated ? (
+                      <button
+                        onClick={() => {
+                          try {
+                            useAppStore.getState().logout();
+                          } catch {}
+                          router.push("/auth/login");
+                          setShowProfileMenu(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-gray-50"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        <span>로그아웃</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          router.push("/auth/login");
+                          setShowProfileMenu(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-2 text-sm text-blue-600 hover:bg-gray-50"
+                      >
+                        <LogOut className="h-4 w-4 rotate-180" />
+                        <span>로그인</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

@@ -1,36 +1,40 @@
 "use client";
 
 import { useState } from "react";
-import { CreditCard } from "lucide-react";
+import { CreditCard, LogIn } from "lucide-react";
 import ServiceLayout from "@/components/layout/ServiceLayout";
 import PackCard from "@/components/dashboard/PackCard";
 import CreditBalance from "@/components/dashboard/CreditBalance";
 import { LEVELS, getKoreanTierName } from "@/utils/expertLevels";
 import { useAIChatCreditsStore } from "@/stores/aiChatCreditsStore";
+import { useAppStore } from "@/stores/appStore";
 import React from "react"; // Added missing import for React
 
 export default function CreditPackagesPage() {
   // AI 채팅 크레딧 스토어에서 실제 크레딧 정보 가져오기
   const { remainingAIChatCredits, checkAndResetMonthly, setCreditsTo7300 } =
     useAIChatCreditsStore();
+  
+  // 앱 스토어에서 로그인 상태 확인
+  const { user, isAuthenticated } = useAppStore();
 
-  // 컴포넌트 마운트 시 월간 리셋 체크 및 크레딧을 7300으로 설정
+  // 컴포넌트 마운트 시 월간 리셋 체크 및 로그인된 사용자만 크레딧을 7300으로 설정
   React.useEffect(() => {
-    checkAndResetMonthly();
-    setCreditsTo7300(); // 크레딧을 7300으로 설정
-  }, [checkAndResetMonthly, setCreditsTo7300]);
+    if (isAuthenticated && user) {
+      checkAndResetMonthly();
+      setCreditsTo7300(); // 로그인된 사용자만 크레딧을 7300으로 설정
+    }
+  }, [checkAndResetMonthly, setCreditsTo7300, isAuthenticated, user]);
 
-  // 새로운 과금 체계 기반 평균 요금 계산
+  // 실제 이용 빈도를 고려한 평균 요금 계산 (가장 많이 분포된 전문가 레벨 기준)
   const calculateAverageRatePerMinute = () => {
-    const totalCredits = LEVELS.reduce(
-      (sum, level) => sum + level.creditsPerMinute,
-      0
-    );
-    return Math.round(totalCredits / LEVELS.length);
+    // 실제 고객이 많이 이용하는 레벨 범위: 120~180 크레딧/분
+    const practicalAverageCredits = 150; // 중간값으로 설정
+    return practicalAverageCredits * 10; // 1크레딧 = 10원이므로 원화로 변환
   };
 
-  const averageRatePerMinute = calculateAverageRatePerMinute(); // 약 3,000원/분
-  const creditsPerMinute = averageRatePerMinute / 10; // 1크레딧 = 10원이므로 300크레딧/분
+  const averageRatePerMinute = calculateAverageRatePerMinute(); // 원화 요금 (₩1,500)
+  const averageCreditsPerMinute = 150; // 실제 평균 크레딧 요금
 
   // 레벨별 요금 정보 계산
   const getLevelPricingInfo = () => {
@@ -38,8 +42,10 @@ export default function CreditPackagesPage() {
     const maxLevel = LEVELS[0]; // Tier 10 (최고 요금)
 
     return {
-      minRate: minLevel.creditsPerMinute,
-      maxRate: maxLevel.creditsPerMinute,
+      minRate: minLevel.creditsPerMinute * 10, // 원화로 변환
+      maxRate: maxLevel.creditsPerMinute * 10, // 원화로 변환
+      minCreditsRate: minLevel.creditsPerMinute,
+      maxCreditsRate: maxLevel.creditsPerMinute,
       averageRate: averageRatePerMinute,
       minTier: getKoreanTierName(minLevel.name),
       maxTier: getKoreanTierName(maxLevel.name),
@@ -54,41 +60,42 @@ export default function CreditPackagesPage() {
       id: 1,
       type: "credit" as const,
       name: "베이직 충전",
-      description: "시작하기 좋은 기본 충전 + 추가크레딧",
-      price: 30000,
-      credits: 3000,
-      bonusCredits: 1050, // 150 (5% 보너스) + 900 (추가 크레딧)
-      totalCredits: 4050,
+      description: "상담 1회를 충분히 할 수 있는 기본 패키지",
+      price: 50000,
+      credits: 5000,
+      bonusCredits: 500, // 10% 보너스
+      totalCredits: 5500,
       payPerMinute: averageRatePerMinute,
-      usageMinutes: Math.floor((4050 / creditsPerMinute) * 100) / 100, // 13.5분
-      usageTime: "약 13분 30초",
+      usageMinutes: Math.floor((5500 / averageCreditsPerMinute) * 100) / 100, // 계산된 분
+      usageTime: `약 ${Math.floor(5500 / averageCreditsPerMinute)}분`,
       features: [
-        "3,000 + 1,050 보너스 크레딧",
-        "총 4,050 크레딧 제공",
+        "5,000 + 500 보너스 크레딧",
+        "총 5,500 크레딧 제공",
+        "상담 1회 충분히 가능 (약 36분)",
         "AI 상담 및 전문가 상담에 사용 가능",
-        "5% 보너스 + 추가 크레딧 혜택",
+        "10% 보너스 혜택",
         "사용기한 없음",
-        "언제든지 사용 가능",
       ],
     },
     {
       id: 2,
       type: "credit" as const,
       name: "스탠다드 충전",
-      description: "가장 인기있는 추천 패키지 + 추가크레딧",
-      price: 50000,
-      credits: 5000,
-      bonusCredits: 2300, // 500 (10% 보너스) + 1800 (추가 크레딧)
-      totalCredits: 7300,
+      description: "가장 인기있는 추천 패키지, 여러 번 상담 가능",
+      price: 80000,
+      credits: 8000,
+      bonusCredits: 1200, // 15% 보너스
+      totalCredits: 9200,
       payPerMinute: averageRatePerMinute,
-      usageMinutes: Math.floor((7300 / creditsPerMinute) * 100) / 100, // 24.33분
-      usageTime: "약 24분 20초",
+      usageMinutes: Math.floor((9200 / averageCreditsPerMinute) * 100) / 100, // 계산된 분
+      usageTime: `약 ${Math.floor(9200 / averageCreditsPerMinute)}분`,
       isRecommended: true,
       features: [
-        "5,000 + 2,300 보너스 크레딧",
-        "총 7,300 크레딧 제공",
+        "8,000 + 1,200 보너스 크레딧",
+        "총 9,200 크레딧 제공",
+        "상담 2회 충분히 가능 (약 61분)",
         "AI 상담 및 전문가 상담에 사용 가능",
-        "10% 보너스 + 추가 크레딧 혜택",
+        "15% 보너스 혜택",
         "우선 고객지원",
         "사용기한 없음",
       ],
@@ -97,19 +104,20 @@ export default function CreditPackagesPage() {
       id: 3,
       type: "credit" as const,
       name: "프리미엄 충전",
-      description: "대용량 충전으로 최대 혜택 + 추가크레딧",
-      price: 100000,
-      credits: 10000,
-      bonusCredits: 5100, // 1500 (15% 보너스) + 3600 (추가 크레딧)
-      totalCredits: 15100,
+      description: "대용량 충전으로 최대 혜택, 장기 이용 고객용",
+      price: 150000,
+      credits: 15000,
+      bonusCredits: 3000, // 20% 보너스
+      totalCredits: 18000,
       payPerMinute: averageRatePerMinute,
-      usageMinutes: Math.floor((15100 / creditsPerMinute) * 100) / 100, // 50.33분
-      usageTime: "약 50분 20초",
+      usageMinutes: Math.floor((18000 / averageCreditsPerMinute) * 100) / 100, // 계산된 분
+      usageTime: `약 ${Math.floor(18000 / averageCreditsPerMinute)}분`,
       features: [
-        "10,000 + 5,100 보너스 크레딧",
-        "총 15,100 크레딧 제공",
+        "15,000 + 3,000 보너스 크레딧",
+        "총 18,000 크레딧 제공",
+        "상담 4회 충분히 가능 (약 120분)",
         "AI 상담 및 전문가 상담에 사용 가능",
-        "15% 보너스 + 추가 크레딧 혜택",
+        "20% 보너스 혜택",
         "VIP 고객지원",
         "전문가 우선 매칭",
         "사용기한 없음",
@@ -133,45 +141,68 @@ export default function CreditPackagesPage() {
             </div>
           </div>
 
-          {/* 새로운 과금 체계 안내 */}
+          {/* 전문가 레벨별 과금 체계 안내 */}
           <div className="mb-6">
             <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
               <h3 className="text-sm font-semibold text-blue-900 mb-2">
-                💡 새로운 전문가 레벨별 과금 체계
+                💡 전문가 레벨별 과금 체계
               </h3>
               <div className="text-xs text-blue-800 space-y-1">
                 <p>
-                  <strong>평균 요금:</strong> 분당 ₩
-                  {averageRatePerMinute.toLocaleString()}
+                  <strong>일반적인 요금:</strong> 분당 120~180 크레딧 (₩1,200~₩1,800)
                 </p>
                 <p>
-                  <strong>요금 범위:</strong> ₩
-                  {pricingInfo.minRate.toLocaleString()} ~ ₩
-                  {pricingInfo.maxRate.toLocaleString()}
+                  <strong>평균 요금:</strong> 분당 약 {averageCreditsPerMinute} 크레딧 (₩{averageRatePerMinute.toLocaleString()})
                 </p>
                 <p>
-                  <strong>전문가 레벨:</strong> {pricingInfo.minTier} ~{" "}
-                  {pricingInfo.maxTier}
+                  <strong>전체 요금 범위:</strong> {pricingInfo.minCreditsRate} ~ {pricingInfo.maxCreditsRate} 크레딧/분 (₩{pricingInfo.minRate.toLocaleString()} ~ ₩{pricingInfo.maxRate.toLocaleString()})
+                </p>
+                <p>
+                  <strong>전문가 레벨:</strong> {pricingInfo.minTier} ~ {pricingInfo.maxTier}
                 </p>
                 <p className="text-blue-600 mt-2">
-                  ※ 전문가 레벨에 따라 요금이 다를 수 있습니다. 상담 시 정확한
-                  요금을 확인해주세요.
+                  ※ 대부분의 전문가가 120~180 크레딧/분 범위에 분포되어 있습니다. 상담 예약 시 정확한 요금을 확인할 수 있습니다.
                 </p>
               </div>
             </div>
           </div>
 
-          {/* 크레딧 잔액 */}
-          <div className="mb-6">
-            <CreditBalance credits={remainingAIChatCredits} />
-          </div>
+          {/* 크레딧 잔액 - 로그인된 사용자에게만 표시 */}
+          {isAuthenticated && user && (
+            <div className="mb-6">
+              <CreditBalance credits={remainingAIChatCredits} />
+            </div>
+          )}
+
+          {/* 게스트 사용자를 위한 로그인 유도 메시지 */}
+          {!isAuthenticated && (
+            <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-6">
+              <div className="flex items-center justify-center space-x-4">
+                <LogIn className="h-8 w-8 text-blue-600" />
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold text-blue-900 mb-2">
+                    크레딧 잔액을 확인하려면 로그인하세요
+                  </h3>
+                  <p className="text-blue-700 mb-4">
+                    로그인하시면 현재 크레딧 잔액과 사용 내역을 확인할 수 있습니다.
+                  </p>
+                  <button
+                    onClick={() => window.location.href = "/auth/login"}
+                    className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    로그인하기
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* 패키지 카드들 */}
           <div className="mb-6">
             <h2 className="text-xl font-bold text-gray-900 mb-4">
               크레딧 충전 패키지
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
               {packs.map((pack) => (
                 <PackCard key={pack.id} pack={pack} />
               ))}

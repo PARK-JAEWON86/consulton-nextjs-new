@@ -8,6 +8,7 @@ import ProfileSettings from "@/components/settings/ProfileSettings";
 import SecuritySettings from "@/components/settings/SecuritySettings";
 import PrivacySettings from "@/components/settings/PrivacySettings";
 import CalendarIntegration from "@/components/settings/CalendarIntegration";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { Monitor, Sun, Moon } from "lucide-react";
 
 export default function SettingsPage() {
@@ -85,47 +86,49 @@ export default function SettingsPage() {
     { value: "system" as const, icon: Monitor, label: "시스템" },
   ];
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">설정</h1>
-            <p className="text-gray-600 mt-1">계정과 앱 설정을 관리하세요.</p>
+    <ProtectedRoute requireAuth={true}>
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">설정</h1>
+              <p className="text-gray-600 mt-1">계정과 앱 설정을 관리하세요.</p>
+            </div>
+            
+            {/* 테마 선택기 */}
+            <div className="flex items-center space-x-1 bg-white rounded-lg border border-gray-200 p-1">
+              {themeOptions.map((option) => {
+                const IconComponent = option.icon;
+                const isActive = theme === option.value;
+                
+                return (
+                  <button
+                    key={option.value}
+                    onClick={() => handleThemeChange(option.value)}
+                    className={`p-2 rounded-md transition-all duration-200 ${
+                      isActive
+                        ? "bg-blue-100 text-blue-600"
+                        : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                    }`}
+                    title={option.label}
+                  >
+                    <IconComponent className="h-5 w-5" />
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          
-          {/* 테마 선택기 */}
-          <div className="flex items-center space-x-1 bg-white rounded-lg border border-gray-200 p-1">
-            {themeOptions.map((option) => {
-              const IconComponent = option.icon;
-              const isActive = theme === option.value;
-              
-              return (
-                <button
-                  key={option.value}
-                  onClick={() => handleThemeChange(option.value)}
-                  className={`p-2 rounded-md transition-all duration-200 ${
-                    isActive
-                      ? "bg-blue-100 text-blue-600"
-                      : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-                  }`}
-                  title={option.label}
-                >
-                  <IconComponent className="h-5 w-5" />
-                </button>
-              );
-            })}
-          </div>
-        </div>
 
-        <div className="space-y-8">
-          <AccountSettings />
-          {/* 전문가 모드에서는 프로필 설정 섹션 숨김 */}
-          {effectiveVariant === "user" && <ProfileSettings />}
-          <SecuritySettings />
-          <PrivacySettings />
-          <CalendarIntegration />
+          <div className="space-y-8">
+            <AccountSettings />
+            {/* 전문가 모드에서는 프로필 설정 섹션 숨김 */}
+            {effectiveVariant === "user" && <ProfileSettings />}
+            <SecuritySettings />
+            <PrivacySettings />
+            <CalendarIntegration />
+          </div>
         </div>
       </div>
-    </div>
+    </ProtectedRoute>
   );
 }

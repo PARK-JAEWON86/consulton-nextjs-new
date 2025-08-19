@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Star, MessageCircle, Filter, Search, ChevronDown, Calendar, User, Video, Phone, Edit2, Save, X } from "lucide-react";
 import { dummyReviews, getReviewStats, updateReviewVerification } from "@/data/dummy/reviews";
 import { useConsultationsStore } from "@/stores/consultationsStore";
+import { useAppStore } from "@/stores/appStore";
 import { Review } from "@/types";
 
 type SortOption = "latest" | "oldest" | "highest" | "lowest";
@@ -13,8 +14,9 @@ type FilterOption = "all" | "replied" | "unreplied" | "5" | "4" | "3" | "2" | "1
 export default function ExpertReviewsPage() {
   const searchParams = useSearchParams();
   const highlightReviewId = searchParams.get("highlight");
+  const { user } = useAppStore();
   
-  const [reviews, setReviews] = useState<Review[]>(dummyReviews);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("latest");
   const [filterBy, setFilterBy] = useState<FilterOption>("all");
@@ -27,11 +29,18 @@ export default function ExpertReviewsPage() {
   // 상담 기록 스토어에서 데이터 가져오기
   const consultations = useConsultationsStore((state) => state.items);
 
-  // 상담 기록이 변경될 때마다 리뷰 검증 상태 업데이트
+  // 로그인한 전문가의 리뷰만 로드
   useEffect(() => {
-    const updatedReviews = updateReviewVerification(dummyReviews, consultations);
-    setReviews(updatedReviews);
-  }, [consultations]);
+    if (user && user.role === 'expert' && user.expertProfile) {
+      const expertId = parseInt(user.id?.replace('expert_', '') || '0');
+      if (expertId > 0) {
+        // 해당 전문가의 리뷰만 필터링
+        const expertReviews = dummyReviews.filter(review => review.expertId === expertId);
+        const updatedReviews = updateReviewVerification(expertReviews, consultations);
+        setReviews(updatedReviews);
+      }
+    }
+  }, [user, consultations]);
 
   // 하이라이트된 리뷰로 스크롤
   useEffect(() => {

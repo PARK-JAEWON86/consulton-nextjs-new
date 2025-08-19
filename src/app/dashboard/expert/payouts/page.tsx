@@ -1,8 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useConsultationsStore } from "@/stores/consultationsStore";
 import { usePayoutsStore } from "@/stores/payoutsStore";
+import { useAppStore } from "@/stores/appStore";
+import { getRepositoryContainer, getSettlementConfig } from "@/config/SettlementConfig";
+import { SettlementService } from "@/services/settlement/SettlementService";
+import { PaymentService } from "@/services/payment/PaymentService";
+import { getSettlementSummary } from "@/data/dummy/consultationHistory";
+import type { PayoutItem, ExpertEarnings } from "@/types/settlement";
 
 function formatCredits(n: number) {
   return `${n.toLocaleString()} 크레딧`;
@@ -13,18 +19,100 @@ function formatKRW(n: number) {
   return `${n.toLocaleString()}원`;
 }
 
+// 매월 5일 정산 시스템 관련 함수들
+function getNextSettlementDate(): Date {
+  const today = new Date();
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
+  const currentDay = today.getDate();
+  
+  // 이번 달 5일이 지났으면 다음 달 5일, 아니면 이번 달 5일
+  if (currentDay >= 5) {
+    return new Date(currentYear, currentMonth + 1, 5);
+  } else {
+    return new Date(currentYear, currentMonth, 5);
+  }
+}
+
+function getLastSettlementDate(): Date {
+  const today = new Date();
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
+  const currentDay = today.getDate();
+  
+  // 이번 달 5일이 지났으면 이번 달 5일, 아니면 지난 달 5일
+  if (currentDay >= 5) {
+    return new Date(currentYear, currentMonth, 5);
+  } else {
+    return new Date(currentYear, currentMonth - 1, 5);
+  }
+}
+
+function getDaysUntilSettlement(): number {
+  const today = new Date();
+  const nextSettlement = getNextSettlementDate();
+  const diffTime = nextSettlement.getTime() - today.getTime();
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+}
+
 export default function PayoutsPage() {
   const items = useConsultationsStore((s) => s.items);
   const { requests, addRequest } = usePayoutsStore();
-  const [feeRate] = useState(0.1); // 10% 수수료 (예시)
+  const { user } = useAppStore();
+  const [feeRate] = useState(0.12); // 12% 수수료 (예시)
+  const [nextSettlementDate, setNextSettlementDate] = useState<Date>(new Date());
+  const [daysUntilSettlement, setDaysUntilSettlement] = useState<number>(0);
+  
+  // 새로운 정산 시스템 상태
+  const [payoutItems, setPayoutItems] = useState<PayoutItem[]>([]);
+  const [expertEarnings, setExpertEarnings] = useState<ExpertEarnings | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentExpertId, setCurrentExpertId] = useState<number | null>(null);
+  const [settlementSummary, setSettlementSummary] = useState<any>(null);
+
+  useEffect(() => {
+    const nextDate = getNextSettlementDate();
+    const daysLeft = getDaysUntilSettlement();
+    setNextSettlementDate(nextDate);
+    setDaysUntilSettlement(daysLeft);
+    
+    // 로그인된 전문가 정보에서 ID 추출 및 정산 데이터 로드
+    if (user && user.role === 'expert' && user.expertProfile) {
+      const expertId = parseInt(user.id?.replace('expert_', '') || '0');
+      if (expertId > 0) {
+        setCurrentExpertId(expertId);
+        loadSettlementData(expertId);
+      }
+    }
+  }, [user]);
+
+  const loadSettlementData = async (expertId: number) => {
+    try {
+      setIsLoading(true);
+      
+      // 더미 데이터에서 정산 요약 정보 로드
+      const summary = getSettlementSummary(expertId);
+      setSettlementSummary(summary);
+      
+      console.log(`✅ Loaded settlement data for expert ${expertId}:`, summary);
+      
+    } catch (error) {
+      console.error('Failed to load settlement data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const completed = useMemo(
     () => items.filter((it) => it.status === "completed"),
     [items]
   );
-  const gross = completed.reduce((acc, v) => acc + (v.amount || 0), 0);
-  const totalFees = Math.round(gross * feeRate);
-  const net = Math.max(0, gross - totalFees);
+  
+  // 실제 정산 데이터 사용 (더미 데이터에서 로드)
+  const gross = settlementSummary ? settlementSummary.totalGrossCredits : completed.reduce((acc, v) => acc + (v.amount || 0), 0);
+  const totalFees = settlementSummary ? Math.floor(settlementSummary.totalPlatformFeeKrw / 10) : Math.round(gross * feeRate);
+  const taxWithheld = settlementSummary ? Math.floor(settlementSummary.taxWithheldKrw / 10) : 0;
+  const net = settlementSummary ? settlementSummary.netPayoutCredits : Math.max(0, gross - totalFees);
 
   const pendingAmount = useMemo(() => {
     const pendingSum = requests
@@ -75,7 +163,7 @@ export default function PayoutsPage() {
     if (pendingAmount <= 0) return;
     const fee = Math.round(pendingAmount * feeRate);
     addRequest(pendingAmount, fee);
-    alert("출금 요청이 접수되었습니다.");
+    alert(`출금 요청이 접수되었습니다. 다음 정산일(${nextSettlementDate.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })})에 처리됩니다.`);
   };
 
   const downloadCSV = () => {
@@ -111,9 +199,59 @@ export default function PayoutsPage() {
     URL.revokeObjectURL(url);
   };
 
+  // 로그인하지 않은 경우
+  if (!user || user.role !== 'expert') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="bg-white border rounded-lg p-8 text-center max-w-md">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">전문가 로그인 필요</h2>
+          <p className="text-gray-600 mb-6">
+            정산 페이지는 전문가 계정으로 로그인해야 이용할 수 있습니다.
+          </p>
+          <a 
+            href="/auth/login"
+            className="inline-block bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors"
+          >
+            로그인하러 가기
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* 현재 로그인된 전문가 정보 */}
+        {user && user.expertProfile && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                  <span className="text-blue-600 font-bold text-lg">
+                    {user.name?.charAt(0)}
+                  </span>
+                </div>
+                <div className="ml-4">
+                  <h2 className="text-lg font-bold text-blue-900">{user.name}</h2>
+                  <p className="text-blue-700">{user.expertProfile.specialty} • {user.expertProfile.pricePerMinute?.toLocaleString()}원/분</p>
+                  <div className="flex items-center mt-1 space-x-3 text-sm text-blue-600">
+                    <span>레벨 {user.expertProfile.level}</span>
+                    <span>총 {user.expertProfile.totalSessions}회 상담</span>
+                    <span>평점 {user.expertProfile.avgRating}⭐</span>
+                  </div>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-sm text-blue-600">로딩 상태</div>
+                <div className={`font-medium ${isLoading ? 'text-orange-600' : 'text-green-600'}`}>
+                  {isLoading ? '데이터 로딩 중...' : '데이터 로드 완료'}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">정산/출금</h1>
@@ -121,32 +259,86 @@ export default function PayoutsPage() {
               완료된 상담 기준 정산 내역과 출금 요청을 관리합니다.
             </p>
           </div>
-          <button
-            onClick={downloadCSV}
-            className="h-10 px-4 rounded-md border text-sm hover:bg-gray-50"
-          >
-            CSV 다운로드
-          </button>
+          <div className="flex space-x-2">
+            <button
+              onClick={downloadCSV}
+              className="h-10 px-4 rounded-md border text-sm hover:bg-gray-50"
+            >
+              CSV 다운로드
+            </button>
+            {process.env.NODE_ENV === 'development' && currentExpertId && (
+              <button
+                onClick={() => loadSettlementData(currentExpertId)}
+                className="h-10 px-4 rounded-md bg-green-600 text-white text-sm hover:bg-green-700"
+              >
+                데이터 새로고침
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* 정산 일정 안내 */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-blue-800">
+                매월 5일 정산 시스템
+              </h3>
+              <div className="mt-1 text-sm text-blue-700">
+                <p>다음 정산일: <span className="font-semibold">{nextSettlementDate.toLocaleDateString('ko-KR', { 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}</span></p>
+                <p className="mt-1">
+                  정산까지 <span className="font-semibold text-blue-900">{daysUntilSettlement}일</span> 남았습니다.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* 요약 카드 */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="bg-white border rounded-lg p-4">
+            <div className="text-xs text-gray-500 mb-1">총 상담 수</div>
+            <div className="text-xl font-bold text-gray-900">
+              {settlementSummary ? settlementSummary.totalConsultations : completed.length}건
+            </div>
+            <div className="text-xs text-gray-400 mt-1">
+              평균 {settlementSummary ? settlementSummary.avgDurationMin : 0}분
+            </div>
+          </div>
           <div className="bg-white border rounded-lg p-4">
             <div className="text-xs text-gray-500 mb-1">총 정산액(완료)</div>
             <div className="text-xl font-bold text-gray-900">
               {formatCredits(gross)}
             </div>
+            <div className="text-xs text-gray-400 mt-1">
+              {settlementSummary ? `${(settlementSummary.totalGrossKrw / 10000).toFixed(1)}만원` : ''}
+            </div>
           </div>
           <div className="bg-white border rounded-lg p-4">
-            <div className="text-xs text-gray-500 mb-1">수수료(예: 10%)</div>
-            <div className="text-xl font-bold text-gray-900">
-              {formatCredits(totalFees)}
+            <div className="text-xs text-gray-500 mb-1">플랫폼 수수료 (12%)</div>
+            <div className="text-xl font-bold text-red-600">
+              -{formatCredits(totalFees)}
+            </div>
+            <div className="text-xs text-gray-400 mt-1">
+              {settlementSummary ? `${(settlementSummary.totalPlatformFeeKrw / 10000).toFixed(1)}만원` : ''}
             </div>
           </div>
           <div className="bg-white border rounded-lg p-4">
             <div className="text-xs text-gray-500 mb-1">출금 가능액</div>
-            <div className="text-xl font-bold text-gray-900">
+            <div className="text-xl font-bold text-green-600">
               {formatCredits(net)}
+            </div>
+            <div className="text-xs text-gray-400 mt-1">
+              원천징수 후: {formatCredits(net - taxWithheld)}
             </div>
           </div>
         </div>
@@ -160,6 +352,9 @@ export default function PayoutsPage() {
                 대기 중 요청을 제외한 잔여 가능액:{" "}
                 {formatCredits(pendingAmount)}
               </div>
+              <div className="text-xs text-blue-600 mt-1">
+                매월 5일에 자동 정산 처리됩니다
+              </div>
             </div>
             <button
               onClick={handleRequestPayout}
@@ -170,7 +365,7 @@ export default function PayoutsPage() {
                   : "bg-gray-200 text-gray-500 border-gray-200 cursor-not-allowed"
               }`}
             >
-              출금 요청하기
+              출금금액 확정하기
             </button>
           </div>
         </div>
@@ -189,6 +384,7 @@ export default function PayoutsPage() {
                   <th className="px-4 py-2">액수</th>
                   <th className="px-4 py-2">수수료</th>
                   <th className="px-4 py-2">상태</th>
+                  <th className="px-4 py-2">정산 예정일</th>
                   <th className="px-4 py-2 text-right">영수증</th>
                 </tr>
               </thead>
@@ -196,44 +392,69 @@ export default function PayoutsPage() {
                 {requests.length === 0 && (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={7}
                       className="px-4 py-6 text-center text-gray-500"
                     >
                       요청 이력이 없습니다.
                     </td>
                   </tr>
                 )}
-                {requests.map((r) => (
-                  <tr key={r.id}>
-                    <td className="px-4 py-2">{r.id}</td>
-                    <td className="px-4 py-2">
-                      {new Date(r.requestedAt).toLocaleString()}
-                    </td>
-                    <td className="px-4 py-2">{formatCredits(r.amount)}</td>
-                    <td className="px-4 py-2">{formatCredits(r.fee)}</td>
-                    <td className="px-4 py-2">
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                          r.status === "pending"
-                            ? "bg-amber-100 text-amber-800"
-                            : r.status === "paid"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-rose-100 text-rose-700"
-                        }`}
-                      >
-                        {r.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 text-right">
-                      <button
-                        onClick={() => downloadReceipt(r.id)}
-                        className="h-8 px-3 border rounded-md text-xs hover:bg-gray-50"
-                      >
-                        영수증 다운로드
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {requests.map((r) => {
+                  // 요청일 기준으로 다음 정산일 계산
+                  const requestDate = new Date(r.requestedAt);
+                  const settlementDate = (() => {
+                    const year = requestDate.getFullYear();
+                    const month = requestDate.getMonth();
+                    const day = requestDate.getDate();
+                    
+                    // 5일 이전 요청이면 이번 달 5일, 5일 이후 요청이면 다음 달 5일
+                    if (day < 5) {
+                      return new Date(year, month, 5);
+                    } else {
+                      return new Date(year, month + 1, 5);
+                    }
+                  })();
+                  
+                  return (
+                    <tr key={r.id}>
+                      <td className="px-4 py-2">{r.id}</td>
+                      <td className="px-4 py-2">
+                        {new Date(r.requestedAt).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-2">{formatCredits(r.amount)}</td>
+                      <td className="px-4 py-2">{formatCredits(r.fee)}</td>
+                      <td className="px-4 py-2">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                            r.status === "pending"
+                              ? "bg-amber-100 text-amber-800"
+                              : r.status === "paid"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-rose-100 text-rose-700"
+                          }`}
+                        >
+                          {r.status === "pending" ? "대기중" : r.status === "paid" ? "완료" : "취소"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2">
+                        <span className="text-sm text-gray-600">
+                          {settlementDate.toLocaleDateString('ko-KR', { 
+                            month: 'short', 
+                            day: 'numeric' 
+                          })}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        <button
+                          onClick={() => downloadReceipt(r.id)}
+                          className="h-8 px-3 border rounded-md text-xs hover:bg-gray-50"
+                        >
+                          영수증 다운로드
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
