@@ -32,6 +32,7 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [emailVerificationStep, setEmailVerificationStep] = useState<"form" | "verification" | "success">("form");
+  const [showVerificationInput, setShowVerificationInput] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationError, setVerificationError] = useState("");
@@ -147,6 +148,7 @@ export default function RegisterPage() {
       const emailSent = await sendVerificationEmail();
       
       if (emailSent) {
+        setShowVerificationInput(true);
         setEmailVerificationStep("verification");
       } else {
         setErrors({ general: "인증 이메일 발송에 실패했습니다. 다시 시도해주세요." });
@@ -194,6 +196,7 @@ export default function RegisterPage() {
 
   const handleResendCode = async () => {
     setIsLoading(true);
+    setVerificationError("");
     try {
       await sendVerificationEmail();
       alert("인증 코드가 다시 발송되었습니다.");
@@ -201,6 +204,75 @@ export default function RegisterPage() {
       alert("인증 코드 재발송에 실패했습니다.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleBackToForm = () => {
+    setShowVerificationInput(false);
+    setEmailVerificationStep("form");
+    setVerificationCode("");
+    setVerificationError("");
+  };
+
+  const handleCodeInputChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+    const value = e.target.value.replace(/\D/g, ""); // 숫자만 허용
+    
+    if (value.length <= 1) {
+      const newCode = verificationCode.split("");
+      newCode[index] = value;
+      const updatedCode = newCode.join("").slice(0, 6);
+      setVerificationCode(updatedCode);
+      
+      // 다음 입력 필드로 자동 이동
+      if (value && index < 5) {
+        const nextInput = document.getElementById(`code-${index + 1}`);
+        nextInput?.focus();
+      }
+    }
+  };
+
+  const handleCodeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
+    // Backspace 처리
+    if (e.key === "Backspace") {
+      e.preventDefault();
+      const newCode = verificationCode.split("");
+      
+      if (newCode[index]) {
+        // 현재 칸에 값이 있으면 삭제
+        newCode[index] = "";
+      } else if (index > 0) {
+        // 현재 칸이 비어있으면 이전 칸으로 이동하고 삭제
+        newCode[index - 1] = "";
+        const prevInput = document.getElementById(`code-${index - 1}`);
+        prevInput?.focus();
+      }
+      
+      const updatedCode = newCode.join("");
+      setVerificationCode(updatedCode);
+    }
+    
+    // 화살표 키 처리
+    if (e.key === "ArrowLeft" && index > 0) {
+      const prevInput = document.getElementById(`code-${index - 1}`);
+      prevInput?.focus();
+    }
+    if (e.key === "ArrowRight" && index < 5) {
+      const nextInput = document.getElementById(`code-${index + 1}`);
+      nextInput?.focus();
+    }
+  };
+
+  const handleCodePaste = (e: React.ClipboardEvent<HTMLInputElement>, index: number) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    
+    if (pastedData) {
+      setVerificationCode(pastedData);
+      
+      // 마지막 입력된 칸으로 포커스 이동
+      const targetIndex = Math.min(pastedData.length - 1, 5);
+      const targetInput = document.getElementById(`code-${targetIndex}`);
+      targetInput?.focus();
     }
   };
 
@@ -229,91 +301,7 @@ export default function RegisterPage() {
     );
   }
 
-  // 이메일 인증 화면
-  if (emailVerificationStep === "verification") {
-    return (
-      <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-        <div className="sm:mx-auto sm:w-full sm:max-w-md">
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            이메일 인증
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            <span className="font-medium text-blue-600">{formData.email}</span>로<br />
-            인증 코드를 발송했습니다.
-          </p>
-        </div>
 
-        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-            {verificationError && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
-                <div className="text-sm text-red-600">{verificationError}</div>
-              </div>
-            )}
-
-            <div className="space-y-6">
-              <div>
-                <label htmlFor="verificationCode" className="block text-sm font-medium text-gray-700 mb-2">
-                  인증 코드 (6자리)
-                </label>
-                <input
-                  id="verificationCode"
-                  name="verificationCode"
-                  type="text"
-                  value={verificationCode}
-                  onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-2xl font-mono tracking-widest"
-                  placeholder="123456"
-                  maxLength={6}
-                />
-                <p className="mt-2 text-xs text-gray-500 text-center">
-                  개발 환경에서는 <span className="font-mono bg-gray-100 px-1 rounded">123456</span>을 입력하세요
-                </p>
-              </div>
-
-              <button
-                onClick={handleVerifyCode}
-                disabled={isVerifying || verificationCode.length !== 6}
-                className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white transition-colors ${
-                  isVerifying || verificationCode.length !== 6
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                }`}
-              >
-                {isVerifying ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    인증 중...
-                  </div>
-                ) : (
-                  "인증 확인"
-                )}
-              </button>
-
-              <div className="text-center">
-                <button
-                  onClick={handleResendCode}
-                  disabled={isLoading}
-                  className="text-sm text-blue-600 hover:text-blue-500 font-medium"
-                >
-                  인증 코드 다시 받기
-                </button>
-              </div>
-
-              <div className="text-center">
-                <button
-                  onClick={() => setEmailVerificationStep("form")}
-                  className="text-sm text-gray-500 hover:text-gray-700"
-                >
-                  ← 이전 단계로 돌아가기
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
@@ -357,9 +345,10 @@ export default function RegisterPage() {
                   autoComplete="name"
                   value={formData.name}
                   onChange={handleInputChange}
+                  disabled={showVerificationInput}
                   className={`block w-full pl-10 pr-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                     errors.name ? "border-red-300" : "border-gray-300"
-                  }`}
+                  } ${showVerificationInput ? "bg-gray-100" : ""}`}
                   placeholder="이름을 입력하세요"
                 />
               </div>
@@ -384,9 +373,10 @@ export default function RegisterPage() {
                   autoComplete="email"
                   value={formData.email}
                   onChange={handleInputChange}
+                  disabled={showVerificationInput}
                   className={`block w-full pl-10 pr-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                     errors.email ? "border-red-300" : "border-gray-300"
-                  }`}
+                  } ${showVerificationInput ? "bg-gray-100" : ""}`}
                   placeholder="your@email.com"
                 />
               </div>
@@ -411,15 +401,17 @@ export default function RegisterPage() {
                   autoComplete="new-password"
                   value={formData.password}
                   onChange={handleInputChange}
+                  disabled={showVerificationInput}
                   className={`block w-full pl-10 pr-10 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                     errors.password ? "border-red-300" : "border-gray-300"
-                  }`}
+                  } ${showVerificationInput ? "bg-gray-100" : ""}`}
                   placeholder="비밀번호를 입력하세요"
                 />
                 <button
                   type="button"
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
                   onClick={() => setShowPassword(!showPassword)}
+                  disabled={showVerificationInput}
                 >
                   {showPassword ? (
                     <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
@@ -449,15 +441,17 @@ export default function RegisterPage() {
                   autoComplete="new-password"
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
+                  disabled={showVerificationInput}
                   className={`block w-full pl-10 pr-10 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                     errors.confirmPassword ? "border-red-300" : "border-gray-300"
-                  }`}
+                  } ${showVerificationInput ? "bg-gray-100" : ""}`}
                   placeholder="비밀번호를 다시 입력하세요"
                 />
                 <button
                   type="button"
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  disabled={showVerificationInput}
                 >
                   {showConfirmPassword ? (
                     <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
@@ -471,43 +465,130 @@ export default function RegisterPage() {
               )}
             </div>
 
-            {/* 회원가입 버튼 */}
-            <div>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white transition-colors ${
-                  isLoading
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                }`}
-              >
-                {isLoading ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    인증 이메일 발송 중...
+            {/* 이메일 인증 코드 입력 */}
+            {showVerificationInput && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="mb-4">
+                  <p className="text-sm text-blue-800 text-center">
+                    <span className="font-medium">{formData.email}</span>로<br />
+                    인증 코드를 발송했습니다.
+                  </p>
+                </div>
+                
+                {verificationError && (
+                  <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-4">
+                    <div className="text-sm text-red-600">{verificationError}</div>
                   </div>
-                ) : (
-                  "회원가입"
                 )}
-              </button>
-            </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-blue-900 mb-3 text-center">
+                    인증 코드 (6자리)
+                  </label>
+                  <div className="flex justify-center space-x-2 mb-3">
+                    {Array.from({ length: 6 }, (_, index) => (
+                      <input
+                        key={index}
+                        id={`code-${index}`}
+                        type="text"
+                        maxLength={1}
+                        value={verificationCode[index] || ""}
+                        onChange={(e) => handleCodeInputChange(e, index)}
+                        onKeyDown={(e) => handleCodeKeyDown(e, index)}
+                        onPaste={(e) => handleCodePaste(e, index)}
+                        className="w-12 h-12 text-center text-xl font-mono border-2 border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                        placeholder=""
+                      />
+                    ))}
+                  </div>
+                  <p className="text-xs text-blue-600 text-center">
+                    개발 환경에서는 <span className="font-mono bg-blue-100 px-1 rounded">123456</span>을 입력하세요
+                  </p>
+                </div>
+
+                <div className="flex flex-col space-y-3">
+                  <button
+                    type="button"
+                    onClick={handleVerifyCode}
+                    disabled={isVerifying || verificationCode.length !== 6}
+                    className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white transition-colors ${
+                      isVerifying || verificationCode.length !== 6
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    }`}
+                  >
+                    {isVerifying ? (
+                      <div className="flex items-center">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        인증 중...
+                      </div>
+                    ) : (
+                      "인증 확인"
+                    )}
+                  </button>
+
+                  <div className="flex justify-center space-x-4 text-sm">
+                    <button
+                      type="button"
+                      onClick={handleResendCode}
+                      disabled={isLoading}
+                      className="text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      인증 코드 다시 받기
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleBackToForm}
+                      className="text-gray-600 hover:text-gray-700"
+                    >
+                      이메일 수정하기
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 회원가입 버튼 - 인증 코드 입력 중에는 숨김 */}
+            {!showVerificationInput && (
+              <div>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white transition-colors ${
+                    isLoading
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  }`}
+                >
+                  {isLoading ? (
+                    <div className="flex items-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      인증 이메일 발송 중...
+                    </div>
+                  ) : (
+                    "회원가입"
+                  )}
+                </button>
+              </div>
+            )}
           </form>
 
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">또는</span>
-              </div>
-            </div>
-
+          {!showVerificationInput && (
             <div className="mt-6">
-              <SocialLoginButtons mode="register" />
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white text-gray-500">또는</span>
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <SocialLoginButtons mode="register" />
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
