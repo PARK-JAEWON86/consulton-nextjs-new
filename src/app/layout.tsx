@@ -35,21 +35,7 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <head>
-        {/* 폰트 프리로드 최적화 */}
-        <link
-          rel="preload"
-          href="/_next/static/media/inter.woff2"
-          as="font"
-          type="font/woff2"
-          crossOrigin="anonymous"
-        />
-        <link
-          rel="preload"
-          href="/_next/static/media/jetbrains-mono.woff2"
-          as="font"
-          type="font/woff2"
-          crossOrigin="anonymous"
-        />
+        {/* 폰트 프리로드 최적화 - Next.js가 자동으로 처리하므로 제거 */}
       </head>
       <body
         className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}

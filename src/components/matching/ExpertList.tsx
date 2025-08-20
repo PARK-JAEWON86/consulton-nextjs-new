@@ -321,7 +321,7 @@ const ExpertList = ({
             {displayedExperts.map((expert) => (
               <div key={expert.id} role="listitem">
                 <ExpertCard
-                  expert={expert}
+                  expert={expert as any}
                   onProfileView={() => onExpertSelect(expert)}
                   viewMode={viewMode}
                 />

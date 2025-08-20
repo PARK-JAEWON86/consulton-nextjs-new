@@ -46,7 +46,7 @@ import {
   UserCheck,
   X,
 } from "lucide-react";
-import { getExtendedCategories, getExtendedAgeGroups, getExtendedDurations, dummyMatchedExperts } from "@/data/dummy";
+import { getExtendedCategories, getExtendedAgeGroups, getExtendedDurations } from "@/data/dummy";
 
 export default function HomePage() {
   // 검색 상태

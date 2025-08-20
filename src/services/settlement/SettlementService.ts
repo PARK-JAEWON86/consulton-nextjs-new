@@ -169,9 +169,9 @@ export class SettlementService {
             credit: 'cash',
             refId: `${batchId}_${item.expertId}`,
             splits: [
-              { debit: 'payable_expert', amountKrw: item.grossKrw },
-              { credit: 'cash', amountKrw: item.netKrw },
-              ...(item.taxWithheldKrw > 0 ? [{ credit: 'tax_withheld', amountKrw: item.taxWithheldKrw }] : [])
+              { debit: 'payable_expert' as const, amountKrw: item.grossKrw },
+              { credit: 'cash' as const, amountKrw: item.netKrw },
+              ...(item.taxWithheldKrw > 0 ? [{ credit: 'tax_withheld' as const, amountKrw: item.taxWithheldKrw }] : [])
             ],
             description: `Monthly settlement payout for ${item.expertId} (${month})`
           });
@@ -275,13 +275,22 @@ export class SettlementService {
       to: period.toTs
     });
 
+    const grossEarnings = earnings.grossEarningsKrw || 0;
+    const netEarnings = earnings.netEarningsKrw || 0;
+    const platformFee = grossEarnings - netEarnings; // 플랫폼 수수료 계산
+
     return {
       expertId,
       period: {
         from: period.fromStr,
         to: period.toStr
       },
-      ...earnings
+      totalSessions: earnings.totalSessions || 0,
+      grossEarningsKrw: grossEarnings,
+      platformFeeKrw: platformFee,
+      netEarningsKrw: netEarnings,
+      avgSessionDurationMin: 60, // 기본값 60분
+      avgRatePerMinKrw: earnings.avgRatePerMinKrw || 0
     };
   }
 

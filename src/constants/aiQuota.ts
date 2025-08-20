@@ -1,3 +1,6 @@
+// TODO: AI 크레딧 정책이 API로 이전될 예정입니다.
+// 현재는 기본 계산 로직만 유지하고, 실제 크레딧 관리는 API에서 처리할 예정입니다.
+
 export const BASE_CREDIT_PER_TURN = 3;
 export const MONTHLY_FREE_BUDGET_CREDITS = 300; // (= 100턴 × 3크레딧)
 

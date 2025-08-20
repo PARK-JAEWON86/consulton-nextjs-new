@@ -10,7 +10,7 @@ import {
   MessageCircle,
   CreditCard,
 } from "lucide-react";
-import { useAIChatCreditsStore } from "@/stores/aiChatCreditsStore";
+
 import { useAppStore } from "@/stores/appStore";
 import React from "react"; // Added missing import
 
@@ -24,9 +24,7 @@ const Navbar = ({ onBackToLanding, onNavigate }: NavbarProps = {}) => {
   const [isToggleOn, setIsToggleOn] = useState(true);
   const [showNavMenu, setShowNavMenu] = useState(false);
 
-  // AI 채팅 크레딧 스토어에서 크레딧 정보 가져오기
-  const { remainingAIChatCredits, checkAndResetMonthly, setCreditsTo7300 } =
-    useAIChatCreditsStore();
+
     
   // 앱 스토어에서 사용자 정보 가져오기
   const { user, isAuthenticated } = useAppStore();
@@ -36,13 +34,7 @@ const Navbar = ({ onBackToLanding, onNavigate }: NavbarProps = {}) => {
   const userEmail = user?.email || "guest@example.com";
   const userInitial = userName.charAt(0).toUpperCase();
 
-  // 컴포넌트 마운트 시 월간 리셋 체크 및 로그인된 사용자만 크레딧을 7300으로 설정
-  React.useEffect(() => {
-    if (isAuthenticated && user) {
-      checkAndResetMonthly();
-      setCreditsTo7300(); // 로그인된 사용자만 크레딧을 7300으로 설정
-    }
-  }, [checkAndResetMonthly, setCreditsTo7300, isAuthenticated, user]);
+
 
   const handleLogout = () => {
     // 로그아웃 로직
@@ -89,12 +81,7 @@ const Navbar = ({ onBackToLanding, onNavigate }: NavbarProps = {}) => {
     }
   };
 
-  // 크레딧 잔액에 따른 색상 결정
-  const getCreditColor = (credits: number) => {
-    if (credits > 200) return "text-green-600";
-    if (credits > 100) return "text-yellow-600";
-    return "text-red-600";
-  };
+
 
   return (
     <>
@@ -166,9 +153,9 @@ const Navbar = ({ onBackToLanding, onNavigate }: NavbarProps = {}) => {
                 <div className="flex items-center space-x-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
                   <CreditCard className="h-4 w-4 text-blue-600" />
                   <span
-                    className={`text-sm font-medium ${getCreditColor(remainingAIChatCredits)}`}
+                    className="text-sm font-medium text-gray-600"
                   >
-                    {remainingAIChatCredits} 크레딧
+                    API에서 관리될 예정
                   </span>
                 </div>
                 <button
@@ -224,10 +211,10 @@ const Navbar = ({ onBackToLanding, onNavigate }: NavbarProps = {}) => {
                               크레딧 잔액
                             </span>
                             <span
-                              className={`text-sm font-medium ${getCreditColor(remainingAIChatCredits)}`}
-                            >
-                              {remainingAIChatCredits} 크레딧
-                            </span>
+                                                  className="text-sm font-medium text-gray-600"
+                  >
+                    API에서 관리될 예정
+                  </span>
                           </div>
                           <button
                             onClick={() => {

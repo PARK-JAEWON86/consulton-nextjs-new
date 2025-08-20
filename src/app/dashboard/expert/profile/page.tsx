@@ -108,13 +108,13 @@ export default function ExpertProfilePage() {
       expertId,
       latestProfile: latestProfile ? {
         name: latestProfile.name,
-        level: latestProfile.level,
+        experience: latestProfile.experience,
         totalSessions: latestProfile.totalSessions,
         completionRate: latestProfile.completionRate
       } : null,
       userProfile: user.expertProfile ? {
         name: user.expertProfile.name,
-        level: user.expertProfile.level,
+        experience: user.expertProfile.experience,
         totalSessions: user.expertProfile.totalSessions
       } : null
     });
@@ -190,7 +190,6 @@ export default function ExpertProfilePage() {
       totalSessions: updated.totalSessions,
       avgRating: updated.avgRating,
       rating: updated.avgRating,
-      level: updated.level,
       reviewCount: updated.reviewCount || Math.floor(updated.totalSessions * 0.7),
       completionRate: updated.completionRate || 95,
       repeatClients: updated.repeatClients || Math.floor(updated.totalSessions * 0.3),

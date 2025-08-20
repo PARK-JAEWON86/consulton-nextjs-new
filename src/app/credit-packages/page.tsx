@@ -6,25 +6,17 @@ import ServiceLayout from "@/components/layout/ServiceLayout";
 import PackCard from "@/components/dashboard/PackCard";
 import CreditBalance from "@/components/dashboard/CreditBalance";
 import { LEVELS, getKoreanTierName } from "@/utils/expertLevels";
-import { useAIChatCreditsStore } from "@/stores/aiChatCreditsStore";
+
 import { useAppStore } from "@/stores/appStore";
 import React from "react"; // Added missing import for React
 
 export default function CreditPackagesPage() {
-  // AI 채팅 크레딧 스토어에서 실제 크레딧 정보 가져오기
-  const { remainingAIChatCredits, checkAndResetMonthly, setCreditsTo7300 } =
-    useAIChatCreditsStore();
+
   
   // 앱 스토어에서 로그인 상태 확인
   const { user, isAuthenticated } = useAppStore();
 
-  // 컴포넌트 마운트 시 월간 리셋 체크 및 로그인된 사용자만 크레딧을 7300으로 설정
-  React.useEffect(() => {
-    if (isAuthenticated && user) {
-      checkAndResetMonthly();
-      setCreditsTo7300(); // 로그인된 사용자만 크레딧을 7300으로 설정
-    }
-  }, [checkAndResetMonthly, setCreditsTo7300, isAuthenticated, user]);
+
 
   // 실제 이용 빈도를 고려한 평균 요금 계산 (가장 많이 분포된 전문가 레벨 기준)
   const calculateAverageRatePerMinute = () => {
@@ -170,7 +162,7 @@ export default function CreditPackagesPage() {
           {/* 크레딧 잔액 - 로그인된 사용자에게만 표시 */}
           {isAuthenticated && user && (
             <div className="mb-6">
-              <CreditBalance credits={remainingAIChatCredits} />
+                              <CreditBalance credits={0} />
             </div>
           )}
 

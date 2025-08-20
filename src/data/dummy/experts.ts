@@ -65,15 +65,15 @@ export const convertExpertItemToProfile = (item: ExpertItem): ExpertProfile => {
     );
 
   // weeklyAvailability를 WeeklyAvailability로 변환
-  const weeklyAvailability: WeeklyAvailability = {};
   const weekDays: WeekDay[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  const weeklyAvailability: WeeklyAvailability = {} as WeeklyAvailability;
   
   weekDays.forEach(day => {
     weeklyAvailability[day] = item.weeklyAvailability[day] || [];
   });
 
   // availability 객체 생성
-  const availability: Availability = {};
+  const availability: Availability = {} as Availability;
   weekDays.forEach(day => {
     const hasHours = item.weeklyAvailability[day] && item.weeklyAvailability[day].length > 0;
     availability[day] = {
@@ -147,7 +147,6 @@ export const convertExpertItemToProfile = (item: ExpertItem): ExpertProfile => {
     targetAudience: item.targetAudience,
     isOnline: item.isOnline,
     isProfileComplete: true,
-    level, // 계산된 레벨 추가
     createdAt: item.joinedAt,
     updatedAt: item.lastActiveAt
   };
