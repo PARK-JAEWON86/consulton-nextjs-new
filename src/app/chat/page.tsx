@@ -3,8 +3,6 @@
 import { useState, useRef, useEffect } from "react";
 import {
   Send,
-  Paperclip,
-  Smile,
   Bot,
   CheckCircle,
   Users,
@@ -15,9 +13,12 @@ import {
   Clock,
   Trash2,
   RefreshCw,
+  FileText,
+  Download,
+  BarChart3,
+  Lightbulb,
 } from "lucide-react";
 import QuestionInput from "@/components/chat/QuestionInput";
-import ChatHistory from "@/components/chat/ChatHistory";
 import ChatBubble from "@/components/chat/ChatBubble";
 import ServiceLayout from "@/components/layout/ServiceLayout";
 import { useAppStore } from "@/stores/appStore";
@@ -54,8 +55,11 @@ export default function ChatPage() {
   const [consultationSummary, setConsultationSummary] = useState("");
   const [showCreditModal, setShowCreditModal] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
+  const [showStats, setShowStats] = useState(false);
+  const [showTips, setShowTips] = useState(false);
   const [messageCount, setMessageCount] = useState(0);
   const [remainingPercent, setRemainingPercent] = useState(100);
+  const [consultationStartTime] = useState(new Date());
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -109,11 +113,61 @@ export default function ChatPage() {
   const handleUseCredits = () => {
     // 크레딧 사용 로직
     console.log("크레딧 사용");
+    setShowCreditModal(false);
   };
 
   const handleChargeCredits = () => {
     // 크레딧 충전 페이지로 이동
     window.location.href = "/credit-packages";
+  };
+
+  const handleShowStats = () => {
+    setShowStats(!showStats);
+  };
+
+  const handleShowTips = () => {
+    setShowTips(!showTips);
+  };
+
+  const handleClearHistory = () => {
+    if (confirm("채팅 히스토리를 정리하시겠습니까? 첫 번째 AI 메시지만 남게 됩니다.")) {
+      setMessages([messages[0]]);
+      setMessageCount(0);
+    }
+  };
+
+  const handleExportConsultation = () => {
+    const content = messages.map(m => 
+      `${m.type === 'user' ? '나' : 'AI'}: ${m.content}`
+    ).join('\n\n');
+    
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `AI상담_${new Date().toISOString().split('T')[0]}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleGoToExperts = () => {
+    window.location.href = "/experts";
+  };
+
+  const handleGoToCommunity = () => {
+    window.location.href = "/community";
+  };
+
+  const handleGoToSummary = () => {
+    window.location.href = "/summary";
+  };
+
+  // 상담 통계 계산
+  const consultationStats = {
+    totalMessages: messages.length,
+    userMessages: messages.filter(m => m.type === 'user').length,
+    aiMessages: messages.filter(m => m.type === 'ai').length,
+    duration: Math.floor((new Date().getTime() - consultationStartTime.getTime()) / 1000 / 60),
   };
 
   // 로그아웃 상태일 때 회원가입 안내 표시
@@ -188,14 +242,14 @@ export default function ChatPage() {
               <div className="space-y-3">
                 <button
                   onClick={handleUseCredits}
-                  className="w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 bg-gray-300 text-gray-500 cursor-not-allowed"
+                  className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:from-cyan-600 hover:to-blue-700 transition-all duration-200 shadow-sm hover:shadow-md"
                 >
                   크레딧 사용하기 (50크레딧)
                 </button>
 
                 <button
                   onClick={handleChargeCredits}
-                  className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:from-cyan-600 hover:to-blue-700 transition-all duration-200 shadow-sm hover:shadow-md"
+                  className="w-full bg-gradient-to-r from-purple-500 to-pink-600 text-white py-3 px-4 rounded-lg font-medium hover:from-purple-600 hover:to-pink-700 transition-all duration-200 shadow-sm hover:shadow-md"
                 >
                   크레딧 충전하기
                 </button>
@@ -227,11 +281,8 @@ export default function ChatPage() {
           </div>
         </div>
 
-        {/* AI 토큰 사용량 바 */}
-        <AITokenUsageBar userId="user_123" />
-
         {/* 채팅 영역 */}
-        <div className="flex gap-6" style={{ height: "calc(100vh - 280px)" }}>
+        <div className="flex gap-6" style={{ height: "calc(100vh - 380px)" }}>
           {/* 메인 채팅 영역 */}
           <div className="flex-1 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             <div className="h-full flex flex-col">
@@ -240,7 +291,7 @@ export default function ChatPage() {
                 {/* 메시지 목록 */}
                 <div
                   className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0"
-                  style={{ maxHeight: "calc(100vh - 400px)" }}
+                  style={{ maxHeight: "calc(100vh - 500px)" }}
                 >
                   {messages.map((message) => (
                     <div id={`message-${message.id}`} key={message.id}>
@@ -336,6 +387,75 @@ export default function ChatPage() {
                     />
                   )}
                 </div>
+
+                {/* AI 토큰 사용량 바와 상담 제어 버튼들 - 채팅방 하단으로 이동 */}
+                <div className="border-t border-gray-200 bg-gray-50 p-4">
+                  {/* AI 토큰 사용량 바 */}
+                  <div className="mb-4">
+                    <AITokenUsageBar userId="user_123" />
+                  </div>
+
+                  {/* 상담 제어 버튼들 */}
+                  <div className="flex flex-wrap items-center justify-center gap-3">
+                    <button
+                      onClick={() => setIsConsultationComplete(false)}
+                      className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm ${
+                        !isConsultationComplete
+                          ? 'bg-blue-600 text-white hover:bg-blue-700'
+                          : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <MessageSquare className="w-4 h-4" />
+                        <span>상담 시작</span>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => setShowCreditModal(true)}
+                      className="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors text-sm"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <Sparkles className="w-4 h-4" />
+                        <span>크레딧 사용</span>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        const summary = "AI 상담 요약: " + messages.map(m => m.content).join(" ");
+                        setConsultationSummary(summary);
+                        setShowSummary(true);
+                      }}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors text-sm"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <CheckCircle className="w-4 h-4" />
+                        <span>상담 요약</span>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={handleGoToExperts}
+                      className="px-4 py-2 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 transition-colors text-sm"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <Users className="w-4 h-4" />
+                        <span>전문가 매칭</span>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => handleExportConsultation()}
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors text-sm"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <Download className="w-4 h-4" />
+                        <span>상담 내보내기</span>
+                      </div>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -347,13 +467,22 @@ export default function ChatPage() {
               <div className="border-b border-gray-200 bg-gray-50 p-4">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="font-semibold text-gray-900">채팅 히스토리</h3>
-                  <button
-                    onClick={() => window.location.reload()}
-                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                    title="새로고침"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={handleClearHistory}
+                      className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                      title="히스토리 정리"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => window.location.reload()}
+                      className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                      title="새로고침"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
                 <p className="text-xs text-gray-600">
                   {messageCount}개 메시지
@@ -404,16 +533,108 @@ export default function ChatPage() {
 
               {/* 사이드바 푸터 */}
               <div className="border-t border-gray-200 bg-gray-50 p-4">
-                <div className="text-center text-xs text-gray-500">
-                  <p>AI 상담 진행 중</p>
-                  <p className="mt-1">
-                    {remainingPercent}% 크레딧 남음
-                  </p>
+                <div className="space-y-3">
+                  <div className="text-center text-xs text-gray-500">
+                    <p>AI 상담 진행 중</p>
+                    <p className="mt-1">
+                      {remainingPercent}% 크레딧 남음
+                    </p>
+                  </div>
+                  
+                  <div className="flex flex-col space-y-2">
+                    <button
+                      onClick={handleShowStats}
+                      className="w-full px-3 py-2 text-xs bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                    >
+                      📊 상담 통계
+                    </button>
+                    
+                    <button
+                      onClick={handleShowTips}
+                      className="w-full px-3 py-2 text-xs bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
+                    >
+                      💡 상담 팁
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
+
+        {/* 상담 통계 모달 */}
+        {showStats && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold text-gray-900">📊 상담 통계</h2>
+                  <button
+                    onClick={handleShowStats}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span>총 메시지:</span>
+                    <span className="font-semibold">{consultationStats.totalMessages}개</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>사용자 질문:</span>
+                    <span className="font-semibold">{consultationStats.userMessages}개</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>AI 응답:</span>
+                    <span className="font-semibold">{consultationStats.aiMessages}개</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>상담 시간:</span>
+                    <span className="font-semibold">{consultationStats.duration}분</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 상담 팁 모달 */}
+        {showTips && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold text-gray-900">💡 상담 팁</h2>
+                  <button
+                    onClick={handleShowTips}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="space-y-3 text-sm text-gray-700">
+                  <div className="flex items-start space-x-2">
+                    <span className="text-blue-500 font-bold">1.</span>
+                    <span>구체적인 상황을 설명하세요</span>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <span className="text-blue-500 font-bold">2.</span>
+                    <span>질문을 하나씩 해주세요</span>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <span className="text-blue-500 font-bold">3.</span>
+                    <span>AI의 답변을 바탕으로 추가 질문하세요</span>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <span className="text-blue-500 font-bold">4.</span>
+                    <span>상담 요약을 활용하세요</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </ServiceLayout>
   );
