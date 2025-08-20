@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { ExpertProfile } from '@/types';
+import { ExpertProfile, WeeklyAvailability } from '@/types';
 
 interface ExpertProfileStore {
   // 전문가 프로필 목록 (ID를 키로 하는 맵)
@@ -140,7 +140,7 @@ export const initializeExpertProfiles = () => {
         averageSessionDuration: 60,
         cancellationPolicy: '24시간 전 취소 가능',
         availability: profile.availability || {},
-        weeklyAvailability: convertAvailabilityToWeekly(profile.availability || {}),
+        weeklyAvailability: convertAvailabilityToWeekly(profile.availability || {}) as WeeklyAvailability,
         contactInfo: profile.contactInfo || {
           phone: '',
           email: '',

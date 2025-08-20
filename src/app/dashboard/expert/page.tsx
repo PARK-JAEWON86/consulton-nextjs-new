@@ -219,7 +219,7 @@ export default function ExpertDashboardProfilePage() {
           console.log('🔄 전문가 대시보드 - 중앙 서비스 데이터 동기화:', {
             expertId,
             name: latestProfile.name,
-            level: latestProfile.level,
+            experience: latestProfile.experience,
             totalSessions: latestProfile.totalSessions
           });
         }

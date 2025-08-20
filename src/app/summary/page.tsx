@@ -16,7 +16,8 @@ import {
   LogIn,
 } from "lucide-react";
 import ServiceLayout from "@/components/layout/ServiceLayout";
-import { dummyConsultationSummaries, ConsultationSummary } from "@/data/dummy";
+import { dummyConsultationSummaries } from "@/data/dummy";
+import { ConsultationSummary } from "@/types";
 import { useAppStore } from "@/stores/appStore";
 
 // ConsultationSummary 타입은 더미 데이터에서 import

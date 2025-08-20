@@ -188,7 +188,7 @@ function generateConsultationRequests(): ConsultationRequest[] {
         respondedAt: status !== 'pending' ? new Date(requestDate.getTime() + Math.random() * 24 * 60 * 60 * 1000).toISOString() : undefined,
         scheduledAt: status === 'accepted' ? preferredDate.toISOString() : undefined,
         notes: status === 'rejected' ? '일정 조율이 어려워 다른 전문가를 추천드립니다.' : undefined,
-        tags: [topicData.topic.split(' ')[0], status === 'urgent' ? '긴급' : '일반']
+        tags: [topicData.topic.split(' ')[0], topicData.priority === 'urgent' ? '긴급' : '일반']
       };
       
       requests.push(request);

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { useAIChatCreditsStore } from "../../stores/aiChatCreditsStore";
+
 import { useAppStore } from "../../stores/appStore";
 import { expertDataService } from "@/services/ExpertDataService";
 import {
@@ -60,9 +60,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     return stored === "dark" ? "dark" : "light";
   });
 
-  // 크레딧 정보
-  const { remainingAIChatCredits, checkAndResetMonthly, setCreditsTo7300 } =
-    useAIChatCreditsStore();
+
 
   // 유저 역할/저장된 뷰 모드 기반으로 variant 결정
   const { user, viewMode, setViewMode, isAuthenticated } = useAppStore();
@@ -93,10 +91,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     return "user";
   }, [variant, viewMode, user, pathname, isHydrated]);
 
-  useEffect(() => {
-    checkAndResetMonthly();
-    setCreditsTo7300();
-  }, [checkAndResetMonthly, setCreditsTo7300]);
+
 
   // 하이드레이션 완료 체크
   useEffect(() => {

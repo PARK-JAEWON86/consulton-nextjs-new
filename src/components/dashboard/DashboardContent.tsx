@@ -233,7 +233,7 @@ export default function DashboardContent() {
   // 사용자 프로필 저장 핸들러
   const handleUserProfileSave = (profileData: any) => {
     console.log("사용자 프로필 저장:", profileData);
-    setUser((prev) => ({ ...prev, ...profileData }));
+    // TODO: 실제 사용자 데이터 업데이트 로직 구현
   };
 
   return (

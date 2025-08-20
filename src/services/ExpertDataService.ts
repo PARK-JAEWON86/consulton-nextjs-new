@@ -182,7 +182,7 @@ export class ExpertDataService {
       email: this.getLoginAccounts().find(acc => acc.id === expertId)?.email || `expert${expertId}@consulton.co.kr`,
       name: expert.name,
       credits: 0,
-      expertLevel: profile.level,
+      expertLevel: profile.experience || 1, // experience를 level 대신 사용
       role: 'expert' as const,
       expertProfile: profile
     };
