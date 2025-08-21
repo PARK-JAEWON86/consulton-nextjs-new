@@ -1,5 +1,18 @@
 import { Review } from "@/types";
-import { ConsultationItem } from "@/stores/consultationsStore";
+
+// ConsultationItem 타입 정의
+export interface ConsultationItem {
+  id: number;
+  date: string;
+  customer: string;
+  topic: string;
+  amount: number;
+  status: "completed" | "scheduled" | "canceled";
+  method: "video" | "chat" | "voice" | "call";
+  duration: number;
+  summary: string;
+  notes: string;
+}
 
 // 더미 리뷰 데이터
 export const dummyReviews: Review[] = [

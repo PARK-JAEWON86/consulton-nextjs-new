@@ -19,8 +19,7 @@ import {
   Heart,
   Share2
 } from "lucide-react";
-import { useExpertProfileStore } from "@/stores/expertProfileStore";
-import { initializeDummyExpertsToStore, dummyExperts, convertExpertItemToProfile } from "@/data/dummy/experts";
+import { dummyExperts, convertExpertItemToProfile } from "@/data/dummy/experts";
 import { dummyReviews } from "@/data/dummy/reviews";
 import { ExpertProfile, Review } from "@/types";
 import { calculateExpertLevel, getLevelBadgeStyles, getKoreanLevelName } from "@/utils/expertLevels";
@@ -36,8 +35,27 @@ export default function ExpertProfilePage() {
   const [similarExperts, setSimilarExperts] = useState<ExpertProfile[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   
-  // 전문가 프로필 스토어 사용
-  const { getProfile, getAllProfiles } = useExpertProfileStore();
+  // 전문가 프로필 데이터
+  const [allExperts, setAllExperts] = useState<ExpertProfile[]>([]);
+
+  // 전문가 프로필 데이터 로드
+  useEffect(() => {
+    const loadExpertProfiles = async () => {
+      try {
+        const response = await fetch('/api/expert-profiles');
+        const result = await response.json();
+        if (result.success) {
+          setAllExperts(result.data.profiles || []);
+        }
+      } catch (error) {
+        console.error('전문가 프로필 로드 실패:', error);
+        // API 실패 시 더미 데이터 사용
+        setAllExperts(dummyExperts.map(convertExpertItemToProfile));
+      }
+    };
+
+    loadExpertProfiles();
+  }, []);
 
   // 비슷한 전문가 찾기 함수 (검색 컨텍스트 고려)
   const findSimilarExperts = (currentExpert: ExpertProfile, allExperts: ExpertProfile[], searchContext?: any) => {

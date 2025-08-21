@@ -1,14 +1,43 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import { useConsultationsStore } from "@/stores/consultationsStore";
-import { usePayoutsStore } from "@/stores/payoutsStore";
-import { useAppStore } from "@/stores/appStore";
 import { getRepositoryContainer, getSettlementConfig } from "@/config/SettlementConfig";
 import { SettlementService } from "@/services/settlement/SettlementService";
 import { PaymentService } from "@/services/payment/PaymentService";
 import { getSettlementSummary } from "@/data/dummy/consultationHistory";
 import type { PayoutItem, ExpertEarnings } from "@/types/settlement";
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  credits: number;
+  expertLevel: string;
+  role?: 'expert' | 'client' | 'admin';
+  expertProfile?: any;
+}
+
+interface AppState {
+  isAuthenticated: boolean;
+  user: User | null;
+}
+
+interface ConsultationItem {
+  id: number;
+  date: string;
+  customer: string;
+  topic: string;
+  amount: number;
+  status: "completed" | "scheduled" | "canceled";
+}
+
+interface PayoutRequest {
+  id: number;
+  amount: number;
+  fee: number;
+  requestedAt: string;
+  status: "pending" | "paid" | "rejected";
+}
 
 function formatCredits(n: number) {
   return `${n.toLocaleString()} 크레딧`;
@@ -56,9 +85,12 @@ function getDaysUntilSettlement(): number {
 }
 
 export default function PayoutsPage() {
-  const items = useConsultationsStore((s) => s.items);
-  const { requests, addRequest } = usePayoutsStore();
-  const { user } = useAppStore();
+  const [appState, setAppState] = useState<AppState>({
+    isAuthenticated: false,
+    user: null
+  });
+  const [items, setItems] = useState<ConsultationItem[]>([]);
+  const [requests, setRequests] = useState<PayoutRequest[]>([]);
   const [feeRate] = useState(0.12); // 12% 수수료 (예시)
   const [nextSettlementDate, setNextSettlementDate] = useState<Date>(new Date());
   const [daysUntilSettlement, setDaysUntilSettlement] = useState<number>(0);
@@ -70,6 +102,78 @@ export default function PayoutsPage() {
   const [currentExpertId, setCurrentExpertId] = useState<number | null>(null);
   const [settlementSummary, setSettlementSummary] = useState<any>(null);
 
+  // 앱 상태 로드
+  useEffect(() => {
+    const loadAppState = async () => {
+      try {
+        const response = await fetch('/api/app-state');
+        const result = await response.json();
+        if (result.success) {
+          setAppState({
+            isAuthenticated: result.data.isAuthenticated,
+            user: result.data.user
+          });
+        }
+      } catch (error) {
+        console.error('앱 상태 로드 실패:', error);
+      }
+    };
+
+    loadAppState();
+  }, []);
+
+  // 상담 기록 로드
+  useEffect(() => {
+    const loadConsultations = async () => {
+      try {
+        const response = await fetch('/api/consultations');
+        const result = await response.json();
+        if (result.success) {
+          setItems(result.data.items || []);
+        }
+      } catch (error) {
+        console.error('상담 기록 로드 실패:', error);
+      }
+    };
+
+    loadConsultations();
+  }, []);
+
+  // 출금 요청 로드
+  useEffect(() => {
+    const loadPayouts = async () => {
+      try {
+        const response = await fetch('/api/payouts');
+        const result = await response.json();
+        if (result.success) {
+          setRequests(result.data.requests || []);
+        }
+      } catch (error) {
+        console.error('출금 요청 로드 실패:', error);
+      }
+    };
+
+    loadPayouts();
+  }, []);
+
+  // 출금 요청 추가 함수
+  const addRequest = async (amount: number, fee: number) => {
+    try {
+      const response = await fetch('/api/payouts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'addRequest', data: { amount, fee } })
+      });
+      const result = await response.json();
+      if (result.success) {
+        // 로컬 상태 업데이트
+        setRequests(prev => [...prev, result.data.request]);
+      }
+    } catch (error) {
+      console.error('출금 요청 추가 실패:', error);
+    }
+  };
+
   useEffect(() => {
     const nextDate = getNextSettlementDate();
     const daysLeft = getDaysUntilSettlement();
@@ -77,14 +181,14 @@ export default function PayoutsPage() {
     setDaysUntilSettlement(daysLeft);
     
     // 로그인된 전문가 정보에서 ID 추출 및 정산 데이터 로드
-    if (user && user.role === 'expert' && user.expertProfile) {
-      const expertId = parseInt(user.id?.replace('expert_', '') || '0');
+    if (appState.user && appState.user.role === 'expert' && appState.user.expertProfile) {
+      const expertId = parseInt(appState.user.id?.replace('expert_', '') || '0');
       if (expertId > 0) {
         setCurrentExpertId(expertId);
         loadSettlementData(expertId);
       }
     }
-  }, [user]);
+  }, [appState.user]);
 
   const loadSettlementData = async (expertId: number) => {
     try {
@@ -200,7 +304,7 @@ export default function PayoutsPage() {
   };
 
   // 로그인하지 않은 경우
-  if (!user || user.role !== 'expert') {
+  if (!appState.user || appState.user.role !== 'expert') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="bg-white border rounded-lg p-8 text-center max-w-md">
@@ -223,22 +327,22 @@ export default function PayoutsPage() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 현재 로그인된 전문가 정보 */}
-        {user && user.expertProfile && (
+        {appState.user && appState.user.expertProfile && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
                   <span className="text-blue-600 font-bold text-lg">
-                    {user.name?.charAt(0)}
+                    {appState.user.name?.charAt(0)}
                   </span>
                 </div>
                 <div className="ml-4">
-                  <h2 className="text-lg font-bold text-blue-900">{user.name}</h2>
-                  <p className="text-blue-700">{user.expertProfile.specialty} • {user.expertProfile.pricePerMinute?.toLocaleString()}원/분</p>
+                  <h2 className="text-lg font-bold text-blue-900">{appState.user.name}</h2>
+                  <p className="text-blue-700">{appState.user.expertProfile.specialty} • {appState.user.expertProfile.pricePerMinute?.toLocaleString()}원/분</p>
                   <div className="flex items-center mt-1 space-x-3 text-sm text-blue-600">
-                    <span>레벨 {user.expertProfile.level}</span>
-                    <span>총 {user.expertProfile.totalSessions}회 상담</span>
-                    <span>평점 {user.expertProfile.avgRating}⭐</span>
+                    <span>레벨 {appState.user.expertProfile.level}</span>
+                    <span>총 {appState.user.expertProfile.totalSessions}회 상담</span>
+                    <span>평점 {appState.user.expertProfile.avgRating}⭐</span>
                   </div>
                 </div>
               </div>
@@ -266,9 +370,14 @@ export default function PayoutsPage() {
             >
               CSV 다운로드
             </button>
-            {process.env.NODE_ENV === 'development' && currentExpertId && (
+            {process.env.NODE_ENV === 'development' && appState.user && appState.user.expertProfile && (
               <button
-                onClick={() => loadSettlementData(currentExpertId)}
+                onClick={() => {
+                  const expertId = parseInt(appState.user?.id?.replace('expert_', '') || '0');
+                  if (expertId > 0) {
+                    loadSettlementData(expertId);
+                  }
+                }}
                 className="h-10 px-4 rounded-md bg-green-600 text-white text-sm hover:bg-green-700"
               >
                 데이터 새로고침

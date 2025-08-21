@@ -1,15 +1,52 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Info } from "lucide-react";
-import { useAIUsageStore } from "../../stores/aiUsageStore";
 import { MONTHLY_FREE_BUDGET_CREDITS } from "../../constants/aiQuota";
+
+interface AIUsageState {
+  usedCredits: number;
+  purchasedCredits: number;
+  remainingPercent: number;
+  monthlyResetDate: string;
+  totalTurns: number;
+  totalTokens: number;
+  averageTokensPerTurn: number;
+}
 
 interface QuotaBarProps {
   isExtended?: boolean;
 }
 
 const QuotaBar: React.FC<QuotaBarProps> = ({ isExtended = false }) => {
-  const { remainingPercent, usedCredits } = useAIUsageStore();
+  const [aiUsage, setAiUsage] = useState<AIUsageState>({
+    usedCredits: 0,
+    purchasedCredits: 0,
+    remainingPercent: 100,
+    monthlyResetDate: new Date().toISOString(),
+    totalTurns: 0,
+    totalTokens: 0,
+    averageTokensPerTurn: 0
+  });
+
+  // AI 사용량 로드
+  useEffect(() => {
+    const loadAIUsage = async () => {
+      try {
+        const response = await fetch('/api/ai-usage');
+        const result = await response.json();
+        if (result.success) {
+          setAiUsage(result.data);
+        }
+      } catch (error) {
+        console.error('AI 사용량 로드 실패:', error);
+      }
+    };
+
+    loadAIUsage();
+  }, []);
+
+  const { remainingPercent, usedCredits } = aiUsage;
 
   // 실제 남은 크레딧 계산 (대화연장 시 50크레딧 추가)
   const remainingCredits = Math.max(

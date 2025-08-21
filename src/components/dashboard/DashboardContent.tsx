@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { useAppStore } from "@/stores/appStore";
+import { useState, useEffect } from "react";
 import {
   BarChart3,
   MessageCircle,
@@ -20,12 +19,51 @@ import {
 import CreditBalance from "./CreditBalance";
 import UserProfile from "./UserProfile";
 
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  credits: number;
+  expertLevel: string;
+  role?: 'expert' | 'client' | 'admin';
+}
+
+interface AppState {
+  isAuthenticated: boolean;
+  user: User | null;
+}
+
 export default function DashboardContent() {
   type ConsultationType = "video" | "chat" | "voice";
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const { user: loggedInUser } = useAppStore();
+  const [appState, setAppState] = useState<AppState>({
+    isAuthenticated: false,
+    user: null
+  });
+
+  // 앱 상태 로드
+  useEffect(() => {
+    const loadAppState = async () => {
+      try {
+        const response = await fetch('/api/app-state');
+        const result = await response.json();
+        if (result.success) {
+          setAppState({
+            isAuthenticated: result.data.isAuthenticated,
+            user: result.data.user
+          });
+        }
+      } catch (error) {
+        console.error('앱 상태 로드 실패:', error);
+      }
+    };
+
+    loadAppState();
+  }, []);
+
+  const loggedInUser = appState.user;
 
   // 로그인한 사용자 데이터 사용, 없으면 기본값
   const user = loggedInUser ? {

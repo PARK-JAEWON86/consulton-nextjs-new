@@ -20,7 +20,20 @@ import QuestionInput from "@/components/chat/QuestionInput";
 import ChatHistory from "@/components/chat/ChatHistory";
 import ChatBubble from "@/components/chat/ChatBubble";
 import ServiceLayout from "@/components/layout/ServiceLayout";
-import { useAppStore } from "@/stores/appStore";
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  credits: number;
+  expertLevel: string;
+  role?: 'expert' | 'client' | 'admin';
+}
+
+interface AppState {
+  isAuthenticated: boolean;
+  user: User | null;
+}
+
 import { AIChatMessage } from "@/types";
 import Link from "next/link";
 import AITokenUsageBar from "@/components/chat/AITokenUsageBar";
@@ -37,7 +50,32 @@ interface ChatSession {
 }
 
 export default function ChatPage() {
-  const { isAuthenticated } = useAppStore();
+  const [appState, setAppState] = useState<AppState>({
+    isAuthenticated: false,
+    user: null
+  });
+
+  // 앱 상태 로드
+  useEffect(() => {
+    const loadAppState = async () => {
+      try {
+        const response = await fetch('/api/app-state');
+        const result = await response.json();
+        if (result.success) {
+          setAppState({
+            isAuthenticated: result.data.isAuthenticated,
+            user: result.data.user
+          });
+        }
+      } catch (error) {
+        console.error('앱 상태 로드 실패:', error);
+      }
+    };
+
+    loadAppState();
+  }, []);
+
+  const { isAuthenticated } = appState;
   
   // 로그아웃 상태일 때 회원가입 안내 표시
   if (!isAuthenticated) {

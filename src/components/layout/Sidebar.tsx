@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-import { useAppStore } from "../../stores/appStore";
 import { expertDataService } from "@/services/ExpertDataService";
 import {
   Home,
@@ -25,6 +24,21 @@ import {
   HelpCircle,
   ArrowLeftRight,
 } from "lucide-react";
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  credits: number;
+  expertLevel: string;
+  role?: 'expert' | 'client' | 'admin';
+}
+
+interface AppState {
+  isAuthenticated: boolean;
+  user: User | null;
+  viewMode: "user" | "expert";
+}
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -60,10 +74,49 @@ const Sidebar: React.FC<SidebarProps> = ({
     return stored === "dark" ? "dark" : "light";
   });
 
+  const [appState, setAppState] = useState<AppState>({
+    isAuthenticated: false,
+    user: null,
+    viewMode: "user"
+  });
 
+  // 앱 상태 로드
+  useEffect(() => {
+    const loadAppState = async () => {
+      try {
+        const response = await fetch('/api/app-state');
+        const result = await response.json();
+        if (result.success) {
+          setAppState({
+            isAuthenticated: result.data.isAuthenticated,
+            user: result.data.user,
+            viewMode: result.data.viewMode
+          });
+        }
+      } catch (error) {
+        console.error('앱 상태 로드 실패:', error);
+      }
+    };
+
+    loadAppState();
+  }, []);
+
+  // 뷰 모드 변경 함수
+  const setViewMode = async (mode: "user" | "expert") => {
+    try {
+      await fetch('/api/app-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'setViewMode', data: { viewMode: mode } })
+      });
+      setAppState(prev => ({ ...prev, viewMode: mode }));
+    } catch (error) {
+      console.error('뷰 모드 변경 실패:', error);
+    }
+  };
 
   // 유저 역할/저장된 뷰 모드 기반으로 variant 결정
-  const { user, viewMode, setViewMode, isAuthenticated } = useAppStore();
+  const { user, viewMode, isAuthenticated } = appState;
   
   // 하이드레이션 완료 상태 체크
   const [isHydrated, setIsHydrated] = useState(false);
@@ -491,12 +544,19 @@ const Sidebar: React.FC<SidebarProps> = ({
                     {/* 인증 상태에 따라 다른 메뉴 표시 */}
                     {isAuthenticated ? (
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           try {
-                            useAppStore.getState().logout();
-                          } catch {}
-                          router.push("/auth/login");
-                          setShowProfileMenu(false);
+                            await fetch('/api/app-state', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ action: 'logout', data: {} })
+                            });
+                            setAppState(prev => ({ ...prev, isAuthenticated: false, user: null }));
+                            router.push("/auth/login");
+                            setShowProfileMenu(false);
+                          } catch (error) {
+                            console.error('로그아웃 실패:', error);
+                          }
                         }}
                         className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-gray-50"
                       >

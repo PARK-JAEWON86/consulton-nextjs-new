@@ -1,5 +1,18 @@
-import { ConsultationItem } from "@/stores/consultationsStore";
 import { ConsultationSummary } from "@/types";
+
+// ConsultationItem 타입 정의
+export interface ConsultationItem {
+  id: number;
+  date: string;
+  customer: string;
+  topic: string;
+  amount: number;
+  status: "completed" | "scheduled" | "canceled";
+  method: "video" | "chat" | "voice" | "call";
+  duration: number;
+  summary: string;
+  notes: string;
+}
 
 // 더미 상담 데이터
 export const dummyConsultations: ConsultationItem[] = [

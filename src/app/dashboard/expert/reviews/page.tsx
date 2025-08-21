@@ -4,9 +4,34 @@ import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { Star, MessageCircle, Filter, Search, ChevronDown, Calendar, User, Video, Phone, Edit2, Save, X } from "lucide-react";
 import { dummyReviews, getReviewStats, updateReviewVerification } from "@/data/dummy/reviews";
-import { useConsultationsStore } from "@/stores/consultationsStore";
-import { useAppStore } from "@/stores/appStore";
 import { Review } from "@/types";
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  credits: number;
+  expertLevel: string;
+  role?: 'expert' | 'client' | 'admin';
+}
+
+interface AppState {
+  isAuthenticated: boolean;
+  user: User | null;
+}
+
+interface ConsultationItem {
+  id: number;
+  date: string;
+  customer: string;
+  topic: string;
+  amount: number;
+  status: "completed" | "scheduled" | "canceled";
+  method: "video" | "chat" | "voice" | "call";
+  duration: number;
+  summary: string;
+  notes: string;
+}
 
 type SortOption = "latest" | "oldest" | "highest" | "lowest";
 type FilterOption = "all" | "replied" | "unreplied" | "5" | "4" | "3" | "2" | "1";
@@ -14,7 +39,50 @@ type FilterOption = "all" | "replied" | "unreplied" | "5" | "4" | "3" | "2" | "1
 export default function ExpertReviewsPage() {
   const searchParams = useSearchParams();
   const highlightReviewId = searchParams.get("highlight");
-  const { user } = useAppStore();
+  const [appState, setAppState] = useState<AppState>({
+    isAuthenticated: false,
+    user: null
+  });
+  const [consultations, setConsultations] = useState<ConsultationItem[]>([]);
+  
+  // 앱 상태 로드
+  useEffect(() => {
+    const loadAppState = async () => {
+      try {
+        const response = await fetch('/api/app-state');
+        const result = await response.json();
+        if (result.success) {
+          setAppState({
+            isAuthenticated: result.data.isAuthenticated,
+            user: result.data.user
+          });
+        }
+      } catch (error) {
+        console.error('앱 상태 로드 실패:', error);
+      }
+    };
+
+    loadAppState();
+  }, []);
+
+  // 상담 기록 로드
+  useEffect(() => {
+    const loadConsultations = async () => {
+      try {
+        const response = await fetch('/api/consultations');
+        const result = await response.json();
+        if (result.success) {
+          setConsultations(result.data.items || []);
+        }
+      } catch (error) {
+        console.error('상담 기록 로드 실패:', error);
+      }
+    };
+
+    loadConsultations();
+  }, []);
+
+  const { user } = appState;
   
   const [reviews, setReviews] = useState<Review[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -27,7 +95,7 @@ export default function ExpertReviewsPage() {
   const [notification, setNotification] = useState<{ message: string; type: "success" | "error" } | null>(null);
   
   // 상담 기록 스토어에서 데이터 가져오기
-  const consultations = useConsultationsStore((state) => state.items);
+  // const consultations = useConsultationsStore((state) => state.items);
 
   // 로그인한 전문가의 리뷰만 로드
   useEffect(() => {

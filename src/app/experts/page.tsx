@@ -44,8 +44,6 @@ import {
   getLevelBadgeStyles as getBadgeStyles,
   getKoreanLevelName as getKoreanLevel 
 } from "@/utils/expertLevels";
-import { useExpertProfileStore } from "@/stores/expertProfileStore";
-import { initializeDummyExpertsToStore } from "@/data/dummy/experts";
 import { ExpertProfile } from "@/types";
 
 type ConsultationType = "video" | "chat";
@@ -91,18 +89,24 @@ const ExpertSearch = () => {
   const [isRecommendationCollapsed, setIsRecommendationCollapsed] =
     useState(true);
   const [showAllCategories, setShowAllCategories] = useState(false);
+  const [allExperts, setAllExperts] = useState<ExpertItem[]>([]);
 
-  // 전문가 프로필 스토어 사용
-  const { getAllProfiles } = useExpertProfileStore();
-
-  // 스토어 초기화 및 전문가 데이터 가져오기
+  // 전문가 프로필 데이터 로드
   useEffect(() => {
-    initializeDummyExpertsToStore();
+    const loadExpertProfiles = async () => {
+      try {
+        const response = await fetch('/api/expert-profiles');
+        const result = await response.json();
+        if (result.success) {
+          setAllExperts(result.data.profiles || []);
+        }
+      } catch (error) {
+        console.error('전문가 프로필 로드 실패:', error);
+      }
+    };
+
+    loadExpertProfiles();
   }, []);
-
-  const allExperts: ExpertItem[] = getAllProfiles();
-
-
 
   const specialtyOptions: string[] = [
     "심리상담",
@@ -123,16 +127,9 @@ const ExpertSearch = () => {
     "쇼핑몰상담",
   ];
 
-  // 스토어 초기화
-  useEffect(() => {
-    if (allExperts.length === 0) {
-      initializeDummyExpertsToStore();
-    }
-  }, []);
-
   // 필터링 로직
   useEffect(() => {
-    let filtered: ExpertItem[] = getAllProfiles();
+    let filtered: ExpertItem[] = allExperts;
 
     // 검색어 필터
     if (searchQuery) {
@@ -190,7 +187,7 @@ const ExpertSearch = () => {
 
     setFilteredExperts(filtered);
     setCurrentPage(1);
-  }, [searchQuery, selectedFilters, sortBy]);
+  }, [searchQuery, selectedFilters, sortBy, allExperts]);
 
   const handleFilterChange = (
     filterType: keyof SelectedFilters,

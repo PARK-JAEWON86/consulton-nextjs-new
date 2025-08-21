@@ -1,12 +1,81 @@
 "use client";
 
-import { useState } from "react";
-import { useStatsStore } from "@/stores/statsStore";
+import { useState, useEffect } from "react";
 import StatsManager from "@/utils/statsManager";
 
+interface PlatformStats {
+  totalUsers: number;
+  totalExperts: number;
+  totalConsultations: number;
+  totalRevenue: number;
+  averageConsultationRating: number;
+  averageMatchingTimeMinutes: number;
+  monthlyActiveUsers: number;
+  monthlyActiveExperts: number;
+  consultationCompletionRate: number;
+  userSatisfactionScore: number;
+  lastUpdated: string;
+}
+
+interface MatchingRecord {
+  id: string;
+  userId: string;
+  expertId: string;
+  matchingTimeMinutes: number;
+  createdAt: string;
+}
+
+interface StatsState {
+  stats: PlatformStats;
+  matchingRecords: MatchingRecord[];
+  isLoading: boolean;
+}
+
 export default function StatsAdminPanel() {
-  const { stats, matchingRecords, isLoading, resetStats } = useStatsStore();
+  const [statsState, setStatsState] = useState<StatsState>({
+    stats: {
+      totalUsers: 0,
+      totalExperts: 0,
+      totalConsultations: 0,
+      totalRevenue: 0,
+      averageConsultationRating: 0,
+      averageMatchingTimeMinutes: 0,
+      monthlyActiveUsers: 0,
+      monthlyActiveExperts: 0,
+      consultationCompletionRate: 0,
+      userSatisfactionScore: 0,
+      lastUpdated: new Date().toISOString()
+    },
+    matchingRecords: [],
+    isLoading: false
+  });
+
   const [showDetails, setShowDetails] = useState(false);
+
+  // 통계 로드
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        setStatsState(prev => ({ ...prev, isLoading: true }));
+        const response = await fetch('/api/stats');
+        const result = await response.json();
+        if (result.success) {
+          setStatsState({
+            stats: result.data.stats,
+            matchingRecords: result.data.matchingRecords || [],
+            isLoading: false
+          });
+        }
+      } catch (error) {
+        console.error('통계 로드 실패:', error);
+        setStatsState(prev => ({ ...prev, isLoading: false }));
+      }
+    };
+
+    loadStats();
+  }, []);
+
+  const { stats, matchingRecords, isLoading } = statsState;
 
   const handleTestUserRegistration = async () => {
     await StatsManager.handleUserRegistration(`test_user_${Date.now()}`);
@@ -28,9 +97,27 @@ export default function StatsAdminPanel() {
     await StatsManager.handleMatchingCompleted(userId, expertId, matchingTime);
   };
 
-  const handleResetStats = () => {
+  const handleResetStats = async () => {
     if (confirm('정말로 모든 통계를 초기화하시겠습니까?')) {
-      resetStats();
+      try {
+        setStatsState(prev => ({ ...prev, isLoading: true }));
+        const response = await fetch('/api/stats', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'resetStats', data: {} })
+        });
+        const result = await response.json();
+        if (result.success) {
+          setStatsState({
+            stats: result.data.stats,
+            matchingRecords: result.data.matchingRecords || [],
+            isLoading: false
+          });
+        }
+      } catch (error) {
+        console.error('통계 초기화 실패:', error);
+        setStatsState(prev => ({ ...prev, isLoading: false }));
+      }
     }
   };
 

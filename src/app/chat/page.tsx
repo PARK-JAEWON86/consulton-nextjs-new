@@ -21,7 +21,6 @@ import {
 import QuestionInput from "@/components/chat/QuestionInput";
 import ChatBubble from "@/components/chat/ChatBubble";
 import ServiceLayout from "@/components/layout/ServiceLayout";
-import { useAppStore } from "@/stores/appStore";
 import { AIChatMessage } from "@/types";
 import Link from "next/link";
 import AITokenUsageBar from "@/components/chat/AITokenUsageBar";
@@ -37,8 +36,38 @@ interface ChatSession {
   summary?: string;
 }
 
+interface AppState {
+  isAuthenticated: boolean;
+  user: any;
+}
+
 export default function ChatPage() {
-  const { isAuthenticated } = useAppStore();
+  const [appState, setAppState] = useState<AppState>({
+    isAuthenticated: false,
+    user: null
+  });
+
+  // 앱 상태 로드
+  useEffect(() => {
+    const loadAppState = async () => {
+      try {
+        const response = await fetch('/api/app-state');
+        const result = await response.json();
+        if (result.success) {
+          setAppState({
+            isAuthenticated: result.data.isAuthenticated,
+            user: result.data.user
+          });
+        }
+      } catch (error) {
+        console.error('앱 상태 로드 실패:', error);
+      }
+    };
+
+    loadAppState();
+  }, []);
+
+  const { isAuthenticated } = appState;
   const [messages, setMessages] = useState<AIChatMessage[]>([
     {
       id: "1",

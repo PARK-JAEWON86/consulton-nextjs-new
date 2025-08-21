@@ -1,18 +1,64 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useAppStore } from "@/stores/appStore";
+import { useState, useEffect } from "react";
 
 interface MainNavigationProps {}
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  credits: number;
+  expertLevel: string;
+  role?: 'expert' | 'client' | 'admin';
+}
+
+interface AppState {
+  isAuthenticated: boolean;
+  user: User | null;
+}
 
 const MainNavigation = ({}: MainNavigationProps) => {
   const router = useRouter();
   const isToggleOn = true; // 항상 ON 상태로 고정
-  const { isAuthenticated, user, logout } = useAppStore();
+  const [appState, setAppState] = useState<AppState>({
+    isAuthenticated: false,
+    user: null
+  });
 
-  const handleLogout = () => {
-    logout();
-    router.push("/auth/login");
+  // 앱 상태 로드
+  useEffect(() => {
+    const loadAppState = async () => {
+      try {
+        const response = await fetch('/api/app-state');
+        const result = await response.json();
+        if (result.success) {
+          setAppState({
+            isAuthenticated: result.data.isAuthenticated,
+            user: result.data.user
+          });
+        }
+      } catch (error) {
+        console.error('앱 상태 로드 실패:', error);
+      }
+    };
+
+    loadAppState();
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/app-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'logout', data: {} })
+      });
+      setAppState({ isAuthenticated: false, user: null });
+      router.push("/auth/login");
+    } catch (error) {
+      console.error('로그아웃 실패:', error);
+    }
   };
 
   return (
@@ -105,7 +151,7 @@ const MainNavigation = ({}: MainNavigationProps) => {
 
           {/* 오른쪽 메뉴 */}
           <div className="flex items-center space-x-4">
-            {isAuthenticated ? (
+            {appState.isAuthenticated ? (
               <>
                 <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-sm font-semibold">
                   <svg
@@ -117,7 +163,7 @@ const MainNavigation = ({}: MainNavigationProps) => {
                     <path d="M12 1.5a.75.75 0 0 1 .53.22l9.75 9.75a.75.75 0 1 1-1.06 1.06L12 3.31 2.78 12.53a.75.75 0 1 1-1.06-1.06L11.47 1.72A.75.75 0 0 1 12 1.5z" />
                     <path d="M3.75 13.5h16.5v6A2.25 2.25 0 0 1 18 21.75H6A2.25 2.25 0 0 1 3.75 19.5v-6z" />
                   </svg>
-                  <span>보유 크레딧: {user?.credits ?? 0}</span>
+                  <span>보유 크레딧: {appState.user?.credits ?? 0}</span>
                 </div>
                 <button
                   onClick={handleLogout}
