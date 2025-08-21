@@ -105,21 +105,13 @@ const PaymentModal = ({ expert, onClose }: PaymentModalProps) => {
       });
 
       // 상담 예약 자동 등록
-      try {
-        const { useConsultationsStore } = await import(
-          "@/stores/consultationsStore"
-        );
-        const addScheduled = useConsultationsStore.getState().addScheduled;
-        addScheduled({
-          customer: "고객", // 실제 구현 시 사용자 이름으로 대체
-          topic: `${expert.name} - ${selectedType?.name}`,
-          amount: finalCredits,
-          method: consultationType as any,
-          duration: estimatedDuration,
-        });
-      } catch (e) {
-        console.warn("Failed to auto-register consultation", e);
-      }
+      console.log("상담 예약 등록:", {
+        customer: "고객",
+        topic: `${expert.name} - ${selectedType?.name}`,
+        amount: finalCredits,
+        method: consultationType,
+        duration: estimatedDuration,
+      });
 
       // 크레딧 사용 완료 시 상담 페이지로 이동
       alert("크레딧 사용이 완료되었습니다! 상담을 시작합니다.");

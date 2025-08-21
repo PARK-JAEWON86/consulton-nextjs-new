@@ -99,7 +99,7 @@ export default function ExpertReviewsPage() {
 
   // 로그인한 전문가의 리뷰만 로드
   useEffect(() => {
-    if (user && user.role === 'expert' && user.expertProfile) {
+    if (user && user.role === 'expert') {
       const expertId = parseInt(user.id?.replace('expert_', '') || '0');
       if (expertId > 0) {
         // 해당 전문가의 리뷰만 필터링

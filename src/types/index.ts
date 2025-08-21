@@ -123,6 +123,27 @@ export interface ExpertProfile {
   isProfileComplete: boolean;
   createdAt?: Date;
   updatedAt?: Date;
+  
+  // 기존 ExpertItem과의 호환성을 위한 추가 필드들
+  price?: string; // 크레딧 표시용
+  image?: string | null; // profileImage와 동일
+  consultationStyle?: string;
+  successStories?: number;
+  nextAvailableSlot?: string;
+  profileViews?: number;
+  lastActiveAt?: Date;
+  joinedAt?: Date;
+  socialProof?: {
+    linkedIn?: string;
+    website?: string;
+    publications: string[];
+  };
+  pricingTiers?: Array<{
+    duration: number;
+    price: number;
+    description: string;
+  }>;
+  reschedulePolicy?: string;
 }
 
 // 기존 Expert 인터페이스는 호환성을 위해 유지

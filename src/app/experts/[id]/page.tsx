@@ -171,16 +171,10 @@ export default function ExpertProfilePage() {
   };
 
   useEffect(() => {
-    // 스토어 초기화 (한 번만 실행)
-    const allProfiles = getAllProfiles();
-    if (allProfiles.length === 0) {
-      initializeDummyExpertsToStore();
-    }
-    
     const expertId = parseInt(params.id as string);
-    let foundExpert = getProfile(expertId);
+    let foundExpert = allExperts.find(exp => exp.id === expertId);
     
-    // 스토어에서 찾을 수 없으면 더미 데이터에서 찾아서 변환
+    // allExperts에서 찾을 수 없으면 더미 데이터에서 찾아서 변환
     if (!foundExpert) {
       const dummyExpert = dummyExperts.find(exp => exp.id === expertId);
       if (dummyExpert) {
@@ -203,15 +197,12 @@ export default function ExpertProfilePage() {
         fromEndDate: searchParams.get('fromEndDate'),
       };
       
-      // 모든 전문가 프로필 가져오기
-      const allExpertProfiles = getAllProfiles();
-      
       // 비슷한 전문가 찾기 (검색 컨텍스트 고려)
-      const similar = findSimilarExperts(foundExpert, allExpertProfiles, searchContext);
+      const similar = findSimilarExperts(foundExpert, allExperts, searchContext);
       setSimilarExperts(similar);
     }
     setIsLoading(false);
-  }, [params.id, searchParams, getProfile, getAllProfiles]);
+  }, [params.id, searchParams, allExperts]);
 
   // 페이지 로드 완료 후 스크롤 리셋
   useEffect(() => {

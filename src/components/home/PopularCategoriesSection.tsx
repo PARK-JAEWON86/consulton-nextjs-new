@@ -1,11 +1,69 @@
 import { CategoryOption } from "./HeroSection";
-import { ChevronDown } from "lucide-react";
+import { 
+  ChevronDown,
+  Target,
+  Brain,
+  DollarSign,
+  Scale,
+  BookOpen,
+  Heart,
+  Users,
+  Briefcase,
+  Code,
+  Palette,
+  Languages,
+  Music,
+  Plane,
+  Scissors,
+  Trophy,
+  Sprout,
+  TrendingUp,
+  Video,
+  Star,
+  ShoppingBag,
+  ChefHat,
+  PawPrint,
+  Building2,
+  GraduationCap
+} from "lucide-react";
 
 interface PopularCategoriesSectionProps {
   categories: CategoryOption[];
   showAllCategories: boolean;
   setShowAllCategories: (value: boolean) => void;
 }
+
+// 아이콘 문자열을 실제 컴포넌트로 매핑
+const getIconComponent = (iconName: string) => {
+  const iconMap: { [key: string]: any } = {
+    Target,
+    Brain,
+    DollarSign,
+    Scale,
+    BookOpen,
+    Heart,
+    Users,
+    Briefcase,
+    Code,
+    Palette,
+    Languages,
+    Music,
+    Plane,
+    Scissors,
+    Trophy,
+    Sprout,
+    TrendingUp,
+    Video,
+    Star,
+    ShoppingBag,
+    ChefHat,
+    PawPrint,
+    Building2,
+    GraduationCap
+  };
+  
+  return iconMap[iconName] || Target; // 기본값으로 Target 사용
+};
 
 export default function PopularCategoriesSection({
   categories,
@@ -26,7 +84,7 @@ export default function PopularCategoriesSection({
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {categories.slice(0, 5).map((category) => {
-            const IconComponent = category.icon as any;
+            const IconComponent = getIconComponent(category.icon as string);
             return (
               <div
                 key={category.id}
@@ -69,7 +127,7 @@ export default function PopularCategoriesSection({
           <div className="mt-8">
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
               {categories.slice(5).map((category) => {
-                const IconComponent = category.icon as any;
+                const IconComponent = getIconComponent(category.icon as string);
                 return (
                   <div
                     key={category.id}

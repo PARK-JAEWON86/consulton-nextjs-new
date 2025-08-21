@@ -156,16 +156,7 @@ export default function VideoPage() {
       setChatMessages((prev) => [...prev, endMessage]);
 
       // 상담 완료 상태로 자동 업데이트
-      (async () => {
-        try {
-          const { useConsultationsStore } = await import(
-            "@/stores/consultationsStore"
-          );
-          useConsultationsStore.getState().completeCurrent();
-        } catch (e) {
-          console.warn("Failed to mark consultation as completed", e);
-        }
-      })();
+      console.log("상담 완료 처리");
 
       // 상담 완료 페이지로 이동 (실제 구현 시)
       console.log("상담 종료");

@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
         break;
       
       case 'setAuthenticated':
-        appState.isAuthenticated = data.status;
+        appState.isAuthenticated = data.isAuthenticated;
         break;
       
       case 'setSidebarOpen':

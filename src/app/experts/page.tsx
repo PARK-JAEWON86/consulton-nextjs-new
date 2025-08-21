@@ -95,6 +95,18 @@ const ExpertSearch = () => {
   useEffect(() => {
     const loadExpertProfiles = async () => {
       try {
+        // 먼저 API 초기화 호출
+        await fetch('/api/expert-profiles', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'initializeProfiles'
+          })
+        });
+
+        // 그 다음 전문가 프로필 조회
         const response = await fetch('/api/expert-profiles');
         const result = await response.json();
         if (result.success) {

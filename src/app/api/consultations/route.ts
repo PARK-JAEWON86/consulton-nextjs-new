@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { dummyExperts } from '@/data/dummy/experts';
 
 export type ConsultationStatus = "completed" | "scheduled" | "canceled";
 
@@ -204,33 +205,75 @@ export async function POST(request: NextRequest) {
 
       case 'loadExpertConsultations':
         const expertId = data.expertId;
-        // 실제로는 데이터베이스에서 전문가별 상담 내역을 로드
-        // 여기서는 더미 데이터로 시뮬레이션
-        const dummyConsultations: ConsultationItem[] = [
-          {
-            id: 1,
-            date: new Date().toISOString(),
-            customer: `고객 ${expertId}`,
-            topic: "상담 주제",
-            amount: 100,
-            status: "completed",
-            method: "chat",
-            duration: 30,
-            summary: "30분 채팅 상담 완료"
-          }
-        ];
+        // 더미데이터에서 해당 전문가 찾기
+        const expert = dummyExperts.find(e => e.id.toString() === expertId || e.name.includes(expertId));
         
-        consultationsState.items = dummyConsultations;
-        consultationsState.currentConsultationId = null;
-        
-        return NextResponse.json({
-          success: true,
-          data: {
-            items: dummyConsultations,
-            currentConsultationId: null,
-            message: `전문가 ${expertId}의 상담 내역이 로드되었습니다.`
-          }
-        });
+        if (expert) {
+          // 전문가 정보를 기반으로 더미 상담 데이터 생성
+          const dummyConsultations: ConsultationItem[] = [
+            {
+              id: 1,
+              date: new Date().toISOString(),
+              customer: `${expert.name} 고객`,
+              topic: `${expert.specialty} 상담`,
+              amount: Math.floor(expert.pricePerMinute * 30), // 30분 상담 기준
+              status: "completed",
+              method: expert.consultationTypes[0] as "chat" | "video" | "voice",
+              duration: 30,
+              summary: `${expert.specialty} 30분 상담 완료 - ${expert.name} 전문가`
+            },
+            {
+              id: 2,
+              date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 어제
+              customer: `${expert.name} 고객2`,
+              topic: `${expert.specialty} 후속 상담`,
+              amount: Math.floor(expert.pricePerMinute * 45), // 45분 상담 기준
+              status: "completed",
+              method: expert.consultationTypes[0] as "chat" | "video" | "voice",
+              duration: 45,
+              summary: `${expert.specialty} 45분 후속 상담 완료 - ${expert.name} 전문가`
+            }
+          ];
+          
+          consultationsState.items = dummyConsultations;
+          consultationsState.currentConsultationId = null;
+          
+          return NextResponse.json({
+            success: true,
+            data: {
+              items: dummyConsultations,
+              currentConsultationId: null,
+              message: `전문가 ${expert.name}의 상담 내역이 더미데이터로 로드되었습니다.`
+            }
+          });
+        } else {
+          // 전문가를 찾을 수 없는 경우 기본 더미 데이터
+          const defaultConsultations: ConsultationItem[] = [
+            {
+              id: 1,
+              date: new Date().toISOString(),
+              customer: `고객 ${expertId}`,
+              topic: "상담 주제",
+              amount: 100,
+              status: "completed",
+              method: "chat",
+              duration: 30,
+              summary: "30분 채팅 상담 완료"
+            }
+          ];
+          
+          consultationsState.items = defaultConsultations;
+          consultationsState.currentConsultationId = null;
+          
+          return NextResponse.json({
+            success: true,
+            data: {
+              items: defaultConsultations,
+              currentConsultationId: null,
+              message: `전문가 ${expertId}의 상담 내역이 로드되었습니다.`
+            }
+          });
+        }
 
       default:
         return NextResponse.json(

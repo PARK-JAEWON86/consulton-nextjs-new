@@ -44,6 +44,9 @@ const LoginForm = () => {
   // API를 통한 앱 상태 업데이트 함수들
   const setAuthenticated = async (isAuth: boolean) => {
     try {
+      // 로컬 스토리지에 저장
+      localStorage.setItem('consulton-auth', JSON.stringify(isAuth));
+      
       await fetch('/api/app-state', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -56,6 +59,9 @@ const LoginForm = () => {
 
   const setUser = async (userData: User) => {
     try {
+      // 로컬 스토리지에 저장
+      localStorage.setItem('consulton-user', JSON.stringify(userData));
+      
       await fetch('/api/app-state', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -80,6 +86,9 @@ const LoginForm = () => {
 
   const setViewMode = async (mode: "user" | "expert") => {
     try {
+      // 로컬 스토리지에 저장
+      localStorage.setItem('consulton-viewMode', JSON.stringify(mode));
+      
       await fetch('/api/app-state', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -180,7 +189,7 @@ const LoginForm = () => {
           enterService();
           
           // 전문가 상담 내역 로드
-          loadExpertConsultations(account.id);
+          loadExpertConsultations(account.id.toString());
           
           // redirect 파라미터가 있으면 해당 URL로, 없으면 전문가 대시보드로 이동
           const redirectUrl = searchParams.get('redirect') || "/dashboard/expert";
