@@ -1,8 +1,8 @@
 // 더미 전문가 데이터 - 새로운 ExpertProfile 타입과 연동
 import { ExpertProfile, ConsultationType, WeekDay, WeeklyAvailability, Availability } from '@/types';
 
-// 기존 호환성을 위한 ExpertItem 인터페이스 (deprecated)
-export interface ExpertItem {
+// 더미데이터 원본 타입 정의
+interface DummyExpertData {
   id: number;
   name: string;
   specialty: string;
@@ -57,7 +57,7 @@ export interface ExpertItem {
 }
 
 // ExpertItem을 ExpertProfile로 변환하는 헬퍼 함수
-export const convertExpertItemToProfile = (item: ExpertItem): ExpertProfile => {
+export const convertExpertItemToProfile = (item: DummyExpertData): ExpertProfile => {
   // consultationTypes를 ConsultationType[]로 변환
   const consultationTypes: ConsultationType[] = item.consultationTypes
     .filter((type): type is ConsultationType => 
@@ -148,11 +148,24 @@ export const convertExpertItemToProfile = (item: ExpertItem): ExpertProfile => {
     isOnline: item.isOnline,
     isProfileComplete: true,
     createdAt: item.joinedAt,
-    updatedAt: item.lastActiveAt
+    updatedAt: item.lastActiveAt,
+    
+    // 호환성을 위한 추가 필드들
+    price: item.price,
+    image: item.image,
+    consultationStyle: item.consultationStyle,
+    successStories: item.successStories,
+    nextAvailableSlot: item.nextAvailableSlot,
+    profileViews: item.profileViews,
+    lastActiveAt: item.lastActiveAt,
+    joinedAt: item.joinedAt,
+    socialProof: item.socialProof,
+    pricingTiers: item.pricingTiers,
+    reschedulePolicy: item.reschedulePolicy
   };
 };
 
-export const dummyExperts: ExpertItem[] = [
+export const dummyExperts: DummyExpertData[] = [
   {
     id: 1,
     name: "박지영",

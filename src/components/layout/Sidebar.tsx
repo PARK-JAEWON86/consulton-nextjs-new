@@ -80,18 +80,57 @@ const Sidebar: React.FC<SidebarProps> = ({
     viewMode: "user"
   });
 
-  // 앱 상태 로드
+  // 앱 상태 로드 (로컬 스토리지 우선, API 백업)
   useEffect(() => {
     const loadAppState = async () => {
       try {
-        const response = await fetch('/api/app-state');
-        const result = await response.json();
-        if (result.success) {
+        // 로컬 스토리지에서 사용자 정보 복원
+        const storedUser = localStorage.getItem('consulton-user');
+        const storedAuth = localStorage.getItem('consulton-auth');
+        const storedViewMode = localStorage.getItem('consulton-viewMode');
+        
+        if (storedUser && storedAuth) {
+          const user = JSON.parse(storedUser);
+          const isAuthenticated = JSON.parse(storedAuth);
+          const viewMode = storedViewMode ? JSON.parse(storedViewMode) : 'user';
+          
           setAppState({
-            isAuthenticated: result.data.isAuthenticated,
-            user: result.data.user,
-            viewMode: result.data.viewMode
+            isAuthenticated,
+            user,
+            viewMode
           });
+          
+          // API 상태도 동기화
+          try {
+            await fetch('/api/app-state', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'setAuthenticated', data: { isAuthenticated } })
+            });
+            await fetch('/api/app-state', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'setUser', data: { user } })
+            });
+            await fetch('/api/app-state', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'setViewMode', data: { viewMode } })
+            });
+          } catch (error) {
+            console.error('API 상태 동기화 실패:', error);
+          }
+        } else {
+          // 로컬 스토리지에 없으면 API에서 로드
+          const response = await fetch('/api/app-state');
+          const result = await response.json();
+          if (result.success) {
+            setAppState({
+              isAuthenticated: result.data.isAuthenticated,
+              user: result.data.user,
+              viewMode: result.data.viewMode
+            });
+          }
         }
       } catch (error) {
         console.error('앱 상태 로드 실패:', error);
@@ -104,6 +143,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   // 뷰 모드 변경 함수
   const setViewMode = async (mode: "user" | "expert") => {
     try {
+      // 로컬 스토리지에 저장
+      localStorage.setItem('consulton-viewMode', JSON.stringify(mode));
+      
       await fetch('/api/app-state', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -202,7 +244,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           id: "settings",
           name: "설정",
           icon: Settings,
-          path: "/dashboard/settings",
+          path: "/dashboard/expert/settings",
         },
       ];
     }
@@ -546,6 +588,11 @@ const Sidebar: React.FC<SidebarProps> = ({
                       <button
                         onClick={async () => {
                           try {
+                            // 로컬 스토리지 정리
+                            localStorage.removeItem('consulton-user');
+                            localStorage.removeItem('consulton-auth');
+                            localStorage.removeItem('consulton-viewMode');
+                            
                             await fetch('/api/app-state', {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },

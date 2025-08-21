@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { dummyExperts, convertExpertItemToProfile } from '@/data/dummy/experts';
+import { ExpertProfile as GlobalExpertProfile } from '@/types';
 
 interface WeeklyAvailability {
   [key: string]: string[];
 }
 
+// API 내부에서 사용할 로컬 ExpertProfile 인터페이스 (타입 호환성을 위해)
 interface ExpertProfile {
   id: number;
   name: string;
@@ -38,7 +41,7 @@ interface ExpertProfile {
   location: string;
   timeZone: string;
   profileImage: string | null;
-  portfolioFiles: string[];
+  portfolioFiles: any[]; // 타입 호환성을 위해 any로 변경
   portfolioItems: any[];
   tags: string[];
   targetAudience: string[];
@@ -243,74 +246,58 @@ export async function POST(request: NextRequest) {
         });
 
       case 'initializeProfiles':
-        // 더미 데이터로 초기화
-        const dummyProfiles: Record<number, ExpertProfile> = {
-          1: {
-            id: 1,
-            name: "김전문",
-            specialty: "비즈니스 컨설팅",
-            experience: 10,
-            description: "10년 경력의 비즈니스 컨설턴트",
-            education: ["서울대학교 경영학과"],
-            certifications: ["경영컨설팅사"],
-            specialties: ["전략 수립", "조직 개편", "마케팅"],
-            specialtyAreas: ["전략 수립", "조직 개편", "마케팅"],
-            consultationTypes: ["chat", "video", "voice"],
-            languages: ["한국어", "영어"],
-            hourlyRate: 100000,
-            pricePerMinute: 1667,
-            totalSessions: 150,
-            avgRating: 4.8,
-            rating: 4.8,
-            reviewCount: 105,
-            completionRate: 95,
-            repeatClients: 45,
-            responseTime: "2시간 내",
-            averageSessionDuration: 60,
-            cancellationPolicy: "24시간 전 취소 가능",
-            availability: {
-              monday: { available: true, hours: "09:00-18:00" },
-              tuesday: { available: true, hours: "09:00-18:00" },
-              wednesday: { available: true, hours: "09:00-18:00" },
-              thursday: { available: true, hours: "09:00-18:00" },
-              friday: { available: true, hours: "09:00-18:00" }
-            },
-            weeklyAvailability: {
-              monday: ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"],
-              tuesday: ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"],
-              wednesday: ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"],
-              thursday: ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"],
-              friday: ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"]
-            },
-            contactInfo: {
-              phone: "010-1234-5678",
-              email: "kim@expert.com",
-              location: "서울, 대한민국",
-              website: "https://kim-expert.com"
-            },
-            location: "서울, 대한민국",
-            timeZone: "KST (UTC+9)",
-            profileImage: null,
-            portfolioFiles: [],
-            portfolioItems: [],
-            tags: ["비즈니스", "전략", "조직"],
-            targetAudience: ["일반인", "직장인", "경영자"],
-            isOnline: true,
-            isProfileComplete: true,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          }
-        };
+        // 더미 데이터로 초기화 - 실제 더미데이터 파일에서 가져옴
+        const convertedProfiles: Record<number, ExpertProfile> = {};
         
-        expertProfileStore.profiles = dummyProfiles;
-        expertProfileStore.currentExpertId = 1;
+        // 더미데이터를 ExpertProfile 타입으로 변환
+        dummyExperts.forEach(expert => {
+          const convertedProfile = convertExpertItemToProfile(expert);
+          // API 내부 타입에 맞게 변환
+          const apiProfile: ExpertProfile = {
+            ...convertedProfile,
+            portfolioFiles: convertedProfile.portfolioFiles || [],
+            portfolioItems: convertedProfile.portfolioItems || [],
+            createdAt: convertedProfile.createdAt?.toISOString() || new Date().toISOString(),
+            updatedAt: convertedProfile.updatedAt?.toISOString() || new Date().toISOString()
+          };
+          convertedProfiles[expert.id] = apiProfile;
+        });
+        
+        expertProfileStore.profiles = convertedProfiles;
+        expertProfileStore.currentExpertId = 1; // 첫 번째 전문가를 현재 전문가로 설정
         
         return NextResponse.json({
           success: true,
           data: {
-            profiles: Object.values(dummyProfiles),
+            profiles: Object.values(convertedProfiles),
             currentExpertId: 1,
-            message: '전문가 프로필이 초기화되었습니다.'
+            message: '전문가 프로필이 더미데이터로 초기화되었습니다.'
+          }
+        });
+
+      case 'getStoreStatus':
+        // 스토어 상태 조회 (디버깅용)
+        return NextResponse.json({
+          success: true,
+          data: {
+            totalProfiles: Object.keys(expertProfileStore.profiles).length,
+            currentExpertId: expertProfileStore.currentExpertId,
+            profileIds: Object.keys(expertProfileStore.profiles),
+            message: '스토어 상태를 조회했습니다.'
+          }
+        });
+
+      case 'resetStore':
+        // 스토어 초기화
+        expertProfileStore = {
+          profiles: {},
+          currentExpertId: null,
+        };
+        
+        return NextResponse.json({
+          success: true,
+          data: {
+            message: '스토어가 초기화되었습니다.'
           }
         });
 

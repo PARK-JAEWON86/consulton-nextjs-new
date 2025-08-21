@@ -1,22 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // AI 크레딧 정책 상수
-export const BASE_CREDIT_PER_TURN = 3;
-export const MONTHLY_FREE_BUDGET_CREDITS = 300; // (= 100턴 × 3크레딧)
+const BASE_CREDIT_PER_TURN = 3;
+const MONTHLY_FREE_BUDGET_CREDITS = 300; // (= 100턴 × 3크레딧)
 
-export interface LengthBracket {
+interface LengthBracket {
   maxTokens: number;
   mult: number;
 }
 
-export const LENGTH_BRACKETS: LengthBracket[] = [
+const LENGTH_BRACKETS: LengthBracket[] = [
   { maxTokens: 400, mult: 1.0 },
   { maxTokens: 800, mult: 1.5 },
   { maxTokens: 1200, mult: 2.0 },
   { maxTokens: Infinity, mult: 3.0 },
 ];
 
-export interface AIUsageState {
+interface AIUsageState {
   usedCredits: number;
   purchasedCredits: number;
   remainingPercent: number;

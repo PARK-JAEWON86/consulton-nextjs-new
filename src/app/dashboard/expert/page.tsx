@@ -276,7 +276,7 @@ export default function ExpertDashboardProfilePage() {
     }
     
     // 상담 요청 데이터 로드 및 중앙 서비스 동기화
-    if (user && user.role === 'expert' && user.expertProfile) {
+    if (user && user.role === 'expert') {
       const expertId = parseInt(user.id?.replace('expert_', '') || '0');
       if (expertId > 0) {
         // 중앙 서비스에서 최신 전문가 데이터 확인
@@ -327,7 +327,7 @@ export default function ExpertDashboardProfilePage() {
         </div>
 
         {/* 로그인된 전문가 정보 표시 */}
-        {user && user.role === 'expert' && user.expertProfile && (
+        {user && user.role === 'expert' && (
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 mb-8">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
@@ -337,19 +337,13 @@ export default function ExpertDashboardProfilePage() {
                   </span>
                 </div>
                 <div className="ml-4">
-                  <h2 className="text-xl font-bold text-blue-900">{user.name} ({user.expertProfile.specialty} 전문가)</h2>
+                  <h2 className="text-xl font-bold text-blue-900">{user.name} (전문가)</h2>
                   <div className="flex items-center mt-2 space-x-4 text-sm">
                     <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                      레벨 {user.expertProfile.level}
+                      전문가
                     </span>
                     <span className="text-blue-600">
-                      {user.expertProfile.pricePerMinute?.toLocaleString()}원/분
-                    </span>
-                    <span className="text-blue-600">
-                      총 {user.expertProfile.totalSessions}회 상담
-                    </span>
-                    <span className="text-blue-600">
-                      평점 {user.expertProfile.avgRating}⭐
+                      상담 가능
                     </span>
                   </div>
                 </div>

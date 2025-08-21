@@ -45,7 +45,7 @@ import {
   UserCheck,
   X,
 } from "lucide-react";
-import { getExtendedCategories, getExtendedAgeGroups, getExtendedDurations } from "@/data/dummy";
+import { categoriesWithStringIcons, getExtendedAgeGroups, getExtendedDurations } from "@/data/dummy/categories";
 
 export default function HomePage() {
   // 검색 상태
@@ -68,6 +68,18 @@ export default function HomePage() {
   useEffect(() => {
     const loadExpertProfiles = async () => {
       try {
+        // 먼저 API 초기화 호출
+        await fetch('/api/expert-profiles', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'initializeProfiles'
+          })
+        });
+
+        // 그 다음 전문가 프로필 조회
         const response = await fetch('/api/expert-profiles');
         const result = await response.json();
         if (result.success) {
@@ -81,147 +93,8 @@ export default function HomePage() {
     loadExpertProfiles();
   }, []);
 
-  // 상담 카테고리 옵션
-  const categories = [
-    {
-      id: "career",
-      name: "진로상담",
-      icon: Target,
-      description: "취업, 이직, 진로 탐색",
-    },
-    {
-      id: "psychology",
-      name: "심리상담",
-      icon: Brain,
-      description: "스트레스, 우울, 불안",
-    },
-    {
-      id: "finance",
-      name: "재무상담",
-      icon: DollarSign,
-      description: "투자, 자산관리, 세무",
-    },
-    {
-      id: "legal",
-      name: "법률상담",
-      icon: Scale,
-      description: "계약, 분쟁, 상속",
-    },
-    {
-      id: "education",
-      name: "교육상담",
-      icon: BookOpen,
-      description: "학습법, 입시, 유학",
-    },
-    {
-      id: "health",
-      name: "건강상담",
-      icon: Heart,
-      description: "영양, 운동, 건강관리",
-    },
-    {
-      id: "relationship",
-      name: "관계상담",
-      icon: Users,
-      description: "연애, 결혼, 가족관계",
-    },
-    {
-      id: "business",
-      name: "사업상담",
-      icon: Briefcase,
-      description: "창업, 경영, 마케팅",
-    },
-    {
-      id: "technology",
-      name: "기술상담",
-      icon: Code,
-      description: "프로그래밍, IT, 개발",
-    },
-    {
-      id: "design",
-      name: "디자인상담",
-      icon: Palette,
-      description: "UI/UX, 그래픽, 브랜딩",
-    },
-    {
-      id: "language",
-      name: "언어상담",
-      icon: Languages,
-      description: "외국어, 통역, 번역",
-    },
-    {
-      id: "art",
-      name: "예술상담",
-      icon: Music,
-      description: "음악, 미술, 공연",
-    },
-    {
-      id: "sports",
-      name: "스포츠상담",
-      icon: Trophy,
-      description: "운동, 훈련, 경기",
-    },
-    {
-      id: "travel",
-      name: "여행상담",
-      icon: Plane,
-      description: "여행계획, 가이드, 숙박",
-    },
-    {
-      id: "food",
-      name: "요리상담",
-      icon: ChefHat,
-      description: "요리법, 영양, 식단",
-    },
-    {
-      id: "fashion",
-      name: "패션상담",
-      icon: Scissors,
-      description: "스타일링, 코디, 이미지",
-    },
-    {
-      id: "pet",
-      name: "반려동물상담",
-      icon: PawPrint,
-      description: "훈련, 건강, 케어",
-    },
-    {
-      id: "gardening",
-      name: "정원상담",
-      icon: Sprout,
-      description: "식물, 조경, 원예",
-    },
-    {
-      id: "investment",
-      name: "투자상담",
-      icon: TrendingUp,
-      description: "주식, 부동산, 펀드",
-    },
-    {
-      id: "tax",
-      name: "세무상담",
-      icon: Receipt,
-      description: "세금, 절세, 신고",
-    },
-    {
-      id: "insurance",
-      name: "보험상담",
-      icon: Building2,
-      description: "생명보험, 손해보험, 연금",
-    },
-    {
-      id: "admission",
-      name: "진학상담",
-      icon: GraduationCap,
-      description: "대입, 수시, 정시 전략",
-    },
-    {
-      id: "other",
-      name: "그외 기타",
-      icon: X,
-      description: "기타 상담 분야",
-    },
-  ];
+  // 상담 카테고리 옵션 (문자열 아이콘 이름 사용)
+  const categories = categoriesWithStringIcons;
 
   // 연령대 옵션
   const ageGroups = [
@@ -307,12 +180,12 @@ export default function HomePage() {
     
     // 실제로는 API 호출하여 전문가 검색
     setTimeout(() => {
-      // 스토어에서 전문가 데이터 가져오기
-      const allExperts = getAllProfiles();
+      // 상태에서 전문가 데이터 가져오기
+      const currentExperts = allExperts;
       
       // 검색 조건에 맞는 전문가 필터링
       const filteredExperts = filterExperts(
-        allExperts, 
+        currentExperts, 
         searchCategory, 
         searchStartDate, 
         searchEndDate, 
@@ -326,8 +199,8 @@ export default function HomePage() {
       let finalResults = [...filteredExperts];
       if (filteredExperts.length < 3) {
         // 부족한 경우 다른 카테고리 전문가도 추가 (관련 전문가로 표시)
-        const additionalExperts = allExperts
-          .filter(expert => !filteredExperts.some(filtered => filtered.id === expert.id))
+        const additionalExperts = currentExperts
+          .filter((expert: any) => !filteredExperts.some(filtered => filtered.id === expert.id))
           .slice(0, 5 - filteredExperts.length);
         finalResults = [...filteredExperts, ...additionalExperts];
       }

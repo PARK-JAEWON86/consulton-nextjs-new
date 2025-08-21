@@ -3,16 +3,14 @@
  * 모든 전문가 관련 데이터를 한 곳에서 관리하여 동기화 문제 해결
  */
 
-import { dummyExperts, convertExpertItemToProfile, type ExpertItem } from '@/data/dummy/experts';
+import { dummyExperts, convertExpertItemToProfile } from '@/data/dummy/experts';
 import { ExpertProfile } from '@/types';
 
 export class ExpertDataService {
   private static instance: ExpertDataService;
-  private experts: ExpertItem[];
   private expertProfiles: Map<number, ExpertProfile>;
 
   private constructor() {
-    this.experts = [...dummyExperts];
     this.expertProfiles = new Map();
     this.initializeProfiles();
   }
@@ -28,28 +26,21 @@ export class ExpertDataService {
    * 전문가 프로필 초기화
    */
   private initializeProfiles(): void {
-    this.experts.forEach(expert => {
+    dummyExperts.forEach(expert => {
       const profile = convertExpertItemToProfile(expert);
       this.expertProfiles.set(expert.id, profile);
     });
   }
 
   /**
-   * 모든 전문가 데이터 조회
+   * 모든 전문가 프로필 조회
    */
-  public getAllExperts(): ExpertItem[] {
-    return [...this.experts];
+  public getAllExpertProfiles(): ExpertProfile[] {
+    return Array.from(this.expertProfiles.values());
   }
 
   /**
-   * ID로 전문가 데이터 조회
-   */
-  public getExpertById(id: number): ExpertItem | null {
-    return this.experts.find(expert => expert.id === id) || null;
-  }
-
-  /**
-   * ID로 전문가 프로필 조회 (ExpertProfile 타입)
+   * ID로 전문가 프로필 조회
    */
   public getExpertProfileById(id: number): ExpertProfile | null {
     return this.expertProfiles.get(id) || null;
@@ -64,31 +55,6 @@ export class ExpertDataService {
 
     const updatedProfile = { ...currentProfile, ...updates };
     this.expertProfiles.set(id, updatedProfile);
-
-    // 기본 ExpertItem도 동기화
-    const expertIndex = this.experts.findIndex(expert => expert.id === id);
-    if (expertIndex !== -1) {
-      this.experts[expertIndex] = {
-        ...this.experts[expertIndex],
-        name: updatedProfile.name,
-        specialty: updatedProfile.specialty,
-        experience: updatedProfile.experience,
-        description: updatedProfile.description,
-        totalSessions: updatedProfile.totalSessions,
-        avgRating: updatedProfile.avgRating,
-        rating: updatedProfile.rating,
-        reviewCount: updatedProfile.reviewCount,
-        completionRate: updatedProfile.completionRate,
-        pricePerMinute: updatedProfile.pricePerMinute,
-        consultationTypes: updatedProfile.consultationTypes.map(type => type as string),
-        languages: updatedProfile.languages,
-        certifications: updatedProfile.certifications,
-        education: updatedProfile.education,
-        location: updatedProfile.location,
-        responseTime: updatedProfile.responseTime,
-      };
-    }
-
     return true;
   }
 
@@ -122,8 +88,8 @@ export class ExpertDataService {
       "최서연": "seoyeon.choi"
     };
 
-    return this.experts.slice(0, 10).map((expert, index) => {
-      const level = this.calculateLevel(expert.totalSessions);
+    return Array.from(this.expertProfiles.values()).slice(0, 10).map((profile, index) => {
+      const level = this.calculateLevel(profile.totalSessions);
       const levelStr = level >= 700 ? `고급 (레벨 ${level})` :
                        level >= 500 ? `고급 (레벨 ${level})` :
                        level >= 300 ? `중급 (레벨 ${level})` :
@@ -131,13 +97,13 @@ export class ExpertDataService {
                        `초급 (레벨 ${level})`;
 
       return {
-        id: expert.id,
-        email: `${emailMap[expert.name] || `expert${expert.id}`}@consulton.co.kr`,
+        id: profile.id,
+        email: `${emailMap[profile.name] || `expert${profile.id}`}@consulton.co.kr`,
         password: passwords[index] || "expert123!",
-        name: expert.name,
-        specialty: expert.specialty,
+        name: profile.name,
+        specialty: profile.specialty,
         level: levelStr,
-        description: `${expert.description.substring(0, 40)}..., ${expert.experience}년 경력, ${expert.pricePerMinute}원/분`
+        description: `${profile.description.substring(0, 40)}..., ${profile.experience}년 경력, ${profile.pricePerMinute}원/분`
       };
     });
   }
@@ -172,15 +138,14 @@ export class ExpertDataService {
    * 전문가의 완전한 사용자 정보 생성 (로그인용)
    */
   public createUserFromExpert(expertId: number): any {
-    const expert = this.getExpertById(expertId);
     const profile = this.getExpertProfileById(expertId);
     
-    if (!expert || !profile) return null;
+    if (!profile) return null;
 
     return {
       id: `expert_${expertId}`,
       email: this.getLoginAccounts().find(acc => acc.id === expertId)?.email || `expert${expertId}@consulton.co.kr`,
-      name: expert.name,
+      name: profile.name,
       credits: 0,
       expertLevel: profile.experience || 1, // experience를 level 대신 사용
       role: 'expert' as const,

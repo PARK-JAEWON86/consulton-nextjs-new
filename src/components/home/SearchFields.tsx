@@ -7,8 +7,30 @@ import "react-datepicker/dist/react-datepicker.css";
 import {
   Calendar,
   Target,
-  Clock,
+  Brain,
+  DollarSign,
+  Scale,
+  BookOpen,
+  Heart,
   Users,
+  Briefcase,
+  Code,
+  Palette,
+  Languages,
+  Music,
+  Plane,
+  Scissors,
+  Trophy,
+  Sprout,
+  TrendingUp,
+  Video,
+  Star,
+  ShoppingBag,
+  ChefHat,
+  PawPrint,
+  Building2,
+  GraduationCap,
+  Clock,
   ChevronDown,
   Search,
 } from "lucide-react";
@@ -18,7 +40,7 @@ type IconType = React.ElementType;
 type CategoryOption = {
   id: string;
   name: string;
-  icon: IconType;
+  icon: string | IconType;
   description: string;
 };
 
@@ -49,6 +71,41 @@ interface SearchFieldsProps {
   ageGroups: AgeGroupOption[];
   durations: DurationOption[];
 }
+
+// 아이콘 문자열을 실제 컴포넌트로 매핑
+const getIconComponent = (iconName: string | IconType) => {
+  if (typeof iconName === 'string') {
+    const iconMap: { [key: string]: any } = {
+      Target,
+      Brain,
+      DollarSign,
+      Scale,
+      BookOpen,
+      Heart,
+      Users,
+      Briefcase,
+      Code,
+      Palette,
+      Languages,
+      Music,
+      Plane,
+      Scissors,
+      Trophy,
+      Sprout,
+      TrendingUp,
+      Video,
+      Star,
+      ShoppingBag,
+      ChefHat,
+      PawPrint,
+      Building2,
+      GraduationCap
+    };
+    
+    return iconMap[iconName] || Target;
+  }
+  return iconName;
+};
 
 export default function SearchFields(props: SearchFieldsProps) {
   const {
@@ -132,9 +189,7 @@ export default function SearchFields(props: SearchFieldsProps) {
                     const category = categories.find(
                       (c) => c.id === searchCategory
                     );
-                    const IconComponent = category?.icon as
-                      | IconType
-                      | undefined;
+                    const IconComponent = getIconComponent(category?.icon || 'Target');
                     return IconComponent ? (
                       <IconComponent className="h-5 w-5 text-blue-600" />
                     ) : null;
@@ -164,7 +219,7 @@ export default function SearchFields(props: SearchFieldsProps) {
             <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-2xl shadow-lg z-50 max-h-80 overflow-y-auto">
               <div className="p-2">
                 {categories.map((category) => {
-                  const IconComponent = category.icon as IconType;
+                  const IconComponent = getIconComponent(category.icon);
                   return (
                     <button
                       key={category.id}
