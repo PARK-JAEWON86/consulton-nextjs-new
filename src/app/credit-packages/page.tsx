@@ -1,21 +1,55 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CreditCard, LogIn } from "lucide-react";
 import ServiceLayout from "@/components/layout/ServiceLayout";
 import PackCard from "@/components/dashboard/PackCard";
 import CreditBalance from "@/components/dashboard/CreditBalance";
 import { LEVELS, getKoreanTierName } from "@/utils/expertLevels";
 
-import { useAppStore } from "@/stores/appStore";
 import React from "react"; // Added missing import for React
 
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  credits: number;
+  expertLevel: string;
+  role?: 'expert' | 'client' | 'admin';
+}
+
+interface AppState {
+  isAuthenticated: boolean;
+  user: User | null;
+}
+
 export default function CreditPackagesPage() {
+  const [appState, setAppState] = useState<AppState>({
+    isAuthenticated: false,
+    user: null
+  });
 
-  
-  // 앱 스토어에서 로그인 상태 확인
-  const { user, isAuthenticated } = useAppStore();
+  // 앱 상태 로드
+  useEffect(() => {
+    const loadAppState = async () => {
+      try {
+        const response = await fetch('/api/app-state');
+        const result = await response.json();
+        if (result.success) {
+          setAppState({
+            isAuthenticated: result.data.isAuthenticated,
+            user: result.data.user
+          });
+        }
+      } catch (error) {
+        console.error('앱 상태 로드 실패:', error);
+      }
+    };
 
+    loadAppState();
+  }, []);
+
+  const { user, isAuthenticated } = appState;
 
 
   // 실제 이용 빈도를 고려한 평균 요금 계산 (가장 많이 분포된 전문가 레벨 기준)

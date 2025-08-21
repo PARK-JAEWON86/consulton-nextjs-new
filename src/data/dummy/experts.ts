@@ -1371,15 +1371,9 @@ export const dummyExperts: ExpertItem[] = [
   }
 ];
 
-// 더미 데이터를 스토어에 초기화하는 함수
-export const initializeDummyExpertsToStore = () => {
-  const { addOrUpdateProfile } = require('@/stores/expertProfileStore').useExpertProfileStore.getState();
-  
-  // 더미 데이터를 ExpertProfile 형식으로 변환하여 스토어에 추가
-  dummyExperts.forEach(expertItem => {
-    const profile = convertExpertItemToProfile(expertItem);
-    addOrUpdateProfile(profile);
-  });
-  
-  console.log(`${dummyExperts.length}개의 더미 전문가 프로필이 스토어에 초기화되었습니다.`);
-};
+// 더미 데이터를 스토어에 초기화하는 함수 (더 이상 사용되지 않음)
+// export const initializeDummyExpertsToStore = () => {
+//   // 이 함수는 더 이상 사용되지 않습니다.
+//   // API 기반으로 변경되었습니다.
+//   console.log('더미 데이터 초기화 함수는 더 이상 사용되지 않습니다.');
+// };

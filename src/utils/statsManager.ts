@@ -3,23 +3,18 @@
  * 실제 비즈니스 로직에서 통계를 업데이트할 때 사용
  */
 
-import { statsUtils } from "@/stores/statsStore";
-
 export class StatsManager {
   /**
    * 사용자 등록 시 호출
    */
   static async handleUserRegistration(userId: string): Promise<void> {
     try {
-      // 통계 업데이트
-      statsUtils.onUserRegistered();
-      
-      // TODO: 실제 API 호출
-      // await fetch('/api/stats/user-registered', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ userId, timestamp: new Date() })
-      // });
+      // API를 통한 통계 업데이트
+      await fetch('/api/stats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'registerUser', data: { userId } })
+      });
       
       console.log(`사용자 등록 통계 업데이트: ${userId}`);
     } catch (error) {
@@ -32,15 +27,12 @@ export class StatsManager {
    */
   static async handleExpertRegistration(expertId: string): Promise<void> {
     try {
-      // 통계 업데이트
-      statsUtils.onExpertRegistered();
-      
-      // TODO: 실제 API 호출
-      // await fetch('/api/stats/expert-registered', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ expertId, timestamp: new Date() })
-      // });
+      // API를 통한 통계 업데이트
+      await fetch('/api/stats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'registerExpert', data: { expertId } })
+      });
       
       console.log(`전문가 등록 통계 업데이트: ${expertId}`);
     } catch (error) {
@@ -53,15 +45,12 @@ export class StatsManager {
    */
   static async handleConsultationCompleted(consultationId: string): Promise<void> {
     try {
-      // 통계 업데이트
-      statsUtils.onConsultationCompleted();
-      
-      // TODO: 실제 API 호출
-      // await fetch('/api/stats/consultation-completed', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ consultationId, timestamp: new Date() })
-      // });
+      // API를 통한 통계 업데이트
+      await fetch('/api/stats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'completeConsultation', data: { consultationId } })
+      });
       
       console.log(`상담 완료 통계 업데이트: ${consultationId}`);
     } catch (error) {
@@ -78,20 +67,15 @@ export class StatsManager {
     matchingTimeMinutes: number
   ): Promise<void> {
     try {
-      // 통계 업데이트
-      statsUtils.onMatchingCompleted(userId, expertId, matchingTimeMinutes);
-      
-      // TODO: 실제 API 호출
-      // await fetch('/api/stats/matching-completed', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ 
-      //     userId, 
-      //     expertId, 
-      //     matchingTimeMinutes, 
-      //     timestamp: new Date() 
-      //   })
-      // });
+      // API를 통한 통계 업데이트
+      await fetch('/api/stats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          action: 'recordMatching', 
+          data: { userId, expertId, matchingTimeMinutes } 
+        })
+      });
       
       console.log(`매칭 완료 통계 업데이트: ${userId} -> ${expertId} (${matchingTimeMinutes}분)`);
     } catch (error) {
@@ -141,8 +125,18 @@ export class StatsManager {
   /**
    * 현재 통계 조회
    */
-  static getCurrentStats() {
-    return statsUtils.getCurrentStats();
+  static async getCurrentStats() {
+    try {
+      const response = await fetch('/api/stats');
+      const result = await response.json();
+      if (result.success) {
+        return result.data;
+      }
+      return null;
+    } catch (error) {
+      console.error('통계 조회 실패:', error);
+      return null;
+    }
   }
 
   /**
@@ -152,12 +146,12 @@ export class StatsManager {
     try {
       // TODO: 관리자 권한 확인
       
-      // 스토어 리셋
-      const { useStatsStore } = await import('@/stores/statsStore');
-      useStatsStore.getState().resetStats();
-      
-      // TODO: API 호출로 서버 데이터도 리셋
-      // await fetch('/api/admin/reset-stats', { method: 'POST' });
+      // API를 통한 통계 리셋
+      await fetch('/api/stats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'resetStats', data: {} })
+      });
       
       console.log('모든 통계가 리셋되었습니다.');
     } catch (error) {

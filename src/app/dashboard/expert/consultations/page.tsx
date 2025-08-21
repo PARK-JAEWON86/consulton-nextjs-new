@@ -13,7 +13,6 @@ import {
   ChevronRight,
   CheckCircle,
 } from "lucide-react";
-import { useConsultationsStore } from "@/stores/consultationsStore";
 import { dummyReviews } from "@/data/dummy/reviews";
 import { dummyConsultations } from "@/data/dummy/consultations";
 import { useRouter } from "next/navigation";
@@ -51,9 +50,44 @@ export default function ExpertConsultationsPage() {
   const [endDate, setEndDate] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 10;
+  const [consultations, setConsultations] = useState<Consultation[]>([]);
 
   const [showRangePicker, setShowRangePicker] = useState(false);
   const rangeRef = useRef<HTMLDivElement | null>(null);
+
+  // 상담 기록 로드
+  useEffect(() => {
+    const loadConsultations = async () => {
+      try {
+        const response = await fetch('/api/consultations');
+        const result = await response.json();
+        if (result.success) {
+          const consultationData = result.data.items || [];
+          setConsultations(consultationData.map((it: any) => ({
+            id: it.id,
+            date: it.date,
+            customer: it.customer,
+            topic: it.topic,
+            amount: it.amount,
+            status: it.status,
+          })));
+        }
+      } catch (error) {
+        console.error('상담 기록 로드 실패:', error);
+        // API 실패 시 더미 데이터 사용
+        setConsultations(dummyConsultations.map((it) => ({
+          id: it.id,
+          date: it.date,
+          customer: it.customer,
+          topic: it.topic,
+          amount: it.amount,
+          status: it.status,
+        })));
+      }
+    };
+
+    loadConsultations();
+  }, []);
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -128,30 +162,6 @@ export default function ExpertConsultationsPage() {
       setEndDate(format(end, "yyyy-MM-dd"));
     },
   } as const;
-
-  const storeItems = useConsultationsStore((s) => s.items);
-  const consultations = useMemo<Consultation[]>(() => {
-    if (storeItems.length > 0) {
-      // 스토어 기반 데이터 표시
-      return storeItems.map((it) => ({
-        id: it.id,
-        date: it.date,
-        customer: it.customer,
-        topic: it.topic,
-        amount: it.amount,
-        status: it.status,
-      }));
-    }
-    // 별도 더미 파일에서 데이터 가져오기
-    return dummyConsultations.map((it) => ({
-      id: it.id,
-      date: it.date,
-      customer: it.customer,
-      topic: it.topic,
-      amount: it.amount,
-      status: it.status,
-    }));
-  }, [storeItems]);
 
   const filtered = consultations.filter((c) => {
     const matchesQuery =

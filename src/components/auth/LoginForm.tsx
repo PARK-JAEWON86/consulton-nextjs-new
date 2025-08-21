@@ -2,12 +2,20 @@
 
 import { useState, useEffect } from "react";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
-import { useAppStore } from "@/stores/appStore";
-import { useConsultationsStore } from "@/stores/consultationsStore";
 import { useRouter, useSearchParams } from "next/navigation";
 import { expertDataService } from "@/services/ExpertDataService";
 import { userDataService } from "@/services/UserDataService";
 import Link from "next/link";
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  credits: number;
+  expertLevel: string | null;
+  role?: 'expert' | 'client' | 'admin';
+  expertProfile?: any;
+}
 
 interface FormData {
   email: string;
@@ -24,8 +32,6 @@ interface FormErrors {
 const LoginForm = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { setAuthenticated, setUser, enterService, setViewMode } = useAppStore();
-  const { loadExpertConsultations } = useConsultationsStore();
   const [formData, setFormData] = useState<FormData>({
     email: "",
     password: "",
@@ -34,6 +40,67 @@ const LoginForm = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
+
+  // API를 통한 앱 상태 업데이트 함수들
+  const setAuthenticated = async (isAuth: boolean) => {
+    try {
+      await fetch('/api/app-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'setAuthenticated', data: { isAuthenticated: isAuth } })
+      });
+    } catch (error) {
+      console.error('인증 상태 업데이트 실패:', error);
+    }
+  };
+
+  const setUser = async (userData: User) => {
+    try {
+      await fetch('/api/app-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'setUser', data: { user: userData } })
+      });
+    } catch (error) {
+      console.error('사용자 정보 업데이트 실패:', error);
+    }
+  };
+
+  const enterService = async () => {
+    try {
+      await fetch('/api/app-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'enterService', data: {} })
+      });
+    } catch (error) {
+      console.error('서비스 진입 실패:', error);
+    }
+  };
+
+  const setViewMode = async (mode: "user" | "expert") => {
+    try {
+      await fetch('/api/app-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'setViewMode', data: { viewMode: mode } })
+      });
+    } catch (error) {
+      console.error('뷰 모드 설정 실패:', error);
+    }
+  };
+
+  const loadExpertConsultations = async (expertId: string) => {
+    try {
+      await fetch('/api/consultations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'loadExpertConsultations', data: { expertId } })
+      });
+    } catch (error) {
+      console.error('전문가 상담 내역 로드 실패:', error);
+    }
+  };
 
 
   useEffect(() => {

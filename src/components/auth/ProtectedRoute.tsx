@@ -1,8 +1,22 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { useAppStore } from "@/stores/appStore";
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  credits: number;
+  expertLevel: string;
+  role?: 'expert' | 'client' | 'admin';
+}
+
+interface AppState {
+  hasEnteredService: boolean;
+  isAuthenticated: boolean;
+  user: User | null;
+}
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -15,7 +29,34 @@ export default function ProtectedRoute({
 }: ProtectedRouteProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { hasEnteredService, isAuthenticated } = useAppStore();
+  const [appState, setAppState] = useState<AppState>({
+    hasEnteredService: false,
+    isAuthenticated: false,
+    user: null
+  });
+
+  // 앱 상태 로드
+  useEffect(() => {
+    const loadAppState = async () => {
+      try {
+        const response = await fetch('/api/app-state');
+        const result = await response.json();
+        if (result.success) {
+          setAppState({
+            hasEnteredService: result.data.hasEnteredService,
+            isAuthenticated: result.data.isAuthenticated,
+            user: result.data.user
+          });
+        }
+      } catch (error) {
+        console.error('앱 상태 로드 실패:', error);
+      }
+    };
+
+    loadAppState();
+  }, []);
+
+  const { hasEnteredService, isAuthenticated } = appState;
 
   useEffect(() => {
     // 서비스 진입하지 않은 경우 홈으로 리다이렉트

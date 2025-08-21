@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale/ko";
@@ -19,7 +19,6 @@ import {
   Star,
   ExternalLink,
 } from "lucide-react";
-import { useConsultationsStore } from "@/stores/consultationsStore";
 import { dummyConsultations } from "@/data/dummy/consultations";
 import { dummyReviews } from "@/data/dummy/reviews";
 
@@ -73,8 +72,69 @@ function getCustomerReview(customerName: string, expertId: number = 1) {
 export default function ExpertConsultationDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const items = useConsultationsStore((s) => s.items);
-  const updateById = useConsultationsStore((s) => s.updateById);
+  const [items, setItems] = useState<DetailItem[]>([]);
+
+  // 상담 기록 로드
+  useEffect(() => {
+    const loadConsultations = async () => {
+      try {
+        const response = await fetch('/api/consultations');
+        const result = await response.json();
+        if (result.success) {
+          const consultationData = result.data.items || [];
+          setItems(consultationData.map((it: any) => ({
+            id: it.id,
+            date: it.date,
+            customer: it.customer,
+            topic: it.topic,
+            amount: it.amount,
+            status: it.status,
+            method: it.method,
+            duration: it.duration,
+            summary: it.summary,
+            notes: it.notes,
+          })));
+        }
+      } catch (error) {
+        console.error('상담 기록 로드 실패:', error);
+        // API 실패 시 더미 데이터 사용
+        setItems(dummyConsultations.map((consultation) => ({
+          id: consultation.id,
+          date: consultation.date,
+          customer: consultation.customer,
+          topic: consultation.topic,
+          amount: consultation.amount,
+          status: consultation.status,
+          method: consultation.method,
+          duration: consultation.duration,
+          summary: consultation.summary,
+          notes: consultation.notes,
+        })));
+      }
+    };
+
+    loadConsultations();
+  }, []);
+
+  // 상담 업데이트 함수
+  const updateById = async (id: number, updates: Partial<DetailItem>) => {
+    try {
+      const response = await fetch('/api/consultations', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, updates })
+      });
+      const result = await response.json();
+      if (result.success) {
+        // 로컬 상태 업데이트
+        setItems(prev => prev.map(item => 
+          item.id === id ? { ...item, ...updates } : item
+        ));
+      }
+    } catch (error) {
+      console.error('상담 업데이트 실패:', error);
+    }
+  };
 
   const id = Number(params?.id);
   

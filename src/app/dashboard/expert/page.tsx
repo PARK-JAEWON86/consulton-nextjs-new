@@ -1,8 +1,32 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useConsultationsStore } from "@/stores/consultationsStore";
-import { useAppStore } from "@/stores/appStore";
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  credits: number;
+  expertLevel: string;
+  role?: 'expert' | 'client' | 'admin';
+}
+
+interface AppState {
+  isAuthenticated: boolean;
+  user: User | null;
+}
+
+interface ConsultationItem {
+  id: number;
+  date: string;
+  customer: string;
+  topic: string;
+  amount: number;
+  status: "completed" | "scheduled" | "canceled";
+  method: "video" | "chat" | "voice" | "call";
+  duration: number;
+  summary: string;
+  notes: string;
+}
 import { getRequestsByExpert, getRequestStats, getRequestsByStatus, type ConsultationRequest } from "@/data/dummy/consultationRequests";
 import { expertDataService } from "@/services/ExpertDataService";
 import { format } from "date-fns";
@@ -59,8 +83,11 @@ export default function ExpertDashboardProfilePage() {
   const [initialData, setInitialData] = useState<
     Partial<ExpertProfileData> & { isProfileComplete?: boolean }
   >();
-  const items = useConsultationsStore((s) => s.items);
-  const { user } = useAppStore();
+  const [appState, setAppState] = useState<AppState>({
+    isAuthenticated: false,
+    user: null
+  });
+  const [items, setItems] = useState<ConsultationItem[]>([]);
   const router = useRouter();
   
   // 상담 요청 데이터
@@ -69,6 +96,45 @@ export default function ExpertDashboardProfilePage() {
 
   type PeriodKey = "today" | "last7" | "last30" | "thisMonth" | "lastWeek";
   const [period, setPeriod] = useState<PeriodKey>("lastWeek");
+
+  // 앱 상태 로드
+  useEffect(() => {
+    const loadAppState = async () => {
+      try {
+        const response = await fetch('/api/app-state');
+        const result = await response.json();
+        if (result.success) {
+          setAppState({
+            isAuthenticated: result.data.isAuthenticated,
+            user: result.data.user
+          });
+        }
+      } catch (error) {
+        console.error('앱 상태 로드 실패:', error);
+      }
+    };
+
+    loadAppState();
+  }, []);
+
+  // 상담 기록 로드
+  useEffect(() => {
+    const loadConsultations = async () => {
+      try {
+        const response = await fetch('/api/consultations');
+        const result = await response.json();
+        if (result.success) {
+          setItems(result.data.items || []);
+        }
+      } catch (error) {
+        console.error('상담 기록 로드 실패:', error);
+      }
+    };
+
+    loadConsultations();
+  }, []);
+
+  const { user } = appState;
 
   const getRange = (key: PeriodKey): { start: Date; end: Date } => {
     const now = new Date();

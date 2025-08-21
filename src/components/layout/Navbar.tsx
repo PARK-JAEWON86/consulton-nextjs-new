@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Menu,
   User,
@@ -11,8 +11,21 @@ import {
   CreditCard,
 } from "lucide-react";
 
-import { useAppStore } from "@/stores/appStore";
 import React from "react"; // Added missing import
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  credits: number;
+  expertLevel: string;
+  role?: 'expert' | 'client' | 'admin';
+}
+
+interface AppState {
+  isAuthenticated: boolean;
+  user: User | null;
+}
 
 interface NavbarProps {
   onBackToLanding?: () => void;
@@ -23,15 +36,34 @@ const Navbar = ({ onBackToLanding, onNavigate }: NavbarProps = {}) => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isToggleOn, setIsToggleOn] = useState(true);
   const [showNavMenu, setShowNavMenu] = useState(false);
+  const [appState, setAppState] = useState<AppState>({
+    isAuthenticated: false,
+    user: null
+  });
 
+  // 앱 상태 로드
+  useEffect(() => {
+    const loadAppState = async () => {
+      try {
+        const response = await fetch('/api/app-state');
+        const result = await response.json();
+        if (result.success) {
+          setAppState({
+            isAuthenticated: result.data.isAuthenticated,
+            user: result.data.user
+          });
+        }
+      } catch (error) {
+        console.error('앱 상태 로드 실패:', error);
+      }
+    };
 
-    
-  // 앱 스토어에서 사용자 정보 가져오기
-  const { user, isAuthenticated } = useAppStore();
-  
+    loadAppState();
+  }, []);
+
   // 사용자 정보 계산
-  const userName = user?.name || "게스트";
-  const userEmail = user?.email || "guest@example.com";
+  const userName = appState.user?.name || "게스트";
+  const userEmail = appState.user?.email || "guest@example.com";
   const userInitial = userName.charAt(0).toUpperCase();
 
 
@@ -148,7 +180,7 @@ const Navbar = ({ onBackToLanding, onNavigate }: NavbarProps = {}) => {
           {/* 우측: 크레딧 + 프로필 */}
           <div className="flex items-center space-x-6">
             {/* 크레딧 잔액 표시 - 데스크탑에서만 표시, 로그인된 사용자에게만 */}
-            {isAuthenticated && user && (
+            {appState.isAuthenticated && appState.user && (
               <div className="hidden lg:flex items-center space-x-3">
                 <div className="flex items-center space-x-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
                   <CreditCard className="h-4 w-4 text-blue-600" />
@@ -204,7 +236,7 @@ const Navbar = ({ onBackToLanding, onNavigate }: NavbarProps = {}) => {
                       </button>
 
                       {/* 모바일에서 크레딧 정보 표시 - 로그인된 사용자에게만 */}
-                      {isAuthenticated && user && (
+                      {appState.isAuthenticated && appState.user && (
                         <div className="px-4 py-2 border-t border-gray-200">
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-sm text-gray-700">

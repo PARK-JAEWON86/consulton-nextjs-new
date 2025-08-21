@@ -1,11 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useExpertProfileStore, initializeExpertProfiles } from "@/stores/expertProfileStore";
-import { useAppStore } from "@/stores/appStore";
 import { expertDataService } from "@/services/ExpertDataService";
 import { ExpertProfile as ExpertProfileType } from "@/types";
 import ExpertProfile from "@/components/dashboard/ExpertProfile";
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  credits: number;
+  expertLevel: string;
+  role?: 'expert' | 'client' | 'admin';
+  expertProfile?: any;
+}
+
+interface AppState {
+  isAuthenticated: boolean;
+  user: User | null;
+}
 
 type ConsultationType = "video" | "chat" | "voice";
 
@@ -67,9 +80,33 @@ export default function ExpertProfilePage() {
     Partial<ExpertProfileData> & { isProfileComplete?: boolean }
   >();
   const [isEditing, setIsEditing] = useState(false);
+  const [appState, setAppState] = useState<AppState>({
+    isAuthenticated: false,
+    user: null
+  });
+  const [currentExpertId, setCurrentExpertId] = useState<number | null>(null);
   
-  // 현재 로그인한 사용자 정보
-  const { user } = useAppStore();
+  // 앱 상태 로드
+  useEffect(() => {
+    const loadAppState = async () => {
+      try {
+        const response = await fetch('/api/app-state');
+        const result = await response.json();
+        if (result.success) {
+          setAppState({
+            isAuthenticated: result.data.isAuthenticated,
+            user: result.data.user
+          });
+        }
+      } catch (error) {
+        console.error('앱 상태 로드 실패:', error);
+      }
+    };
+
+    loadAppState();
+  }, []);
+
+  const { user } = appState;
   
   // 프로필이 완성되지 않았으면 편집 모드로 시작
   useEffect(() => {
@@ -79,12 +116,12 @@ export default function ExpertProfilePage() {
   }, [initialData]);
 
   // 전문가 프로필 스토어 사용
-  const { 
-    getCurrentExpertProfile, 
-    addOrUpdateProfile, 
-    setCurrentExpertId,
-    currentExpertId 
-  } = useExpertProfileStore();
+  // const { 
+  //   getCurrentExpertProfile, 
+  //   addOrUpdateProfile, 
+  //   setCurrentExpertId,
+  //   currentExpertId 
+  // } = useExpertProfileStore();
 
   useEffect(() => {
     // 로그인한 전문가가 없으면 리턴
@@ -93,7 +130,7 @@ export default function ExpertProfilePage() {
     }
     
     // 기존 localStorage 데이터 마이그레이션
-    initializeExpertProfiles();
+    // initializeExpertProfiles();
     
     // 로그인한 전문가의 ID 추출
     const expertId = parseInt(user.id?.replace('expert_', '') || '0');
@@ -218,7 +255,7 @@ export default function ExpertProfilePage() {
     
     if (success) {
       // 스토어에도 업데이트 (기존 호환성)
-      addOrUpdateProfile(expertProfile);
+      // addOrUpdateProfile(expertProfile);
       
       // 로컬 상태도 업데이트
       setInitialData(updated);

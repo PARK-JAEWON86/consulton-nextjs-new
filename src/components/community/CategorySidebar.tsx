@@ -1,9 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { TrendingUp, User, MessageCircle, Heart, Edit3, ChevronDown, ChevronUp, UserCheck, Briefcase, LogIn } from "lucide-react";
-import { useAppStore } from "@/stores/appStore";
 import { useRouter } from "next/navigation";
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  credits: number;
+  expertLevel: string;
+  role?: 'expert' | 'client' | 'admin';
+}
+
+interface AppState {
+  isAuthenticated: boolean;
+  user: User | null;
+}
 
 interface Category {
   id: string;
@@ -29,8 +42,33 @@ const CategorySidebar = ({
   onCreatePost,
 }: CategorySidebarProps) => {
   const [showAllCategories, setShowAllCategories] = useState(false);
-  const { user, isAuthenticated } = useAppStore();
+  const [appState, setAppState] = useState<AppState>({
+    isAuthenticated: false,
+    user: null
+  });
   const router = useRouter();
+
+  // 앱 상태 로드
+  useEffect(() => {
+    const loadAppState = async () => {
+      try {
+        const response = await fetch('/api/app-state');
+        const result = await response.json();
+        if (result.success) {
+          setAppState({
+            isAuthenticated: result.data.isAuthenticated,
+            user: result.data.user
+          });
+        }
+      } catch (error) {
+        console.error('앱 상태 로드 실패:', error);
+      }
+    };
+
+    loadAppState();
+  }, []);
+
+  const { user, isAuthenticated } = appState;
   
   // 상위 7개 카테고리 (전체 포함)
   const visibleCategories = showAllCategories ? categories : categories.slice(0, 7);

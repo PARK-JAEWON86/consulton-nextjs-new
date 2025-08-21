@@ -19,7 +19,19 @@ import RecordingPlayer from "@/components/summary/RecordingPlayer";
 import SummaryCard from "@/components/summary/SummaryCard";
 import ToDoList from "@/components/summary/ToDoList";
 import ServiceLayout from "@/components/layout/ServiceLayout";
-import { useAppStore } from "@/stores/appStore";
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  credits: number;
+  expertLevel: string;
+  role?: 'expert' | 'client' | 'admin';
+}
+
+interface AppState {
+  isAuthenticated: boolean;
+  user: User | null;
+}
 
 interface Recommendation {
   title: string;
@@ -69,10 +81,35 @@ export default function ConsultationSummaryPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
-  const { user, isAuthenticated } = useAppStore();
+  const [appState, setAppState] = useState<AppState>({
+    isAuthenticated: false,
+    user: null
+  });
   const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("summary");
+
+  // 앱 상태 로드
+  useEffect(() => {
+    const loadAppState = async () => {
+      try {
+        const response = await fetch('/api/app-state');
+        const result = await response.json();
+        if (result.success) {
+          setAppState({
+            isAuthenticated: result.data.isAuthenticated,
+            user: result.data.user
+          });
+        }
+      } catch (error) {
+        console.error('앱 상태 로드 실패:', error);
+      }
+    };
+
+    loadAppState();
+  }, []);
+
+  const { user, isAuthenticated } = appState;
 
   // 더미 상담 요약 데이터 (실제로는 API에서 id를 기반으로 데이터 가져오기)
   const mockSummaryData: SummaryData = {

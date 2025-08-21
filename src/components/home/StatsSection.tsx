@@ -1,7 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useStatsStore } from "@/stores/statsStore";
+
+interface PlatformStats {
+  totalUsers: number;
+  totalExperts: number;
+  totalConsultations: number;
+  totalRevenue: number;
+  averageConsultationRating: number;
+  averageMatchingTimeMinutes: number;
+  monthlyActiveUsers: number;
+  monthlyActiveExperts: number;
+  consultationCompletionRate: number;
+  userSatisfactionScore: number;
+  lastUpdated: string;
+}
 
 interface StatItem {
   id: string;
@@ -68,12 +81,36 @@ function AnimatedNumber({ targetNumber, suffix, isVisible, duration = 2000 }: An
 
 export default function StatsSection() {
   const [isVisible, setIsVisible] = useState(false);
-  const { stats: platformStats, loadStats } = useStatsStore();
+  const [platformStats, setPlatformStats] = useState<PlatformStats>({
+    totalUsers: 0,
+    totalExperts: 0,
+    totalConsultations: 0,
+    totalRevenue: 0,
+    averageConsultationRating: 0,
+    averageMatchingTimeMinutes: 0,
+    monthlyActiveUsers: 0,
+    monthlyActiveExperts: 0,
+    consultationCompletionRate: 0,
+    userSatisfactionScore: 0,
+    lastUpdated: new Date().toISOString()
+  });
 
   useEffect(() => {
     // 컴포넌트 마운트 시 최신 통계 로드
+    const loadStats = async () => {
+      try {
+        const response = await fetch('/api/stats');
+        const result = await response.json();
+        if (result.success) {
+          setPlatformStats(result.data.stats);
+        }
+      } catch (error) {
+        console.error('통계 로드 실패:', error);
+      }
+    };
+
     loadStats();
-  }, [loadStats]);
+  }, []);
 
   useEffect(() => {
     const observer = new IntersectionObserver(

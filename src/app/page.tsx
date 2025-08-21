@@ -15,8 +15,7 @@ import StatsSection from "../components/home/StatsSection";
 import PopularCategoriesSection from "../components/home/PopularCategoriesSection";
 import AIChatPromoSection from "../components/home/AIChatPromoSection";
 import Footer from "../components/layout/Footer";
-import { useExpertProfileStore } from "@/stores/expertProfileStore";
-import { initializeDummyExpertsToStore, convertExpertItemToProfile } from "../data/dummy/experts";
+import { convertExpertItemToProfile } from "../data/dummy/experts";
 import {
   Users,
   Target,
@@ -62,12 +61,24 @@ export default function HomePage() {
   // 카테고리 표시 상태
   const [showAllCategories, setShowAllCategories] = useState(false);
 
-  // 전문가 프로필 스토어 사용
-  const { getAllProfiles } = useExpertProfileStore();
+  // 전문가 프로필 데이터
+  const [allExperts, setAllExperts] = useState<any[]>([]);
 
-  // 스토어 초기화
+  // 전문가 프로필 데이터 로드
   useEffect(() => {
-    initializeDummyExpertsToStore();
+    const loadExpertProfiles = async () => {
+      try {
+        const response = await fetch('/api/expert-profiles');
+        const result = await response.json();
+        if (result.success) {
+          setAllExperts(result.data.profiles || []);
+        }
+      } catch (error) {
+        console.error('전문가 프로필 로드 실패:', error);
+      }
+    };
+
+    loadExpertProfiles();
   }, []);
 
   // 상담 카테고리 옵션

@@ -18,17 +18,55 @@ import {
 import ServiceLayout from "@/components/layout/ServiceLayout";
 import { dummyConsultationSummaries } from "@/data/dummy";
 import { ConsultationSummary } from "@/types";
-import { useAppStore } from "@/stores/appStore";
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  credits: number;
+  expertLevel: string;
+  role?: 'expert' | 'client' | 'admin';
+}
+
+interface AppState {
+  isAuthenticated: boolean;
+  user: User | null;
+}
 
 // ConsultationSummary 타입은 더미 데이터에서 import
 
 export default function SummaryPage() {
   const router = useRouter();
-  const { user, isAuthenticated } = useAppStore();
+  const [appState, setAppState] = useState<AppState>({
+    isAuthenticated: false,
+    user: null
+  });
   const [summaries, setSummaries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  // 앱 상태 로드
+  useEffect(() => {
+    const loadAppState = async () => {
+      try {
+        const response = await fetch('/api/app-state');
+        const result = await response.json();
+        if (result.success) {
+          setAppState({
+            isAuthenticated: result.data.isAuthenticated,
+            user: result.data.user
+          });
+        }
+      } catch (error) {
+        console.error('앱 상태 로드 실패:', error);
+      }
+    };
+
+    loadAppState();
+  }, []);
+
+  const { user, isAuthenticated } = appState;
 
   // 더미 상담 요약 데이터 (더미 데이터에서 가져오기)
   const mockSummaries = dummyConsultationSummaries.map(summary => ({

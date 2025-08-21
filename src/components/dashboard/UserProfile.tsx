@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { useAppStore } from "@/stores/appStore";
+import { useState, useEffect } from "react";
 import {
   User,
   Mail,
@@ -20,6 +19,20 @@ import {
   Clock,
   CheckCircle,
 } from "lucide-react";
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  credits: number;
+  expertLevel: string;
+  role?: 'expert' | 'client' | 'admin';
+}
+
+interface AppState {
+  isAuthenticated: boolean;
+  user: User | null;
+}
 
 interface UserData {
   name?: string;
@@ -44,7 +57,32 @@ interface UserProfileProps {
 const UserProfile = ({ userData, onSave }: UserProfileProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [saveStatus, setSaveStatus] = useState("idle");
-  const { user: loggedInUser } = useAppStore();
+  const [appState, setAppState] = useState<AppState>({
+    isAuthenticated: false,
+    user: null
+  });
+
+  // 앱 상태 로드
+  useEffect(() => {
+    const loadAppState = async () => {
+      try {
+        const response = await fetch('/api/app-state');
+        const result = await response.json();
+        if (result.success) {
+          setAppState({
+            isAuthenticated: result.data.isAuthenticated,
+            user: result.data.user
+          });
+        }
+      } catch (error) {
+        console.error('앱 상태 로드 실패:', error);
+      }
+    };
+
+    loadAppState();
+  }, []);
+
+  const loggedInUser = appState.user;
   
   // 로그인한 사용자 데이터를 우선 사용
   const currentUserData = userData || loggedInUser;
