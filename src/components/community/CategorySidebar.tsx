@@ -31,6 +31,8 @@ interface CategorySidebarProps {
   popularTags?: string[];
   onTagClick?: (tag: string) => void;
   onCreatePost?: () => void;
+  isAuthenticated?: boolean;
+  user?: User | null;
 }
 
 const CategorySidebar = ({
@@ -40,6 +42,8 @@ const CategorySidebar = ({
   popularTags = [],
   onTagClick,
   onCreatePost,
+  isAuthenticated: isAuthenticatedProp,
+  user: userProp,
 }: CategorySidebarProps) => {
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [appState, setAppState] = useState<AppState>({
@@ -52,6 +56,28 @@ const CategorySidebar = ({
   useEffect(() => {
     const loadAppState = async () => {
       try {
+        // 먼저 로컬 스토리지에서 확인
+        const storedUser = localStorage.getItem('consulton-user');
+        const storedAuth = localStorage.getItem('consulton-auth');
+        
+        if (storedUser && storedAuth) {
+          try {
+            const user = JSON.parse(storedUser);
+            const isAuth = JSON.parse(storedAuth);
+            
+            if (isAuth) {
+              setAppState({
+                isAuthenticated: true,
+                user: user
+              });
+              return;
+            }
+          } catch (error) {
+            console.error('로컬 스토리지 파싱 오류:', error);
+          }
+        }
+        
+        // API에서 앱 상태 로드 (백업)
         const response = await fetch('/api/app-state');
         const result = await response.json();
         if (result.success) {
@@ -68,7 +94,59 @@ const CategorySidebar = ({
     loadAppState();
   }, []);
 
-  const { user, isAuthenticated } = appState;
+  // localStorage 변경 감지하여 상태 업데이트
+  useEffect(() => {
+    const handleStorageChange = () => {
+      try {
+        const storedUser = localStorage.getItem('consulton-user');
+        const storedAuth = localStorage.getItem('consulton-auth');
+        
+        if (storedUser && storedAuth) {
+          const user = JSON.parse(storedUser);
+          const isAuthenticated = JSON.parse(storedAuth);
+          
+          setAppState(prev => ({
+            ...prev,
+            isAuthenticated,
+            user: isAuthenticated ? user : null
+          }));
+        } else {
+          setAppState(prev => ({
+            ...prev,
+            isAuthenticated: false,
+            user: null
+          }));
+        }
+      } catch (error) {
+        console.error('localStorage 변경 감지 시 파싱 오류:', error);
+        // 파싱 오류 시 localStorage 정리
+        localStorage.removeItem('consulton-user');
+        localStorage.removeItem('consulton-auth');
+        setAppState(prev => ({
+          ...prev,
+          isAuthenticated: false,
+          user: null
+        }));
+      }
+    };
+
+    // storage 이벤트 리스너 (다른 탭에서의 변경 감지)
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', handleStorageChange);
+      
+      // 커스텀 이벤트 리스너 (같은 탭에서의 변경 감지)
+      window.addEventListener('authStateChanged', handleStorageChange);
+      
+      return () => {
+        window.removeEventListener('storage', handleStorageChange);
+        window.removeEventListener('authStateChanged', handleStorageChange);
+      };
+    }
+  }, []);
+
+  // props로 전달받은 인증 상태를 우선적으로 사용, 없으면 내부 상태 사용
+  const isAuthenticated = isAuthenticatedProp !== undefined ? isAuthenticatedProp : appState.isAuthenticated;
+  const user = userProp || appState.user;
   
   // 상위 7개 카테고리 (전체 포함)
   const visibleCategories = showAllCategories ? categories : categories.slice(0, 7);

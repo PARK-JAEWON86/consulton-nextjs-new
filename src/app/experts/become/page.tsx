@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type React from "react";
 import ServiceLayout from "@/components/layout/ServiceLayout";
 import {
@@ -46,6 +46,93 @@ type Availability = Record<
 export default function BecomeExpertPage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthChecked, setIsAuthChecked] = useState(false); // 인증 상태 확인 완료 여부
+
+  // 인증 상태 확인
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        // 먼저 로컬 스토리지에서 확인
+        const storedUser = localStorage.getItem('consulton-user');
+        const storedAuth = localStorage.getItem('consulton-auth');
+        
+        if (storedUser && storedAuth) {
+          try {
+            const user = JSON.parse(storedUser);
+            const isAuth = JSON.parse(storedAuth);
+            
+            if (isAuth) {
+              setIsAuthenticated(true);
+              setIsAuthChecked(true);
+              return;
+            }
+          } catch (error) {
+            console.error('로컬 스토리지 파싱 오류:', error);
+          }
+        }
+        
+        // API에서 앱 상태 로드 (백업)
+        const response = await fetch('/api/app-state');
+        const result = await response.json();
+        if (result.success) {
+          setIsAuthenticated(result.data.isAuthenticated);
+        }
+        
+        // 인증 상태 확인 완료
+        setIsAuthChecked(true);
+      } catch (error) {
+        console.error('인증 상태 확인 실패:', error);
+        setIsAuthChecked(true);
+      }
+    };
+    checkAuth();
+  }, []);
+
+  // localStorage 변경 감지하여 인증 상태 업데이트
+  useEffect(() => {
+    const handleStorageChange = () => {
+      try {
+        const storedUser = localStorage.getItem('consulton-user');
+        const storedAuth = localStorage.getItem('consulton-auth');
+        
+        if (storedUser && storedAuth) {
+          const user = JSON.parse(storedUser);
+          const isAuth = JSON.parse(storedAuth);
+          
+          setIsAuthenticated(isAuth);
+        } else {
+          setIsAuthenticated(false);
+        }
+        // 인증 상태 확인 완료
+        setIsAuthChecked(true);
+      } catch (error) {
+        console.error('localStorage 변경 감지 시 파싱 오류:', error);
+        setIsAuthenticated(false);
+        setIsAuthChecked(true);
+      }
+    };
+
+    // storage 이벤트 리스너 (다른 탭에서의 변경 감지)
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', handleStorageChange);
+      
+      // 커스텀 이벤트 리스너 (같은 탭에서의 변경 감지)
+      window.addEventListener('authStateChanged', handleStorageChange);
+      
+      return () => {
+        window.removeEventListener('storage', handleStorageChange);
+        window.removeEventListener('authStateChanged', handleStorageChange);
+      };
+    }
+  }, []);
+
+  // 인증되지 않은 사용자는 인증 상태 확인 완료 후 로그인 페이지로 리다이렉트
+  useEffect(() => {
+    if (isAuthChecked && !isAuthenticated) {
+      router.push('/auth/login?redirect=/experts/become');
+    }
+  }, [isAuthChecked, isAuthenticated, router]);
 
   // 1단계: 기본 정보
   const [fullName, setFullName] = useState("");
@@ -205,6 +292,22 @@ export default function BecomeExpertPage() {
     alert("전문가 등록 신청이 접수되었습니다. 프로필 페이지로 이동합니다.");
     router.push("/dashboard/expert");
   };
+
+  // 인증 상태 확인 중이거나 인증되지 않은 사용자는 로딩 화면 표시
+  if (!isAuthChecked || !isAuthenticated) {
+    return (
+      <ServiceLayout>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">
+              {!isAuthChecked ? "인증 상태 확인 중..." : "로그인 페이지로 이동 중..."}
+            </p>
+          </div>
+        </div>
+      </ServiceLayout>
+    );
+  }
 
   return (
     <ServiceLayout>

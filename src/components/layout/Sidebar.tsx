@@ -88,11 +88,15 @@ const Sidebar: React.FC<SidebarProps> = ({
   });
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>([]);
-  const [theme, setTheme] = useState<"light" | "dark">(() => {
-    if (typeof window === "undefined") return "light";
-    const stored = localStorage.getItem("consulton-theme");
-    return stored === "dark" ? "dark" : "light";
-  });
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+  
+  // 하이드레이션 완료 후 테마 설정
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("consulton-theme");
+      setTheme(stored === "dark" ? "dark" : "light");
+    }
+  }, []);
 
   const [appState, setAppState] = useState<AppState>({
     isAuthenticated: false,
@@ -104,53 +108,93 @@ const Sidebar: React.FC<SidebarProps> = ({
   useEffect(() => {
     const loadAppState = async () => {
       try {
+        // 대시보드에 접근할 때 자동으로 서비스 진입 상태로 설정
+        if (pathname.startsWith('/dashboard')) {
+          await fetch('/api/app-state', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'enterService', data: {} })
+          });
+        }
+        
         // 로컬 스토리지에서 사용자 정보 복원
         const storedUser = localStorage.getItem('consulton-user');
         const storedAuth = localStorage.getItem('consulton-auth');
         const storedViewMode = localStorage.getItem('consulton-viewMode');
+        
+        console.log('사이드바 상태 로딩:', { storedUser: !!storedUser, storedAuth, storedViewMode });
         
         if (storedUser && storedAuth) {
           const user = JSON.parse(storedUser);
           const isAuthenticated = JSON.parse(storedAuth);
           const viewMode = storedViewMode ? JSON.parse(storedViewMode) : 'user';
           
-          setAppState({
-            isAuthenticated,
-            user,
-            viewMode
-          });
+          console.log('로컬 스토리지에서 복원된 상태:', { user, isAuthenticated, viewMode });
           
-          // API 상태도 동기화
-          try {
-            await fetch('/api/app-state', {
+          // 로컬 스토리지에 사용자 정보가 있지만 실제로는 인증되지 않은 경우 처리
+          if (isAuthenticated) {
+                    // API 상태와 동기화
+        try {
+          const promises = [
+            fetch('/api/app-state', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ action: 'setAuthenticated', data: { isAuthenticated } })
-            });
-            await fetch('/api/app-state', {
+            }),
+            fetch('/api/app-state', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ action: 'setUser', data: { user } })
-            });
-            await fetch('/api/app-state', {
+            }),
+            fetch('/api/app-state', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ action: 'setViewMode', data: { viewMode } })
-            });
-          } catch (error) {
-            console.error('API 상태 동기화 실패:', error);
+            })
+          ];
+          
+          await Promise.allSettled(promises);
+        } catch (error) {
+          console.error('API 상태 동기화 실패:', error);
+        }
+          } else {
+            // 로컬 스토리지에 사용자 정보가 있지만 인증되지 않은 경우 정리
+            localStorage.removeItem('consulton-user');
+            localStorage.removeItem('consulton-auth');
+            localStorage.removeItem('consulton-viewMode');
           }
+          
+          setAppState({
+            isAuthenticated,
+            user: isAuthenticated ? user : null,
+            viewMode: isAuthenticated ? viewMode : 'user'
+          });
         } else {
-          // 로컬 스토리지에 없으면 API에서 로드
+                  // 로컬 스토리지에 없으면 API에서 로드
+        console.log('로컬 스토리지에 사용자 정보 없음, API에서 로드 시도');
+        try {
           const response = await fetch('/api/app-state');
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
           const result = await response.json();
           if (result.success) {
+            console.log('API에서 로드된 상태:', result.data);
             setAppState({
               isAuthenticated: result.data.isAuthenticated,
               user: result.data.user,
               viewMode: result.data.viewMode
             });
           }
+        } catch (error) {
+          console.error('API 상태 로드 실패:', error);
+          // API 실패 시 기본 상태로 설정
+          setAppState({
+            isAuthenticated: false,
+            user: null,
+            viewMode: "user"
+          });
+        }
         }
       } catch (error) {
         console.error('앱 상태 로드 실패:', error);
@@ -158,6 +202,60 @@ const Sidebar: React.FC<SidebarProps> = ({
     };
 
     loadAppState();
+  }, [pathname]);
+
+  // localStorage 변경 감지하여 상태 업데이트
+  useEffect(() => {
+    const handleStorageChange = () => {
+      try {
+        const storedUser = localStorage.getItem('consulton-user');
+        const storedAuth = localStorage.getItem('consulton-auth');
+        
+        console.log('localStorage 변경 감지:', { storedUser: !!storedUser, storedAuth });
+        
+        if (storedUser && storedAuth) {
+          const user = JSON.parse(storedUser);
+          const isAuthenticated = JSON.parse(storedAuth);
+          
+          console.log('localStorage 변경으로 상태 업데이트:', { user, isAuthenticated });
+          
+          setAppState(prev => ({
+            ...prev,
+            isAuthenticated,
+            user: isAuthenticated ? user : null
+          }));
+        } else {
+          setAppState(prev => ({
+            ...prev,
+            isAuthenticated: false,
+            user: null
+          }));
+        }
+      } catch (error) {
+        console.error('localStorage 변경 감지 시 파싱 오류:', error);
+        // 파싱 오류 시 localStorage 정리
+        localStorage.removeItem('consulton-user');
+        localStorage.removeItem('consulton-auth');
+        setAppState(prev => ({
+          ...prev,
+          isAuthenticated: false,
+          user: null
+        }));
+      }
+    };
+
+    // storage 이벤트 리스너 (다른 탭에서의 변경 감지)
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', handleStorageChange);
+      
+      // 커스텀 이벤트 리스너 (같은 탭에서의 변경 감지)
+      window.addEventListener('authStateChanged', handleStorageChange);
+      
+      return () => {
+        window.removeEventListener('storage', handleStorageChange);
+        window.removeEventListener('authStateChanged', handleStorageChange);
+      };
+    }
   }, []);
 
   // 뷰 모드 변경 함수
@@ -166,14 +264,26 @@ const Sidebar: React.FC<SidebarProps> = ({
       // 로컬 스토리지에 저장
       localStorage.setItem('consulton-viewMode', JSON.stringify(mode));
       
-      await fetch('/api/app-state', {
+      const response = await fetch('/api/app-state', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'setViewMode', data: { viewMode: mode } })
       });
-      setAppState(prev => ({ ...prev, viewMode: mode }));
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      if (result.success) {
+        setAppState(prev => ({ ...prev, viewMode: mode }));
+      } else {
+        throw new Error(result.error || '뷰 모드 변경 실패');
+      }
     } catch (error) {
       console.error('뷰 모드 변경 실패:', error);
+      // 에러 발생 시에도 로컬 상태는 업데이트 (일관성 유지)
+      setAppState(prev => ({ ...prev, viewMode: mode }));
     }
   };
 
@@ -183,35 +293,41 @@ const Sidebar: React.FC<SidebarProps> = ({
   // 하이드레이션 완료 상태 체크
   const [isHydrated, setIsHydrated] = useState(false);
   const effectiveVariant: "user" | "expert" = useMemo(() => {
-    // 하이드레이션이 완료되지 않았으면 URL 기반으로 먼저 판단
+    // 1. 명시적으로 전달된 variant가 있으면 우선
+    if (variant) return variant;
+    
+    // 2. URL 경로 기반으로 먼저 판단 (가장 확실한 방법)
+    if (pathname.startsWith("/dashboard/expert")) return "expert";
+    if (pathname.startsWith("/dashboard")) return "user";
+    
+    // 3. 하이드레이션이 완료되지 않았으면 URL 기반으로 판단
     if (!isHydrated) {
       if (pathname.startsWith("/dashboard/expert")) return "expert";
       return "user";
     }
     
-    // 1. 명시적으로 전달된 variant가 있으면 우선
-    if (variant) return variant;
-    
-    // 2. 사용자가 설정한 viewMode가 있으면 그것을 사용
+    // 4. 사용자가 설정한 viewMode가 있으면 그것을 사용
     if (viewMode) return viewMode;
     
-    // 3. 사용자 role에 따라 결정 (로그인 직후 자동 결정)
+    // 5. 사용자 role에 따라 결정 (로그인 직후 자동 결정)
     if (user?.role === 'expert') return "expert";
     if (user?.role === 'client' || user?.role === 'admin') return "user";
     
-    // 4. URL 경로 기반 추론
-    if (pathname.startsWith("/dashboard/expert")) return "expert";
-    
-    // 5. 기본값
+    // 6. 기본값
     return "user";
-  }, [variant, viewMode, user, pathname, isHydrated]);
+  }, [variant, pathname, isHydrated, viewMode, user]);
 
-
-
-  // 하이드레이션 완료 체크
+  // 하이드레이션 완료 체크 - 안전한 방식으로 수정
   useEffect(() => {
-    setIsHydrated(true);
+    // 클라이언트 사이드에서만 실행
+    if (typeof window !== 'undefined') {
+      setIsHydrated(true);
+    }
   }, []);
+
+
+
+
 
   // 채팅 기록 초기화
   useEffect(() => {
@@ -338,23 +454,82 @@ const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const handleNavigate = (item: MenuItem) => {
-    // 로그아웃 상태에서 설정 페이지 접근 시 로그인 페이지로 이동
-    if (item.id === "settings" && !isAuthenticated) {
-      router.push("/auth/login?redirect=/dashboard/settings");
+    console.log('메뉴 클릭:', { item: item.id, isAuthenticated, user, pathname });
+    
+    // 전문가 찾기 메뉴만 로그인 없이도 접근 가능
+    if (item.id === "experts") {
+      console.log(`${item.name} 메뉴 클릭 - 현재 상태:`, { isAuthenticated, user });
+      
+      // 로그인된 사용자인 경우 바로 이동
+      if (isAuthenticated && user) {
+        console.log(`로그인된 사용자 - ${item.name} 페이지로 이동`);
+        router.push(item.path);
+        if (onClose) onClose();
+        return;
+      }
+      
+      // 로그인되지 않은 사용자도 전문가 찾기 페이지로 이동 가능
+      console.log(`비로그인 사용자 - ${item.name} 페이지로 이동`);
+      router.push(item.path);
       if (onClose) onClose();
       return;
     }
     
-    if (item.id === "chat" && pathname === "/chat") {
-      sessionStorage.setItem("showQuickChatModal", "true");
-      window.location.reload();
+    // AI 상담 메뉴는 로그인 필요
+    if (item.id === "chat") {
+      console.log('AI 상담 메뉴 클릭 - 현재 상태:', { isAuthenticated, user });
+      
+      if (pathname === "/chat") {
+        sessionStorage.setItem("showQuickChatModal", "true");
+        window.location.reload();
+        return;
+      }
+      
+      // 로그인된 사용자인 경우 바로 이동
+      if (isAuthenticated && user) {
+        console.log('로그인된 사용자 - AI 상담 페이지로 이동');
+        router.push(item.path);
+        if (onClose) onClose();
+        return;
+      }
+      
+      // 로그인되지 않은 사용자는 로그인 페이지로 리다이렉트
+      console.log('비로그인 사용자 - 로그인 페이지로 리다이렉트');
+      router.push(`/auth/login?redirect=${encodeURIComponent(item.path)}`);
+      if (onClose) onClose();
       return;
     }
+    
+    // 로그아웃 상태에서 다른 메뉴 클릭 시 로그인 페이지로 이동
+    if (!isAuthenticated) {
+      let redirectPath = item.path;
+      
+      // 설정 메뉴의 경우 현재 모드에 맞는 경로로 설정
+      if (item.id === "settings") {
+        redirectPath = effectiveVariant === "expert" ? "/dashboard/expert/settings" : "/dashboard/settings";
+      }
+      
+      console.log('비로그인 사용자 - 로그인 페이지로 리다이렉트:', redirectPath);
+      router.push(`/auth/login?redirect=${encodeURIComponent(redirectPath)}`);
+      if (onClose) onClose();
+      return;
+    }
+    
     if (pathname === "/chat" && item.id !== "chat") {
       setPendingNavigation(item);
       setShowExitWarning(true);
       return;
     }
+    
+    // 설정 메뉴 클릭 시 현재 모드에 맞는 경로로 이동
+    if (item.id === "settings") {
+      const targetPath = effectiveVariant === "expert" ? "/dashboard/expert/settings" : "/dashboard/settings";
+      router.push(targetPath);
+      if (onClose) onClose();
+      return;
+    }
+    
+    console.log('정상 메뉴 이동:', item.path);
     router.push(item.path);
     if (onClose) onClose();
   };
@@ -483,6 +658,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           {/* 네비게이션 바 높이만큼 상단 여백 */}
           <div className="h-16 flex-shrink-0" />
 
+
+
           {/* 메인 컨텐츠 영역 */}
           <div className="flex-1 flex flex-col min-h-0 px-3 py-4">
             {/* 고정 메뉴 영역 */}
@@ -503,20 +680,36 @@ const Sidebar: React.FC<SidebarProps> = ({
                 primaryMenu.map((item) => {
                   const Icon = item.icon;
                   const active = isActivePath(item.path);
+                  // 전문가 찾기 메뉴는 로그인 없이도 접근 가능, 나머지는 로그인 필요
+                  const isDisabled = item.id === "experts" ? false : !isAuthenticated;
+                  
                   return (
                     <button
                       key={item.id}
                       onClick={() => handleNavigate(item)}
+                      disabled={isDisabled}
                       className={`w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                        active
+                        isDisabled
+                          ? "text-gray-400 cursor-not-allowed opacity-60"
+                          : active
                           ? "bg-gray-100 text-gray-900"
                           : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
                       }`}
+                      title={isDisabled ? "로그인이 필요합니다" : ""}
                     >
                       <Icon
-                        className={`h-5 w-5 ${active ? "text-gray-900" : "text-gray-500"}`}
+                        className={`h-5 w-5 ${
+                          isDisabled 
+                            ? "text-gray-400" 
+                            : active 
+                            ? "text-gray-900" 
+                            : "text-gray-500"
+                        }`}
                       />
                       <span>{item.name}</span>
+                      {isDisabled && (
+                        <span className="ml-auto text-xs text-gray-400">로그인 필요</span>
+                      )}
                     </button>
                   );
                 })
@@ -630,17 +823,17 @@ const Sidebar: React.FC<SidebarProps> = ({
                 >
                   <div className="relative w-9 h-9 rounded-full overflow-hidden bg-blue-600" style={{minWidth: '36px', minHeight: '36px'}}>
                     <div className="w-full h-full flex items-center justify-center text-white text-sm font-medium">
-                      {user?.name ? user.name.charAt(0).toUpperCase() : "G"}
+                      {isAuthenticated && user?.name ? user.name.charAt(0).toUpperCase() : "G"}
                     </div>
                   </div>
                   <div className="flex-1 text-left min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-gray-900 truncate">
-                        {user?.name || "게스트"}
+                        {isAuthenticated && user?.name ? user.name : "게스트"}
                       </span>
                     </div>
                     <div className="text-xs text-gray-500 truncate">
-                      {user?.email || "guest@example.com"}
+                      {isAuthenticated && user?.email ? user.email : "guest@example.com"}
                     </div>
                   </div>
                   <div className="flex-shrink-0 ml-2">
@@ -724,16 +917,25 @@ const Sidebar: React.FC<SidebarProps> = ({
                             localStorage.removeItem('consulton-auth');
                             localStorage.removeItem('consulton-viewMode');
                             
-                            await fetch('/api/app-state', {
+                            const response = await fetch('/api/app-state', {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({ action: 'logout', data: {} })
                             });
+                            
+                            if (!response.ok) {
+                              throw new Error(`HTTP error! status: ${response.status}`);
+                            }
+                            
                             setAppState(prev => ({ ...prev, isAuthenticated: false, user: null }));
                             router.push("/auth/login");
                             setShowProfileMenu(false);
                           } catch (error) {
                             console.error('로그아웃 실패:', error);
+                            // API 실패 시에도 로컬 상태는 정리
+                            setAppState(prev => ({ ...prev, isAuthenticated: false, user: null }));
+                            router.push("/auth/login");
+                            setShowProfileMenu(false);
                           }
                         }}
                         className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-gray-50"

@@ -30,15 +30,25 @@ let appState: AppState = {
 // GET: 현재 앱 상태 조회
 export async function GET() {
   try {
-    return NextResponse.json({ 
+    const response = NextResponse.json({ 
       success: true, 
       data: appState 
     });
+    
+    // CORS 헤더 추가
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
+    
+    return response;
   } catch (error) {
-    return NextResponse.json(
+    const errorResponse = NextResponse.json(
       { success: false, error: '상태 조회 실패' },
       { status: 500 }
     );
+    
+    errorResponse.headers.set('Access-Control-Allow-Origin', '*');
+    return errorResponse;
   }
 }
 
@@ -70,7 +80,7 @@ export async function POST(request: NextRequest) {
         break;
       
       case 'setViewMode':
-        appState.viewMode = data.mode;
+        appState.viewMode = data.viewMode;
         break;
       
       case 'setUser':
@@ -101,16 +111,26 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    return NextResponse.json({ 
+    const response = NextResponse.json({ 
       success: true, 
       data: appState,
       message: `${action} 완료`
     });
+    
+    // CORS 헤더 추가
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
+    
+    return response;
   } catch (error) {
-    return NextResponse.json(
+    const errorResponse = NextResponse.json(
       { success: false, error: '상태 업데이트 실패' },
       { status: 500 }
     );
+    
+    errorResponse.headers.set('Access-Control-Allow-Origin', '*');
+    return errorResponse;
   }
 }
 
@@ -122,16 +142,26 @@ export async function PATCH(request: NextRequest) {
     // 부분 업데이트
     appState = { ...appState, ...body };
     
-    return NextResponse.json({ 
+    const response = NextResponse.json({ 
       success: true, 
       data: appState,
       message: '상태 업데이트 완료'
     });
+    
+    // CORS 헤더 추가
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
+    
+    return response;
   } catch (error) {
-    return NextResponse.json(
+    const errorResponse = NextResponse.json(
       { success: false, error: '상태 업데이트 실패' },
       { status: 500 }
     );
+    
+    errorResponse.headers.set('Access-Control-Allow-Origin', '*');
+    return errorResponse;
   }
 }
 
@@ -147,14 +177,35 @@ export async function DELETE() {
       user: null,
     };
     
-    return NextResponse.json({ 
+    const response = NextResponse.json({ 
       success: true, 
       message: '상태가 초기화되었습니다.' 
     });
+    
+    // CORS 헤더 추가
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
+    
+    return response;
   } catch (error) {
-    return NextResponse.json(
+    const errorResponse = NextResponse.json(
       { success: false, error: '상태 초기화 실패' },
       { status: 500 }
     );
+    
+    errorResponse.headers.set('Access-Control-Allow-Origin', '*');
+    return errorResponse;
   }
+}
+
+// OPTIONS: CORS preflight 요청 처리
+export async function OPTIONS() {
+  const response = new NextResponse(null, { status: 200 });
+  
+  response.headers.set('Access-Control-Allow-Origin', '*');
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
+  
+  return response;
 }

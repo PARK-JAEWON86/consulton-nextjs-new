@@ -90,21 +90,21 @@ export default function ExpertProfilePage() {
           let ageMatch = false;
           
           if (ageGroup === "teen") {
-            ageMatch = expert.targetAudience.some((target: string) => 
+            ageMatch = expert.targetAudience?.some((target: string) => 
               target.includes("청소년") || target.includes("중학생") || target.includes("고등학생")
-            );
+            ) || false;
           } else if (ageGroup === "student") {
-            ageMatch = expert.targetAudience.some((target: string) => 
+            ageMatch = expert.targetAudience?.some((target: string) => 
               target.includes("대학생") || target.includes("취준생") || target.includes("학생")
-            );
+            ) || false;
           } else if (ageGroup === "adult") {
-            ageMatch = expert.targetAudience.some((target: string) => 
+            ageMatch = expert.targetAudience?.some((target: string) => 
               target.includes("성인") || target.includes("직장인") || target.includes("자영업자")
-            );
+            ) || false;
           } else if (ageGroup === "senior") {
-            ageMatch = expert.targetAudience.some((target: string) => 
+            ageMatch = expert.targetAudience?.some((target: string) => 
               target.includes("시니어") || target.includes("은퇴")
-            );
+            ) || false;
           }
           
           if (ageMatch) {
@@ -114,7 +114,7 @@ export default function ExpertProfilePage() {
       }
       
       // 3. 공통 태그 개수
-      const commonTags = expert.tags.filter(tag => currentExpert.tags.includes(tag));
+      const commonTags = expert.tags?.filter(tag => currentExpert.tags?.includes(tag)) || [];
       score += commonTags.length * 20;
       
       // 4. 비슷한 평점 (±0.5 범위)
@@ -128,15 +128,15 @@ export default function ExpertProfilePage() {
       }
       
       // 6. 공통 상담 방식
-      const commonConsultationTypes = expert.consultationTypes.filter(type => 
-        currentExpert.consultationTypes.includes(type)
-      );
+      const commonConsultationTypes = expert.consultationTypes?.filter(type => 
+        currentExpert.consultationTypes?.includes(type)
+      ) || [];
       score += commonConsultationTypes.length * 15;
       
       // 7. 공통 대상 고객
-      const commonTargetAudience = expert.targetAudience.filter(audience => 
-        currentExpert.targetAudience.includes(audience)
-      );
+      const commonTargetAudience = expert.targetAudience?.filter(audience => 
+        currentExpert.targetAudience?.includes(audience)
+      ) || [];
       score += commonTargetAudience.length * 20;
       
       return score;

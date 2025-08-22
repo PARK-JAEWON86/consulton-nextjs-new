@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import Sidebar from "../../components/layout/Sidebar";
 
 export default function DashboardLayout({
@@ -9,6 +10,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const pathname = usePathname();
 
   const handleSidebarToggle = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -18,6 +20,9 @@ export default function DashboardLayout({
     setIsSidebarOpen(false);
   };
 
+  // 현재 경로에 따라 사이드바 variant 결정
+  const sidebarVariant = pathname.startsWith("/dashboard/expert") ? "expert" : "user";
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* 사이드바 */}
@@ -25,6 +30,7 @@ export default function DashboardLayout({
         isOpen={isSidebarOpen}
         onClose={handleSidebarClose}
         onToggle={handleSidebarToggle}
+        variant={sidebarVariant}
       />
 
       {/* 메인 콘텐츠 영역 */}

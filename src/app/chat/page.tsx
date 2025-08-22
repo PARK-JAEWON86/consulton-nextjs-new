@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Send, Plus, Mic, Bot, User, X, Image, File } from "lucide-react";
 import ServiceLayout from "@/components/layout/ServiceLayout";
 
@@ -19,10 +20,12 @@ interface ChatMessage {
 }
 
 export default function ChatPage() {
+  const router = useRouter();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthChecked, setIsAuthChecked] = useState(false); // 인증 상태 확인 완료 여부
   const [showFileUpload, setShowFileUpload] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [showMainInput, setShowMainInput] = useState(true);
@@ -37,16 +40,78 @@ export default function ChatPage() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        // 먼저 로컬 스토리지에서 확인
+        const storedUser = localStorage.getItem('consulton-user');
+        const storedAuth = localStorage.getItem('consulton-auth');
+        
+        if (storedUser && storedAuth) {
+          try {
+            const user = JSON.parse(storedUser);
+            const isAuth = JSON.parse(storedAuth);
+            
+            if (isAuth) {
+              setIsAuthenticated(true);
+              setIsAuthChecked(true);
+              return;
+            }
+          } catch (error) {
+            console.error('로컬 스토리지 파싱 오류:', error);
+          }
+        }
+        
+        // API에서 앱 상태 로드
         const response = await fetch('/api/app-state');
         const result = await response.json();
         if (result.success) {
           setIsAuthenticated(result.data.isAuthenticated);
         }
+        
+        // 인증 상태 확인 완료
+        setIsAuthChecked(true);
       } catch (error) {
         console.error('인증 상태 확인 실패:', error);
+        setIsAuthChecked(true);
       }
     };
     checkAuth();
+  }, []);
+
+  // localStorage 변경 감지하여 인증 상태 업데이트
+  useEffect(() => {
+    const handleStorageChange = () => {
+      try {
+        const storedUser = localStorage.getItem('consulton-user');
+        const storedAuth = localStorage.getItem('consulton-auth');
+        
+        if (storedUser && storedAuth) {
+          const user = JSON.parse(storedUser);
+          const isAuth = JSON.parse(storedAuth);
+          
+          setIsAuthenticated(isAuth);
+        } else {
+          setIsAuthenticated(false);
+        }
+        // 인증 상태 확인 완료
+        setIsAuthChecked(true);
+      } catch (error) {
+        console.error('localStorage 변경 감지 시 파싱 오류:', error);
+        setIsAuthenticated(false);
+        setIsAuthChecked(true);
+      }
+    };
+
+    // storage 이벤트 리스너 (다른 탭에서의 변경 감지)
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', handleStorageChange);
+      
+      // 커스텀 이벤트 리스너 (같은 탭에서의 변경 감지)
+      window.addEventListener('authStateChanged', handleStorageChange);
+      
+      return () => {
+        window.removeEventListener('storage', handleStorageChange);
+        window.removeEventListener('authStateChanged', handleStorageChange);
+      };
+    }
   }, []);
 
   // 스크롤 방지 효과
@@ -171,40 +236,25 @@ export default function ChatPage() {
     setShowFileUpload(!showFileUpload);
   }, [showFileUpload]);
 
-  // 로그인이 필요한 경우
-  if (!isAuthenticated) {
+
+
+  // 인증되지 않은 사용자는 인증 상태 확인 완료 후 로그인 페이지로 리다이렉트
+  useEffect(() => {
+    if (isAuthChecked && !isAuthenticated) {
+      router.push('/auth/login?redirect=/chat');
+    }
+  }, [isAuthChecked, isAuthenticated, router]);
+
+  // 인증 상태 확인 중이거나 인증되지 않은 사용자는 로딩 화면 표시
+  if (!isAuthChecked || !isAuthenticated) {
     return (
       <ServiceLayout>
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-          <div className="max-w-md w-full text-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Bot className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="text-2xl font-semibold text-gray-900 mb-4">
-              AI 상담 어시스턴트
-            </h1>
-            <p className="text-gray-600 mb-8">
-              AI와 함께 문제를 정리하고 전문가를 찾아보세요
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">
+              {!isAuthChecked ? "인증 상태 확인 중..." : "로그인 페이지로 이동 중..."}
             </p>
-            <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
-              <p className="text-sm text-gray-600 mb-4">
-                🔒 로그인이 필요한 서비스입니다
-              </p>
-              <div className="space-y-3">
-                <button
-                  onClick={() => window.location.href = "/auth/register"}
-                  className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-4 rounded-lg font-medium hover:from-blue-600 hover:to-purple-700 transition-all duration-200"
-                >
-                  회원가입하고 시작하기
-                </button>
-                <button
-                  onClick={() => window.location.href = "/auth/login"}
-                  className="w-full bg-white text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-50 transition-colors border border-gray-300"
-                >
-                  로그인
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       </ServiceLayout>
