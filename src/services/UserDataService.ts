@@ -7,6 +7,7 @@ export interface ClientUser {
   id: string;
   name: string;
   email: string;
+  password: string; // 비밀번호 필드 추가
   credits: number;
   role: 'client';
   phone?: string;
@@ -35,58 +36,27 @@ export class UserDataService {
   }
 
   /**
-   * 더미 사용자 데이터 생성
+   * 더미 사용자 데이터 생성 (1개만)
    */
   private generateDummyUsers(): ClientUser[] {
-    const names = [
-      "이지은", "박민수", "김서연", "최다은", "정호영",
-      "한소영", "윤재민", "임수빈", "강혜진", "조민호",
-      "신예린", "오성민", "배유진", "문지훈", "노하늘"
+    return [
+      {
+        id: "client_1",
+        name: "김철수",
+        email: "user@example.com",
+        password: "password123", // 고정된 비밀번호
+        credits: 500,
+        role: 'client' as const,
+        phone: "010-1234-5678",
+        location: "서울특별시 강남구",
+        birthDate: "1990-05-15",
+        interests: ["심리상담", "진로상담"],
+        bio: "다양한 분야의 전문가들과 상담을 통해 성장하고 있습니다.",
+        totalConsultations: 5,
+        favoriteExperts: 3,
+        joinDate: "2024-01-15"
+      }
     ];
-
-    const interests = [
-      ["심리상담", "진로상담"], 
-      ["법률상담", "재무상담"], 
-      ["건강상담", "교육상담"],
-      ["심리상담", "사업상담"], 
-      ["진로상담", "IT상담"],
-      ["재무상담", "투자상담"], 
-      ["심리상담", "법률상담"],
-      ["교육상담", "진로상담"], 
-      ["건강상담", "심리상담"],
-      ["사업상담", "마케팅상담"]
-    ];
-
-    const locations = [
-      "서울특별시 강남구", "서울특별시 서초구", "서울특별시 송파구",
-      "경기도 성남시", "경기도 수원시", "인천광역시 연수구",
-      "부산광역시 해운대구", "대구광역시 수성구", "광주광역시 서구",
-      "대전광역시 유성구"
-    ];
-
-    const bios = [
-      "다양한 분야의 전문가들과 상담을 통해 성장하고 있습니다.",
-      "새로운 도전을 위해 전문가의 조언을 구하고 있습니다.",
-      "개인적인 고민과 목표 달성을 위해 상담을 받고 있습니다.",
-      "전문가들의 경험을 통해 더 나은 선택을 하고자 합니다.",
-      "삶의 질 향상을 위해 지속적으로 상담을 받고 있습니다."
-    ];
-
-    return names.map((name, index) => ({
-      id: `client_${index + 1}`,
-      name,
-      email: `${name.toLowerCase().replace(/\s/g, '')}@example.com`,
-      credits: Math.floor(Math.random() * 500) + 100, // 100-600 크레딧
-      role: 'client' as const,
-      phone: `010-${String(Math.floor(Math.random() * 9000) + 1000)}-${String(Math.floor(Math.random() * 9000) + 1000)}`,
-      location: locations[index % locations.length],
-      birthDate: `${1985 + (index % 15)}-${String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')}`,
-      interests: interests[index % interests.length],
-      bio: bios[index % bios.length],
-      totalConsultations: Math.floor(Math.random() * 20),
-      favoriteExperts: Math.floor(Math.random() * 8),
-      joinDate: `2024-${String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')}`
-    }));
   }
 
   /**
@@ -111,27 +81,21 @@ export class UserDataService {
   }
 
   /**
-   * 랜덤 사용자 생성 (일반 로그인용)
+   * 이메일과 비밀번호로 사용자 인증
    */
-  public createRandomUser(email: string): ClientUser {
-    const randomNames = ["김민지", "이준호", "박서영", "최우진", "정하은"];
-    const randomName = randomNames[Math.floor(Math.random() * randomNames.length)];
-    
-    return {
-      id: `client_${Date.now()}`,
-      name: randomName,
-      email: email,
-      credits: 1000, // 신규 사용자 기본 크레딧
-      role: 'client',
-      phone: `010-${String(Math.floor(Math.random() * 9000) + 1000)}-${String(Math.floor(Math.random() * 9000) + 1000)}`,
-      location: "서울특별시",
-      birthDate: "1990-01-01",
-      interests: ["심리상담", "진로상담"],
-      bio: "전문가들과의 상담을 통해 성장하고 있습니다.",
-      totalConsultations: 0,
-      favoriteExperts: 0,
-      joinDate: new Date().toISOString().split('T')[0]
-    };
+  public authenticateUser(email: string, password: string): ClientUser | null {
+    const user = this.dummyUsers.find(user => 
+      user.email === email && user.password === password
+    );
+    return user || null;
+  }
+
+  /**
+   * 랜덤 사용자 생성 (일반 로그인용) - 제거됨
+   */
+  public createRandomUser(email: string): ClientUser | null {
+    // 더 이상 랜덤 사용자를 생성하지 않음
+    return null;
   }
 
   /**
@@ -152,9 +116,10 @@ export class UserDataService {
     console.log('\n👥 일반 사용자 더미 데이터:');
     console.log('=' .repeat(80));
     
-    this.dummyUsers.slice(0, 5).forEach((user, index) => {
+    this.dummyUsers.forEach((user, index) => {
       console.log(`\n${index + 1}. ${user.name}`);
       console.log(`   📧 이메일: ${user.email}`);
+      console.log(`   🔑 비밀번호: ${user.password}`);
       console.log(`   💳 크레딧: ${user.credits}`);
       console.log(`   📍 위치: ${user.location}`);
       console.log(`   🎯 관심사: ${user.interests?.join(', ')}`);
@@ -162,7 +127,7 @@ export class UserDataService {
     });
     
     console.log('\n' + '='.repeat(80));
-    console.log('💡 일반 로그인: 아무 이메일 + 4자리 이상 비밀번호로 자동 생성됩니다!');
+    console.log('💡 일반 로그인: 위의 이메일과 비밀번호를 사용하세요!');
   }
 }
 

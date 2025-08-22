@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import CategorySidebar from "@/components/community/CategorySidebar";
 import PostCard from "@/components/community/PostCard";
 import SearchAndFilter from "@/components/community/SearchAndFilter";
@@ -16,7 +16,85 @@ export default function CommunityPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<any>(null);
   const postsPerPage = 5; // 페이지당 게시글 수
+
+  // 인증 상태 확인
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        // 먼저 로컬 스토리지에서 확인
+        const storedUser = localStorage.getItem('consulton-user');
+        const storedAuth = localStorage.getItem('consulton-auth');
+        
+        if (storedUser && storedAuth) {
+          try {
+            const userData = JSON.parse(storedUser);
+            const isAuth = JSON.parse(storedAuth);
+            
+            if (isAuth) {
+              setIsAuthenticated(true);
+              setUser(userData);
+              return;
+            }
+          } catch (error) {
+            console.error('로컬 스토리지 파싱 오류:', error);
+          }
+        }
+        
+        // API에서 앱 상태 로드 (백업)
+        const response = await fetch('/api/app-state');
+        const result = await response.json();
+        if (result.success) {
+          setIsAuthenticated(result.data.isAuthenticated);
+          setUser(result.data.user);
+        }
+      } catch (error) {
+        console.error('인증 상태 확인 실패:', error);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  // localStorage 변경 감지하여 인증 상태 업데이트
+  useEffect(() => {
+    const handleStorageChange = () => {
+      try {
+        const storedUser = localStorage.getItem('consulton-user');
+        const storedAuth = localStorage.getItem('consulton-auth');
+        
+        if (storedUser && storedAuth) {
+          const userData = JSON.parse(storedUser);
+          const isAuth = JSON.parse(storedAuth);
+          
+          setIsAuthenticated(isAuth);
+          setUser(isAuth ? userData : null);
+        } else {
+          setIsAuthenticated(false);
+          setUser(null);
+        }
+      } catch (error) {
+        console.error('localStorage 변경 감지 시 파싱 오류:', error);
+        setIsAuthenticated(false);
+        setUser(null);
+      }
+    };
+
+    // storage 이벤트 리스너 (다른 탭에서의 변경 감지)
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', handleStorageChange);
+      
+      // 커스텀 이벤트 리스너 (같은 탭에서의 변경 감지)
+      window.addEventListener('authStateChanged', handleStorageChange);
+      
+      return () => {
+        window.removeEventListener('storage', handleStorageChange);
+        window.removeEventListener('authStateChanged', handleStorageChange);
+      };
+    }
+  }, []);
 
 
   const handleTabChange = (categoryId: string) => {
@@ -56,6 +134,11 @@ export default function CommunityPage() {
   };
 
   const handleCreatePost = () => {
+    if (!isAuthenticated) {
+      // 로그인되지 않은 경우 로그인 페이지로 이동
+      window.location.href = "/auth/login?redirect=/community";
+      return;
+    }
     setIsCreateModalOpen(true);
   };
 
@@ -172,6 +255,8 @@ export default function CommunityPage() {
               popularTags={["상담후기", "전문가추천", "진로고민", "투자조언"]}
               onTagClick={handleTagClick}
               onCreatePost={handleCreatePost}
+              isAuthenticated={isAuthenticated}
+              user={user}
             />
           </div>
 
@@ -215,6 +300,8 @@ export default function CommunityPage() {
                       handleCreatePost();
                       closeSidebar(); // 새 글 작성 후 사이드바 닫기
                     }}
+                    isAuthenticated={isAuthenticated}
+                    user={user}
                   />
                 </div>
               </div>

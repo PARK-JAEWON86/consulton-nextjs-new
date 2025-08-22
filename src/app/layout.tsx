@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import MainNavigation from "@/components/layout/MainNavigation";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -40,8 +41,10 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}
       >
-        <MainNavigation />
-        {children}
+        <ErrorBoundary>
+          <MainNavigation />
+          {children}
+        </ErrorBoundary>
       </body>
     </html>
   );

@@ -31,7 +31,32 @@ const MainNavigation = ({}: MainNavigationProps) => {
   useEffect(() => {
     const loadAppState = async () => {
       try {
+        // 먼저 로컬 스토리지에서 확인
+        const storedUser = localStorage.getItem('consulton-user');
+        const storedAuth = localStorage.getItem('consulton-auth');
+        
+        if (storedUser && storedAuth) {
+          try {
+            const user = JSON.parse(storedUser);
+            const isAuth = JSON.parse(storedAuth);
+            
+            if (isAuth) {
+              setAppState({
+                isAuthenticated: true,
+                user: user
+              });
+              return;
+            }
+          } catch (error) {
+            console.error('로컬 스토리지 파싱 오류:', error);
+          }
+        }
+        
+        // API에서 앱 상태 로드 (백업)
         const response = await fetch('/api/app-state');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const result = await response.json();
         if (result.success) {
           setAppState({
@@ -41,23 +66,102 @@ const MainNavigation = ({}: MainNavigationProps) => {
         }
       } catch (error) {
         console.error('앱 상태 로드 실패:', error);
+        // API 실패 시 기본 상태로 설정
+        setAppState({
+          isAuthenticated: false,
+          user: null
+        });
       }
     };
 
     loadAppState();
   }, []);
 
+  // localStorage 변경 감지하여 상태 업데이트
+  useEffect(() => {
+    const handleStorageChange = () => {
+      try {
+        const storedUser = localStorage.getItem('consulton-user');
+        const storedAuth = localStorage.getItem('consulton-auth');
+        
+        if (storedUser && storedAuth) {
+          const user = JSON.parse(storedUser);
+          const isAuthenticated = JSON.parse(storedAuth);
+          
+          setAppState(prev => ({
+            ...prev,
+            isAuthenticated,
+            user: isAuthenticated ? user : null
+          }));
+        } else {
+          setAppState(prev => ({
+            ...prev,
+            isAuthenticated: false,
+            user: null
+          }));
+        }
+      } catch (error) {
+        console.error('localStorage 변경 감지 시 파싱 오류:', error);
+        // 파싱 오류 시 localStorage 정리
+        localStorage.removeItem('consulton-user');
+        localStorage.removeItem('consulton-auth');
+        setAppState(prev => ({
+          ...prev,
+          isAuthenticated: false,
+          user: null
+        }));
+      }
+    };
+
+    // storage 이벤트 리스너 (다른 탭에서의 변경 감지)
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', handleStorageChange);
+      
+      // 커스텀 이벤트 리스너 (같은 탭에서의 변경 감지)
+      window.addEventListener('authStateChanged', handleStorageChange);
+      
+      return () => {
+        window.removeEventListener('storage', handleStorageChange);
+        window.removeEventListener('authStateChanged', handleStorageChange);
+      };
+    }
+  }, []);
+
   const handleLogout = async () => {
     try {
-      await fetch('/api/app-state', {
+      // API에 로그아웃 요청
+      const response = await fetch('/api/app-state', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'logout', data: {} })
       });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      // 로컬 스토리지 정리
+      localStorage.removeItem('consulton-user');
+      localStorage.removeItem('consulton-auth');
+      localStorage.removeItem('consulton-viewMode');
+      
       setAppState({ isAuthenticated: false, user: null });
+      
+      // 커스텀 이벤트 발생으로 다른 컴포넌트 상태 업데이트
+      window.dispatchEvent(new CustomEvent('authStateChanged', { 
+        detail: { type: 'logout', name: 'user' } 
+      }));
+      
       router.push("/auth/login");
     } catch (error) {
       console.error('로그아웃 실패:', error);
+      // API 실패 시에도 로컬 상태는 정리
+      localStorage.removeItem('consulton-user');
+      localStorage.removeItem('consulton-auth');
+      localStorage.removeItem('consulton-viewMode');
+      
+      setAppState({ isAuthenticated: false, user: null });
+      router.push("/auth/login");
     }
   };
 
