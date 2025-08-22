@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { expertDataService } from "@/services/ExpertDataService";
+import { getChatHistory, ChatHistoryItem } from "@/data/dummy";
 import {
   Home,
   MessageCircle,
@@ -14,8 +15,6 @@ import {
   Bell,
   Star,
   CreditCard,
-  LifeBuoy,
-  Megaphone,
   PanelLeft,
   ChevronRight,
   LogOut,
@@ -23,6 +22,7 @@ import {
   Shield,
   HelpCircle,
   ArrowLeftRight,
+  Calendar,
 } from "lucide-react";
 
 interface User {
@@ -54,6 +54,18 @@ interface MenuItem {
   path: string;
 }
 
+interface ContextMenu {
+  show: boolean;
+  x: number;
+  y: number;
+  item: string;
+}
+
+interface EditingItem {
+  id: string;
+  title: string;
+}
+
 const Sidebar: React.FC<SidebarProps> = ({
   isOpen = false,
   onClose,
@@ -68,6 +80,14 @@ const Sidebar: React.FC<SidebarProps> = ({
     null
   );
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [contextMenu, setContextMenu] = useState<ContextMenu>({
+    show: false,
+    x: 0,
+    y: 0,
+    item: ""
+  });
+  const [editingItem, setEditingItem] = useState<EditingItem | null>(null);
+  const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>([]);
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     if (typeof window === "undefined") return "light";
     const stored = localStorage.getItem("consulton-theme");
@@ -193,6 +213,25 @@ const Sidebar: React.FC<SidebarProps> = ({
     setIsHydrated(true);
   }, []);
 
+  // 채팅 기록 초기화
+  useEffect(() => {
+    if (isAuthenticated) {
+      setChatHistory(getChatHistory(20));
+    }
+  }, [isAuthenticated]);
+
+  // 컨텍스트 메뉴 외부 클릭 시 닫기
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setContextMenu(prev => ({ ...prev, show: false }));
+    };
+
+    if (contextMenu.show) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [contextMenu.show]);
+
   useEffect(() => {
     // 간단한 테마 토글 (class 전략)
     if (theme === "dark") {
@@ -253,6 +292,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     const userMenu = [
       { id: "home", name: "홈", icon: Home, path: "/dashboard" },
       { id: "experts", name: "전문가 찾기", icon: Users, path: "/experts" },
+      { id: "expert-consultation", name: "전문가 상담", icon: Calendar, path: "/expert-consultation" },
       { id: "chat", name: "AI 상담", icon: MessageCircle, path: "/chat" },
     ];
 
@@ -279,13 +319,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     return userMenu;
   }, [effectiveVariant, user, isAuthenticated]);
 
-  const secondaryMenu: MenuItem[] = useMemo(
-    () => [
-      { id: "support", name: "지원", icon: LifeBuoy, path: "/community" },
-      { id: "changelog", name: "변경 로그", icon: Megaphone, path: "/" },
-    ],
-    []
-  );
+
 
   const isActivePath = (itemPath: string) => {
     if (itemPath === "/") return pathname === "/";
@@ -327,6 +361,72 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>
+      {/* 컨텍스트 메뉴 */}
+      {contextMenu.show && (
+        <div 
+          className="fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-32"
+          style={{ 
+            left: contextMenu.x, 
+            top: contextMenu.y,
+            transform: 'translate(-50%, -100%)'
+          }}
+        >
+          <button
+            onClick={() => {
+              // 공유하기 기능
+              if (navigator.share) {
+                navigator.share({
+                  title: contextMenu.item,
+                  text: `AI 상담 기록: ${contextMenu.item}`
+                });
+              } else {
+                // 클립보드에 복사
+                navigator.clipboard.writeText(`AI 상담 기록: ${contextMenu.item}`);
+              }
+              setContextMenu(prev => ({ ...prev, show: false }));
+            }}
+            className="w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left flex items-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+            </svg>
+            공유하기
+          </button>
+          <button
+            onClick={() => {
+              // 이름 바꾸기 기능 - 인라인 편집 모드 활성화
+              const chatItem = chatHistory.find(item => item.title === contextMenu.item);
+              if (chatItem) {
+                setEditingItem({ id: chatItem.id, title: chatItem.title });
+              }
+              setContextMenu(prev => ({ ...prev, show: false }));
+            }}
+            className="w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left flex items-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            이름 바꾸기
+          </button>
+          <button
+            onClick={() => {
+              // 삭제 기능
+              if (confirm(`"${contextMenu.item}"을(를) 삭제하시겠습니까?`)) {
+                // 여기서 실제로는 상태를 업데이트해야 함
+                console.log(`삭제: ${contextMenu.item}`);
+              }
+              setContextMenu(prev => ({ ...prev, show: false }));
+            }}
+            className="w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-50 text-left flex items-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            삭제
+          </button>
+        </div>
+      )}
+
       {showExitWarning && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-lg max-w-md w-full">
@@ -380,10 +480,13 @@ const Sidebar: React.FC<SidebarProps> = ({
         }`}
       >
         <div className="flex flex-col h-full">
-          <div className="h-16" />
+          {/* 네비게이션 바 높이만큼 상단 여백 */}
+          <div className="h-16 flex-shrink-0" />
 
-          <div className="flex-1 overflow-y-auto px-3 py-4">
-            <nav className="space-y-1">
+          {/* 메인 컨텐츠 영역 */}
+          <div className="flex-1 flex flex-col min-h-0 px-3 py-4">
+            {/* 고정 메뉴 영역 */}
+            <nav className="space-y-1 flex-shrink-0 mb-4">
               {!isHydrated ? (
                 // 로딩 상태의 메뉴 스켈레톤
                 Array.from({ length: effectiveVariant === "expert" ? 7 : 6 }).map((_, index) => (
@@ -420,56 +523,84 @@ const Sidebar: React.FC<SidebarProps> = ({
               )}
             </nav>
 
-            {/* 로그인된 사용자에게만 다가오는 일정과 보조 메뉴 표시 */}
-            {isAuthenticated && (
-              <>
-                <div className="mt-6">
-                  <p className="px-3 text-xs font-semibold text-gray-400">
-                    다가오는 일정
-                  </p>
-                  <ul className="mt-2 space-y-1">
-                    {["팀 코칭", "이직 상담", "프로필 검수", "세션 리뷰"].map(
-                      (label, i) => (
-                        <li
-                          key={i}
-                          className="px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-gray-50"
+            {/* 스크롤 가능한 채팅 기록 영역 - AI 상담 메뉴 선택 시에만 표시 */}
+            {isAuthenticated && isActivePath("/chat") && (
+              <div className="mt-16 flex-1 overflow-y-auto min-h-0">
+                <p className="px-3 text-xs font-semibold text-gray-400 mb-3">
+                  AI 채팅 상담
+                </p>
+                <ul className="space-y-1">
+                  {chatHistory.map((chatItem) => (
+                    <li
+                      key={chatItem.id}
+                      className="px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-gray-50 cursor-pointer relative group"
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        setContextMenu({ show: true, x: e.clientX, y: e.clientY, item: chatItem.title });
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          {editingItem?.id === chatItem.id ? (
+                            <input
+                              type="text"
+                              value={editingItem.title}
+                              onChange={(e) => setEditingItem(prev => prev ? { ...prev, title: e.target.value } : null)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  // 저장
+                                  setChatHistory(prev => 
+                                    prev.map(item => 
+                                      item.id === chatItem.id 
+                                        ? { ...item, title: editingItem.title }
+                                        : item
+                                    )
+                                  );
+                                  setEditingItem(null);
+                                } else if (e.key === 'Escape') {
+                                  // 취소
+                                  setEditingItem(null);
+                                }
+                              }}
+                              onBlur={() => {
+                                // 저장
+                                setChatHistory(prev => 
+                                  prev.map(item => 
+                                    item.id === chatItem.id 
+                                      ? { ...item, title: editingItem.title }
+                                      : item
+                                  )
+                                );
+                                setEditingItem(null);
+                              }}
+                              className="w-full bg-white border border-blue-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              autoFocus
+                            />
+                          ) : (
+                            <span className="truncate block">{chatItem.title}</span>
+                          )}
+                        </div>
+                        <button 
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-200 rounded flex-shrink-0 ml-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setContextMenu({ show: true, x: e.clientX, y: e.clientY, item: chatItem.title });
+                          }}
                         >
-                          {label}
-                        </li>
-                      )
-                    )}
-                  </ul>
-                </div>
-
-                <div className="mt-6">
-                  <nav className="space-y-1">
-                    {secondaryMenu.map((item) => {
-                      const Icon = item.icon;
-                      const active = isActivePath(item.path);
-                      return (
-                        <button
-                          key={item.id}
-                          onClick={() => handleNavigate(item)}
-                          className={`w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                            active
-                              ? "bg-gray-100 text-gray-900"
-                              : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
-                          }`}
-                        >
-                          <Icon
-                            className={`h-5 w-5 ${active ? "text-gray-900" : "text-gray-500"}`}
-                          />
-                          <span>{item.name}</span>
+                          <svg className="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                          </svg>
                         </button>
-                      );
-                    })}
-                  </nav>
-                </div>
-              </>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
           </div>
 
-          <div className="border-t border-gray-200 p-3">
+          {/* 프로필 섹션 - 하단 고정 */}
+          <div className="border-t border-gray-200 p-3 flex-shrink-0">
             <div className="relative">
               {!isHydrated ? (
                 // 로딩 상태
