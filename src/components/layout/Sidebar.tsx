@@ -23,6 +23,8 @@ import {
   HelpCircle,
   ArrowLeftRight,
   Calendar,
+  Phone,
+  Video,
 } from "lucide-react";
 
 interface User {
@@ -75,10 +77,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   const pathname = usePathname();
   const router = useRouter();
 
-  const [showExitWarning, setShowExitWarning] = useState(false);
-  const [pendingNavigation, setPendingNavigation] = useState<MenuItem | null>(
-    null
-  );
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [contextMenu, setContextMenu] = useState<ContextMenu>({
     show: false,
@@ -332,7 +330,27 @@ const Sidebar: React.FC<SidebarProps> = ({
   // 채팅 기록 초기화
   useEffect(() => {
     if (isAuthenticated) {
-      setChatHistory(getChatHistory(20));
+      // API에서 채팅 히스토리 로드
+      const loadChatHistory = async () => {
+        try {
+          const response = await fetch('/api/app-state');
+          const result = await response.json();
+          if (result.success && result.data.chatHistory) {
+            setChatHistory(result.data.chatHistory);
+          }
+        } catch (error) {
+          console.error('채팅 히스토리 로드 실패:', error);
+          // API 실패 시 더미 데이터 사용
+          setChatHistory(getChatHistory(20));
+        }
+      };
+      
+      loadChatHistory();
+      
+      // 주기적으로 채팅 히스토리 업데이트 (5초마다)
+      const interval = setInterval(loadChatHistory, 5000);
+      
+      return () => clearInterval(interval);
     }
   }, [isAuthenticated]);
 
@@ -409,7 +427,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       { id: "home", name: "홈", icon: Home, path: "/dashboard" },
       { id: "experts", name: "전문가 찾기", icon: Users, path: "/experts" },
       { id: "expert-consultation", name: "전문가 상담", icon: Calendar, path: "/expert-consultation" },
-      { id: "chat", name: "AI 상담", icon: MessageCircle, path: "/chat" },
+      { id: "chat", name: "AI채팅 상담", icon: MessageCircle, path: "/chat" },
     ];
 
     // 로그인된 사용자에게만 상담 요약 메뉴 표시
@@ -475,9 +493,9 @@ const Sidebar: React.FC<SidebarProps> = ({
       return;
     }
     
-    // AI 상담 메뉴는 로그인 필요
+    // AI채팅 상담 메뉴는 로그인 필요
     if (item.id === "chat") {
-      console.log('AI 상담 메뉴 클릭 - 현재 상태:', { isAuthenticated, user });
+      console.log('AI채팅 상담 메뉴 클릭 - 현재 상태:', { isAuthenticated, user });
       
       if (pathname === "/chat") {
         sessionStorage.setItem("showQuickChatModal", "true");
@@ -487,7 +505,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       
       // 로그인된 사용자인 경우 바로 이동
       if (isAuthenticated && user) {
-        console.log('로그인된 사용자 - AI 상담 페이지로 이동');
+        console.log('로그인된 사용자 - AI채팅 상담 페이지로 이동');
         router.push(item.path);
         if (onClose) onClose();
         return;
@@ -516,9 +534,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     }
     
     if (pathname === "/chat" && item.id !== "chat") {
-      setPendingNavigation(item);
-      setShowExitWarning(true);
-      return;
+      // AI채팅 상담 중 다른 메뉴 클릭 시 바로 이동 (확인 메시지 없음)
+      console.log('AI채팅 상담 중 다른 메뉴로 이동:', item.name);
     }
     
     // 설정 메뉴 클릭 시 현재 모드에 맞는 경로로 이동
@@ -532,6 +549,81 @@ const Sidebar: React.FC<SidebarProps> = ({
     console.log('정상 메뉴 이동:', item.path);
     router.push(item.path);
     if (onClose) onClose();
+  };
+
+  // 전문가 상담 일정 데이터 (예시)
+  const upcomingConsultations = useMemo(() => {
+    const consultations: {
+      id: string;
+      expertAvatar: string;
+      expertName: string;
+      topic: string;
+      scheduledTime: string;
+      duration: number;
+      consultationType: "chat" | "voice" | "video";
+    }[] = [
+      {
+        id: "1",
+        expertAvatar: "박",
+        expertName: "박지영",
+        topic: "스트레스 관리 및 불안감 치료",
+        scheduledTime: "2024-01-15T14:00:00",
+        duration: 60,
+        consultationType: "video",
+      },
+      {
+        id: "2",
+        expertAvatar: "이",
+        expertName: "이민수",
+        topic: "계약서 검토 및 법적 자문",
+        scheduledTime: "2024-01-15T16:00:00",
+        duration: 45,
+        consultationType: "voice",
+      },
+      {
+        id: "3",
+        expertAvatar: "이",
+        expertName: "이소연",
+        topic: "투자 포트폴리오 구성",
+        scheduledTime: "2024-01-16T10:00:00",
+        duration: 90,
+        consultationType: "chat",
+      },
+    ];
+    return consultations;
+  }, []);
+
+  const handleConsultationClick = (consultation: {
+    id: string;
+    expertAvatar: string;
+    expertName: string;
+    topic: string;
+    scheduledTime: string;
+    duration: number;
+    consultationType: "chat" | "voice" | "video";
+  }) => {
+    console.log("전문가 상담 일정 클릭:", consultation);
+    // 전문가 상담 페이지로 이동
+    router.push("/expert-consultation");
+    if (onClose) onClose();
+  };
+
+  const formatConsultationDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("ko-KR", { 
+      year: "numeric", 
+      month: "2-digit", 
+      day: "2-digit" 
+    }).replace(/\. /g, "/").replace(".", "");
+  };
+
+  const formatConsultationTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString("ko-KR", { 
+      hour: "2-digit", 
+      minute: "2-digit",
+      hour12: false 
+    });
   };
 
   return (
@@ -552,11 +644,11 @@ const Sidebar: React.FC<SidebarProps> = ({
               if (navigator.share) {
                 navigator.share({
                   title: contextMenu.item,
-                  text: `AI 상담 기록: ${contextMenu.item}`
+                  text: `AI채팅 상담 기록: ${contextMenu.item}`
                 });
               } else {
                 // 클립보드에 복사
-                navigator.clipboard.writeText(`AI 상담 기록: ${contextMenu.item}`);
+                navigator.clipboard.writeText(`AI채팅 상담 기록: ${contextMenu.item}`);
               }
               setContextMenu(prev => ({ ...prev, show: false }));
             }}
@@ -584,11 +676,28 @@ const Sidebar: React.FC<SidebarProps> = ({
             이름 바꾸기
           </button>
           <button
-            onClick={() => {
+            onClick={async () => {
               // 삭제 기능
               if (confirm(`"${contextMenu.item}"을(를) 삭제하시겠습니까?`)) {
-                // 여기서 실제로는 상태를 업데이트해야 함
-                console.log(`삭제: ${contextMenu.item}`);
+                try {
+                  const chatItem = chatHistory.find(item => item.title === contextMenu.item);
+                  if (chatItem) {
+                    // API를 통해 채팅 히스토리 삭제
+                    await fetch('/api/app-state', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        action: 'deleteChatHistory',
+                        data: { id: chatItem.id }
+                      })
+                    });
+                    
+                    // 로컬 상태도 업데이트
+                    setChatHistory(prev => prev.filter(item => item.id !== chatItem.id));
+                  }
+                } catch (error) {
+                  console.error('채팅 히스토리 삭제 실패:', error);
+                }
               }
               setContextMenu(prev => ({ ...prev, show: false }));
             }}
@@ -599,39 +708,6 @@ const Sidebar: React.FC<SidebarProps> = ({
             </svg>
             삭제
           </button>
-        </div>
-      )}
-
-      {showExitWarning && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-lg max-w-md w-full">
-            <div className="p-6 space-y-4">
-              <h2 className="text-xl font-semibold text-gray-900 text-center">
-                현재 AI 상담이 저장되지 않고 종료됩니다. 계속하시겠어요?
-              </h2>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setShowExitWarning(false);
-                    setPendingNavigation(null);
-                  }}
-                  className="flex-1 h-10 rounded-md bg-gray-100 text-gray-800 hover:bg-gray-200"
-                >
-                  취소
-                </button>
-                <button
-                  onClick={() => {
-                    if (pendingNavigation) router.push(pendingNavigation.path);
-                    setShowExitWarning(false);
-                    setPendingNavigation(null);
-                  }}
-                  className="flex-1 h-10 rounded-md bg-blue-600 text-white hover:bg-blue-700"
-                >
-                  계속하기
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       )}
 
@@ -739,9 +815,55 @@ const Sidebar: React.FC<SidebarProps> = ({
                               type="text"
                               value={editingItem.title}
                               onChange={(e) => setEditingItem(prev => prev ? { ...prev, title: e.target.value } : null)}
-                              onKeyDown={(e) => {
+                              onKeyDown={async (e) => {
                                 if (e.key === 'Enter') {
-                                  // 저장
+                                  // API를 통해 채팅 히스토리 업데이트
+                                  try {
+                                    await fetch('/api/app-state', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({
+                                        action: 'updateChatHistory',
+                                        data: {
+                                          id: chatItem.id,
+                                          title: editingItem.title
+                                        }
+                                      })
+                                    });
+                                    
+                                    // 로컬 상태도 업데이트
+                                    setChatHistory(prev => 
+                                      prev.map(item => 
+                                        item.id === chatItem.id 
+                                          ? { ...item, title: editingItem.title }
+                                          : item
+                                      )
+                                    );
+                                  } catch (error) {
+                                    console.error('채팅 히스토리 업데이트 실패:', error);
+                                  }
+                                  setEditingItem(null);
+                                } else if (e.key === 'Escape') {
+                                  // 취소
+                                  setEditingItem(null);
+                                }
+                              }}
+                              onBlur={async () => {
+                                // API를 통해 채팅 히스토리 업데이트
+                                try {
+                                  await fetch('/api/app-state', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                      action: 'updateChatHistory',
+                                      data: {
+                                        id: chatItem.id,
+                                        title: editingItem.title
+                                      }
+                                    })
+                                  });
+                                  
+                                  // 로컬 상태도 업데이트
                                   setChatHistory(prev => 
                                     prev.map(item => 
                                       item.id === chatItem.id 
@@ -749,21 +871,9 @@ const Sidebar: React.FC<SidebarProps> = ({
                                         : item
                                     )
                                   );
-                                  setEditingItem(null);
-                                } else if (e.key === 'Escape') {
-                                  // 취소
-                                  setEditingItem(null);
+                                } catch (error) {
+                                  console.error('채팅 히스토리 업데이트 실패:', error);
                                 }
-                              }}
-                              onBlur={() => {
-                                // 저장
-                                setChatHistory(prev => 
-                                  prev.map(item => 
-                                    item.id === chatItem.id 
-                                      ? { ...item, title: editingItem.title }
-                                      : item
-                                  )
-                                );
                                 setEditingItem(null);
                               }}
                               className="w-full bg-white border border-blue-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -784,6 +894,51 @@ const Sidebar: React.FC<SidebarProps> = ({
                             <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
                           </svg>
                         </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* 스크롤 가능한 전문가 상담 일정 영역 - 전문가 상담 메뉴 선택 시에만 표시 */}
+            {isAuthenticated && isActivePath("/expert-consultation") && (
+              <div className="mt-16 flex-1 overflow-y-auto min-h-0">
+                <p className="px-3 text-xs font-semibold text-gray-400 mb-3">
+                  다가오는 상담 일정
+                </p>
+                <ul className="space-y-1">
+                  {upcomingConsultations.map((consultation) => (
+                    <li
+                      key={consultation.id}
+                      className="px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-gray-50 cursor-pointer relative group"
+                      onClick={() => handleConsultationClick(consultation)}
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-medium text-gray-900 truncate">
+                            {consultation.expertName} 전문가
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {consultation.duration}분
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-600 truncate mb-1">
+                          {consultation.topic}
+                        </p>
+                        <div className="flex items-center space-x-2 text-xs text-gray-500">
+                          <span>{formatConsultationDate(consultation.scheduledTime)}</span>
+                          <span>{formatConsultationTime(consultation.scheduledTime)}</span>
+                          {consultation.consultationType === "chat" && (
+                            <MessageCircle className="h-3 w-3 text-gray-400" />
+                          )}
+                          {consultation.consultationType === "voice" && (
+                            <Phone className="h-3 w-3 text-gray-400" />
+                          )}
+                          {consultation.consultationType === "video" && (
+                            <Video className="h-3 w-3 text-gray-400" />
+                          )}
+                        </div>
                       </div>
                     </li>
                   ))}

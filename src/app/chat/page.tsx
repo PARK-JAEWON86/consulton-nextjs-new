@@ -28,13 +28,12 @@ export default function ChatPage() {
   const [isAuthChecked, setIsAuthChecked] = useState(false); // 인증 상태 확인 완료 여부
   const [showFileUpload, setShowFileUpload] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [showMainInput, setShowMainInput] = useState(true);
   const [hasStartedChat, setHasStartedChat] = useState(false);
+  const [isComposing, setIsComposing] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const inputValueRef = useRef<string>("");
 
   // 인증 상태 확인
   useEffect(() => {
@@ -135,10 +134,9 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // 입력값 ref 동기화
-  useEffect(() => {
-    inputValueRef.current = inputValue;
-  }, [inputValue]);
+
+
+
 
   // 텍스트 영역 높이 자동 조정
   const adjustTextareaHeight = useCallback(() => {
@@ -158,16 +156,14 @@ export default function ChatPage() {
     }
   }, []);
 
-  // 메시지 전송 - ref를 사용한 안전한 입력값 처리
-  const handleSendMessage = useCallback(async () => {
-    const currentValue = inputValueRef.current;
-    const trimmedValue = currentValue.trim();
+  // 메시지 전송 - 일반 함수로 변경하여 재생성 문제 해결
+  const handleSendMessage = async () => {
+    const trimmedValue = inputValue.trim();
     
     if (!trimmedValue || isLoading) return;
 
-    // 즉시 입력 필드 초기화 (ref 값도 초기화)
+    // 즉시 입력 필드 초기화
     setInputValue("");
-    inputValueRef.current = "";
     setIsLoading(true);
     
     // 텍스트 영역 높이 초기화
@@ -184,6 +180,46 @@ export default function ChatPage() {
 
     setMessages(prev => [...prev, userMessage]);
 
+    // 새로운 채팅 시작 시 사이드바에 추가
+    if (messages.length === 0) {
+      try {
+        const chatTitle = trimmedValue.length > 30 
+          ? trimmedValue.substring(0, 30) + "..." 
+          : trimmedValue;
+        
+        // 카테고리 자동 분류 (간단한 키워드 기반)
+        let category = "일반";
+        const lowerContent = trimmedValue.toLowerCase();
+        if (lowerContent.includes("이직") || lowerContent.includes("면접") || lowerContent.includes("커리어")) {
+          category = "커리어";
+        } else if (lowerContent.includes("프로젝트") || lowerContent.includes("업무") || lowerContent.includes("팀")) {
+          category = "업무";
+        } else if (lowerContent.includes("코딩") || lowerContent.includes("프로그래밍") || lowerContent.includes("개발")) {
+          category = "개발";
+        } else if (lowerContent.includes("스트레스") || lowerContent.includes("스트레스") || lowerContent.includes("균형")) {
+          category = "웰빙";
+        }
+
+        // API를 통해 채팅 히스토리에 추가
+        await fetch('/api/app-state', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'addChatHistory',
+            data: {
+              id: Date.now().toString(),
+              title: chatTitle,
+              timestamp: new Date().toISOString(),
+              category: category,
+              summary: `${trimmedValue}에 대한 AI채팅 상담`
+            }
+          })
+        });
+      } catch (error) {
+        console.error('채팅 히스토리 추가 실패:', error);
+      }
+    }
+
     // AI 응답 즉시 생성
     const aiMessage: ChatMessage = {
       id: (Date.now() + 1).toString(),
@@ -194,30 +230,30 @@ export default function ChatPage() {
     
     setMessages(prev => [...prev, aiMessage]);
     setIsLoading(false);
-  }, [isLoading]);
+  };
 
-  // 키보드 이벤트 핸들러 - ref 값을 사용한 안전한 처리
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+  // 키보드 이벤트 핸들러
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       e.stopPropagation();
-      handleSendMessage();
+      if (!isComposing) {
+        handleSendMessage();
+      }
     }
-  }, [handleSendMessage]);
+  };
 
   // 초기 입력 필드 키보드 이벤트 핸들러
-  const handleInitialKeyDown = useCallback((e: React.KeyboardEvent) => {
+  const handleInitialKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       e.stopPropagation();
-      const currentValue = inputValueRef.current;
-      if (currentValue.trim()) {
+      if (inputValue.trim() && !isComposing) {
         handleSendMessage();
-        setShowMainInput(false);
         setHasStartedChat(true);
       }
     }
-  }, [handleSendMessage]);
+  };
 
   // 파일 선택 처리
   const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -265,7 +301,7 @@ export default function ChatPage() {
     <ServiceLayout>
       <div className={`min-h-screen bg-gray-50 flex flex-col ${
         !hasStartedChat ? 'overflow-hidden' : ''
-      }`} style={!hasStartedChat ? { height: '100vh', overflow: 'hidden' } : {}}>
+      }`} style={!hasStartedChat ? { minHeight: '100vh' } : {}}>
         {/* 메인 채팅 영역 */}
         <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full relative">
           {/* 메시지 목록 - 스크롤 가능한 영역 */}
@@ -274,9 +310,9 @@ export default function ChatPage() {
               ? 'overflow-y-auto pb-32' 
               : 'overflow-hidden pb-6'
           }`}>
-            {messages.length === 0 ? (
+            {messages.length === 0 && !hasStartedChat ? (
               // 초기 화면 (ChatGPT 스타일) - 스크롤 방지
-              <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)] text-center" style={!hasStartedChat ? { overflow: 'hidden' } : {}}>
+              <div className="flex flex-col items-center justify-center py-20 text-center mt-16" style={{ overflow: 'hidden' }}>
                 <h1 className="text-3xl font-semibold text-gray-900 mb-4">
                   어떤 상담을 받아야 할지 모르시나요?
                 </h1>
@@ -285,145 +321,148 @@ export default function ChatPage() {
                 </p>
                 
                 {/* AI 채팅 입력 필드 */}
-                {showMainInput && (
-                  <div className="max-w-4xl w-full">
-                    <div className="flex items-center space-x-3 bg-white border border-gray-300 rounded-2xl p-4 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 focus-within:shadow-lg transition-all duration-200 hover:border-gray-400">
-                      {/* 첨부 파일 버튼 */}
-                      <button 
-                        onClick={toggleFileUpload}
-                        className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0 relative"
-                      >
-                        <Plus className="w-5 h-5" />
-                        
-                        {/* 파일 업로드 드롭다운 */}
-                        {showFileUpload && (
-                          <div className="absolute bottom-full left-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-lg p-2 min-w-[200px] z-10">
-                            <div className="space-y-2">
-                              <button
-                                onClick={() => fileInputRef.current?.click()}
-                                className="w-full flex items-center space-x-2 p-2 text-left hover:bg-gray-50 rounded-md transition-colors"
-                              >
-                                <Image className="w-4 h-4 text-blue-500" />
-                                <span className="text-sm">사진 업로드</span>
-                              </button>
-                              <button
-                                onClick={() => fileInputRef.current?.click()}
-                                className="w-full flex items-center space-x-2 p-2 text-left hover:bg-gray-50 rounded-md transition-colors"
-                              >
-                                <File className="w-4 h-4 text-green-500" />
-                                <span className="text-sm">파일 업로드</span>
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </button>
+                <div className="max-w-4xl w-full">
+                  <div className="flex items-center space-x-3 bg-white border border-gray-300 rounded-2xl p-4 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 focus-within:shadow-lg transition-all duration-200 hover:border-gray-400">
+                    {/* 첨부 파일 버튼 */}
+                    <button 
+                      onClick={toggleFileUpload}
+                      className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0 relative"
+                    >
+                      <Plus className="w-5 h-5" />
                       
-                      {/* 숨겨진 파일 입력 */}
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        multiple
-                        accept="image/*,.pdf,.doc,.docx,.txt"
-                        onChange={handleFileSelect}
-                        className="hidden"
-                      />
-                      
-                      {/* 텍스트 입력 영역 */}
-                      <div className="flex-1 relative">
-                        <textarea
-                          value={inputValue}
-                          onChange={(e) => {
-                            setInputValue(e.target.value);
-                            adjustInitialTextareaHeight();
-                          }}
-                          onKeyDown={handleInitialKeyDown}
-                          placeholder="상담하고 싶은 고민이나 궁금한 점을 자세히 적어주세요..."
-                          className="w-full resize-none border-0 outline-none focus:ring-0 text-base placeholder-gray-500 bg-transparent min-h-[24px] max-h-[200px]"
-                          rows={1}
-                          style={{ minHeight: "24px" }}
-                        />
-                      </div>
-                      
-                      {/* 음성 입력 버튼 */}
-                      <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0">
-                        <Mic className="w-5 h-5" />
-                      </button>
-                      
-                      {/* 전송 버튼 */}
-                      <button 
-                        onClick={() => {
-                          if (inputValue.trim()) {
-                            handleSendMessage();
-                            setShowMainInput(false);
-                            setHasStartedChat(true);
-                          }
-                        }}
-                        disabled={!inputValue.trim()}
-                        className={`p-2 rounded-lg transition-colors flex-shrink-0 ${
-                          inputValue.trim()
-                            ? 'bg-blue-500 text-white hover:bg-blue-600'
-                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        }`}
-                      >
-                        <Send className="w-5 h-5" />
-                      </button>
-                    </div>
-                    
-                    {/* 선택된 파일 표시 */}
-                    {selectedFiles.length > 0 && (
-                      <div className="mt-3 space-y-2">
-                        {selectedFiles.map((file, index) => (
-                          <div key={index} className="flex items-center space-x-2 bg-white border border-gray-200 rounded-lg p-2">
-                            <div className="flex items-center space-x-2 flex-1">
-                              {file.type.startsWith('image/') ? (
-                                <Image className="w-4 h-4 text-blue-500" />
-                              ) : (
-                                <File className="w-4 h-4 text-green-500" />
-                              )}
-                              <span className="text-sm text-gray-700 truncate">{file.name}</span>
-                              <span className="text-xs text-gray-500">({(file.size / 1024).toFixed(1)}KB)</span>
-                            </div>
+                      {/* 파일 업로드 드롭다운 */}
+                      {showFileUpload && (
+                        <div className="absolute bottom-full left-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-lg p-2 min-w-[200px] z-10">
+                          <div className="space-y-2">
                             <button
-                              onClick={() => removeFile(index)}
-                              className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                              onClick={() => fileInputRef.current?.click()}
+                              className="w-full flex items-center space-x-2 p-2 text-left hover:bg-gray-50 rounded-md transition-colors"
                             >
-                              <X className="w-4 h-4" />
+                              <Image className="w-4 h-4 text-blue-500" />
+                              <span className="text-sm">사진 업로드</span>
+                            </button>
+                            <button
+                              onClick={() => fileInputRef.current?.click()}
+                              className="w-full flex items-center space-x-2 p-2 text-left hover:bg-gray-50 rounded-md transition-colors"
+                            >
+                              <File className="w-4 h-4 text-green-500" />
+                              <span className="text-sm">파일 업로드</span>
                             </button>
                           </div>
-                        ))}
-                      </div>
-                    )}
+                        </div>
+                      )}
+                    </button>
                     
-                    {/* 입력 예시 카드들 */}
-                    <div className="mt-6">
-                      <h3 className="text-sm font-medium text-gray-700 mb-3 text-center">💡 질문예시</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                          <p className="text-xs text-gray-700 leading-relaxed">
-                            "법무사와 상담하고 싶은데 어떤 서비스를 받을 수 있나요?"
-                          </p>
-                        </div>
-                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                          <p className="text-xs text-gray-700 leading-relaxed">
-                            "부동산 계약 관련해서 도움이 필요해요. 어디서부터 시작해야 할까요?"
-                          </p>
-                        </div>
-                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                          <p className="text-xs text-gray-700 leading-relaxed">
-                            "사업자 등록과 세무 관련해서 궁금한 점이 있어요"
-                          </p>
-                        </div>
-                      </div>
+                    {/* 숨겨진 파일 입력 */}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      multiple
+                      accept="image/*,.pdf,.doc,.docx,.txt"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                    
+                    {/* 텍스트 입력 영역 */}
+                    <div className="flex-1 relative">
+                      <textarea
+                        value={inputValue}
+                        onChange={(e) => {
+                          setInputValue(e.target.value);
+                          adjustInitialTextareaHeight();
+                        }}
+                        onCompositionStart={() => setIsComposing(true)}
+                        onCompositionEnd={(e) => {
+                          setIsComposing(false);
+                          setInputValue((e.target as HTMLTextAreaElement).value);
+                          adjustInitialTextareaHeight();
+                        }}
+                        onKeyDown={handleInitialKeyDown}
+                        placeholder="상담하고 싶은 고민이나 궁금한 점을 자세히 적어주세요..."
+                        className="w-full resize-none border-0 outline-none focus:ring-0 text-base placeholder-gray-500 bg-transparent min-h-[24px] max-h-[200px]"
+                        rows={1}
+                        style={{ minHeight: "24px" }}
+                      />
                     </div>
                     
-                    {/* AI 상담 어시스턴트 경고문 */}
-                    <div className="mt-6 text-center">
-                      <p className="text-xs text-gray-500">
-                        AI 상담 어시스턴트는 실수를 할 수 있습니다. 중요한 정보는 재차 확인하세요.
-                      </p>
+                    {/* 음성 입력 버튼 */}
+                    <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0">
+                      <Mic className="w-5 h-5" />
+                    </button>
+                    
+                    {/* 전송 버튼 */}
+                    <button 
+                                                                    onClick={() => {
+                        if (inputValue.trim() && !isComposing) {
+                          handleSendMessage();
+                          setHasStartedChat(true);
+                        }
+                      }}
+                      disabled={!inputValue.trim()}
+                      className={`p-2 rounded-lg transition-colors flex-shrink-0 ${
+                        inputValue.trim()
+                          ? 'bg-blue-500 text-white hover:bg-blue-600'
+                          : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      }`}
+                    >
+                      <Send className="w-5 h-5" />
+                    </button>
+                  </div>
+                  
+                  {/* 선택된 파일 표시 */}
+                  {selectedFiles.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      {selectedFiles.map((file, index) => (
+                        <div key={index} className="flex items-center space-x-2 bg-white border border-gray-200 rounded-lg p-2">
+                          <div className="flex items-center space-x-2 flex-1">
+                            {file.type.startsWith('image/') ? (
+                              <Image className="w-4 h-4 text-blue-500" />
+                            ) : (
+                              <File className="w-4 h-4 text-green-500" />
+                            )}
+                            <span className="text-sm text-gray-700 truncate">{file.name}</span>
+                            <span className="text-xs text-gray-500">({(file.size / 1024).toFixed(1)}KB)</span>
+                          </div>
+                          <button
+                            onClick={() => removeFile(index)}
+                            className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* 입력 예시 카드들 */}
+                  <div className="mt-6">
+                    <h3 className="text-sm font-medium text-gray-700 mb-3 text-center">💡 질문예시</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                        <p className="text-xs text-gray-700 leading-relaxed">
+                          "법무사와 상담하고 싶은데 어떤 서비스를 받을 수 있나요?"
+                        </p>
+                      </div>
+                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                        <p className="text-xs text-gray-700 leading-relaxed">
+                          "부동산 계약 관련해서 도움이 필요해요. 어디서부터 시작해야 할까요?"
+                        </p>
+                      </div>
+                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                        <p className="text-xs text-gray-700 leading-relaxed">
+                          "사업자 등록과 세무 관련해서 궁금한 점이 있어요"
+                        </p>
+                      </div>
                     </div>
                   </div>
-                )}
+                  
+                  {/* AI 상담 어시스턴트 경고문 */}
+                  <div className="mt-6 text-center">
+                    <p className="text-xs text-gray-500">
+                      AI 상담 어시스턴트는 실수를 할 수 있습니다. 중요한 정보는 재차 확인하세요.
+                    </p>
+                  </div>
+                </div>
               </div>
             ) : (
               // 메시지들 표시 - 첫 질문 후에도 중앙 정렬 유지
@@ -480,13 +519,13 @@ export default function ChatPage() {
           </div>
 
           {/* 하단 입력 필드 - 고정 위치 */}
-          <div className={`absolute bottom-0 left-0 right-0 border-t border-gray-200 bg-gray-50 py-6 transition-all duration-500 ease-in-out z-10 ${
+          <div className={`fixed bottom-0 left-0 right-0 border-t border-gray-200 bg-gray-50 py-4 transition-all duration-300 ease-in-out z-20 ${
             hasStartedChat 
               ? 'opacity-100 transform translate-y-0' 
-              : 'opacity-0 transform translate-y-full'
-          }`}>
+              : 'opacity-0 transform translate-y-full pointer-events-none'
+          } lg:left-64`}>
             <div className="max-w-4xl mx-auto w-full px-4">
-              <div className="flex items-end space-x-3 bg-white border border-gray-300 rounded-2xl p-4 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 focus-within:shadow-lg transition-all duration-200 hover:border-gray-400 w-full">
+              <div className="flex items-end space-x-3 bg-gray-50 border border-gray-300 rounded-2xl p-4 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 focus-within:shadow-lg transition-all duration-200 hover:border-gray-400 w-full shadow-lg">
                 {/* 첨부 파일 버튼 */}
                 <button 
                   onClick={toggleFileUpload}
@@ -536,6 +575,12 @@ export default function ChatPage() {
                       setInputValue(e.target.value);
                       adjustTextareaHeight();
                     }}
+                    onCompositionStart={() => setIsComposing(true)}
+                    onCompositionEnd={(e) => {
+                      setIsComposing(false);
+                      setInputValue((e.target as HTMLTextAreaElement).value);
+                      adjustTextareaHeight();
+                    }}
                     onKeyDown={handleKeyDown}
                     placeholder="무엇이든 물어보세요..."
                     className="w-full resize-none border-0 outline-none focus:ring-0 text-base placeholder-gray-500 bg-transparent min-h-[24px] max-h-[300px]"
@@ -554,8 +599,7 @@ export default function ChatPage() {
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    const currentValue = inputValueRef.current;
-                    if (currentValue.trim() && !isLoading) {
+                    if (inputValue.trim() && !isLoading && !isComposing) {
                       handleSendMessage();
                     }
                   }}
@@ -570,7 +614,7 @@ export default function ChatPage() {
                 </button>
               </div>
 
-                            {/* 선택된 파일 표시 */}
+              {/* 선택된 파일 표시 */}
               {selectedFiles.length > 0 && (
                 <div className="mt-3 space-y-2">
                   {selectedFiles.map((file, index) => (

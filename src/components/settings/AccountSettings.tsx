@@ -34,6 +34,11 @@ interface SaveStatus {
   password: "idle" | "saving" | "success" | "error";
 }
 
+interface ErrorMessages {
+  email: string;
+  password: string;
+}
+
 interface PasswordStrength {
   score: number;
   feedback: string[];
@@ -61,6 +66,11 @@ const AccountSettings = () => {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>({
     email: "idle",
     password: "idle",
+  });
+
+  const [errorMessages, setErrorMessages] = useState<ErrorMessages>({
+    email: "",
+    password: "",
   });
 
   const [passwordStrength, setPasswordStrength] = useState<PasswordStrength>({
@@ -122,12 +132,22 @@ const AccountSettings = () => {
 
   const handleEmailSave = async () => {
     if (!emailSettings.newEmail) {
-      alert("새 이메일 주소를 입력해주세요.");
+      setErrorMessages(prev => ({ ...prev, email: "새 이메일 주소를 입력해주세요." }));
+      setSaveStatus((prev) => ({ ...prev, email: "error" }));
+      setTimeout(() => {
+        setSaveStatus((prev) => ({ ...prev, email: "idle" }));
+        setErrorMessages(prev => ({ ...prev, email: "" }));
+      }, 3000);
       return;
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailSettings.newEmail)) {
-      alert("올바른 이메일 형식이 아닙니다.");
+      setErrorMessages(prev => ({ ...prev, email: "올바른 이메일 형식이 아닙니다." }));
+      setSaveStatus((prev) => ({ ...prev, email: "error" }));
+      setTimeout(() => {
+        setSaveStatus((prev) => ({ ...prev, email: "idle" }));
+        setErrorMessages(prev => ({ ...prev, email: "" }));
+      }, 3000);
       return;
     }
 
@@ -143,6 +163,7 @@ const AccountSettings = () => {
         newEmail: "",
       }));
       setSaveStatus((prev) => ({ ...prev, email: "success" }));
+      setErrorMessages(prev => ({ ...prev, email: "" }));
 
       setTimeout(() => {
         setSaveStatus((prev) => ({ ...prev, email: "idle" }));
@@ -161,17 +182,32 @@ const AccountSettings = () => {
       !passwordSettings.newPassword ||
       !passwordSettings.confirmPassword
     ) {
-      alert("모든 필드를 입력해주세요.");
+      setErrorMessages(prev => ({ ...prev, password: "모든 필드를 입력해주세요." }));
+      setSaveStatus((prev) => ({ ...prev, password: "error" }));
+      setTimeout(() => {
+        setSaveStatus((prev) => ({ ...prev, password: "idle" }));
+        setErrorMessages(prev => ({ ...prev, password: "" }));
+      }, 3000);
       return;
     }
 
     if (passwordSettings.newPassword !== passwordSettings.confirmPassword) {
-      alert("새 비밀번호가 일치하지 않습니다.");
+      setErrorMessages(prev => ({ ...prev, password: "새 비밀번호가 일치하지 않습니다." }));
+      setSaveStatus((prev) => ({ ...prev, password: "error" }));
+      setTimeout(() => {
+        setSaveStatus((prev) => ({ ...prev, password: "idle" }));
+        setErrorMessages(prev => ({ ...prev, password: "" }));
+      }, 3000);
       return;
     }
 
     if (passwordStrength.score < 3) {
-      alert("비밀번호가 너무 약합니다. 더 강한 비밀번호를 사용해주세요.");
+      setErrorMessages(prev => ({ ...prev, password: "비밀번호가 너무 약합니다. 더 강한 비밀번호를 사용해주세요." }));
+      setSaveStatus((prev) => ({ ...prev, password: "error" }));
+      setTimeout(() => {
+        setSaveStatus((prev) => ({ ...prev, password: "idle" }));
+        setErrorMessages(prev => ({ ...prev, password: "" }));
+      }, 3000);
       return;
     }
 
@@ -188,6 +224,7 @@ const AccountSettings = () => {
       });
       setPasswordStrength({ score: 0, feedback: [] });
       setSaveStatus((prev) => ({ ...prev, password: "success" }));
+      setErrorMessages(prev => ({ ...prev, password: "" }));
 
       setTimeout(() => {
         setSaveStatus((prev) => ({ ...prev, password: "idle" }));
@@ -202,7 +239,7 @@ const AccountSettings = () => {
 
   const handleSendVerification = async () => {
     // 이메일 인증 코드 발송 로직
-    alert("인증 코드가 이메일로 발송되었습니다.");
+    // alert 제거됨 - 필요시 상태 기반 메시지로 대체 가능
   };
 
   const getPasswordStrengthColor = (score: number) => {
@@ -295,10 +332,10 @@ const AccountSettings = () => {
               </div>
             )}
 
-            {saveStatus.email === "error" && (
+            {saveStatus.email === "error" && errorMessages.email && (
               <div className="mt-2 text-sm text-red-600 flex items-center space-x-1">
                 <AlertTriangle className="h-4 w-4" />
-                <span>이메일 변경에 실패했습니다. 다시 시도해주세요.</span>
+                <span>{errorMessages.email}</span>
               </div>
             )}
           </div>
@@ -468,10 +505,10 @@ const AccountSettings = () => {
             </div>
           )}
 
-          {saveStatus.password === "error" && (
+          {saveStatus.password === "error" && errorMessages.password && (
             <div className="mt-2 text-sm text-red-600 flex items-center space-x-1">
               <AlertTriangle className="h-4 w-4" />
-              <span>비밀번호 변경에 실패했습니다. 다시 시도해주세요.</span>
+              <span>{errorMessages.password}</span>
             </div>
           )}
         </div>

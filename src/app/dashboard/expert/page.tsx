@@ -310,7 +310,7 @@ export default function ExpertDashboardProfilePage() {
           {/* 오버뷰 헤더 */}
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-3xl font-bold text-gray-900">
                 안녕하세요, {user?.name || initialData?.name || "전문가"}님
               </h1>
               <p className="text-gray-600 mt-1">전문가 대시보드</p>
