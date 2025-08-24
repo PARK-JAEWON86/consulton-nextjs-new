@@ -16,6 +16,7 @@ import PopularCategoriesSection from "../components/home/PopularCategoriesSectio
 import AIChatPromoSection from "../components/home/AIChatPromoSection";
 import Footer from "../components/layout/Footer";
 import { convertExpertItemToProfile } from "../data/dummy/experts";
+import { dummyExperts } from "../data/dummy/experts";
 import {
   Users,
   Target,
@@ -68,8 +69,11 @@ export default function HomePage() {
   useEffect(() => {
     const loadExpertProfiles = async () => {
       try {
+        console.log('랜딩페이지: 전문가 프로필 로드 시작...');
+        
         // 먼저 API 초기화 호출
-        await fetch('/api/expert-profiles', {
+        console.log('랜딩페이지: API 초기화 호출 중...');
+        const initResponse = await fetch('/api/expert-profiles', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -78,15 +82,97 @@ export default function HomePage() {
             action: 'initializeProfiles'
           })
         });
+        
+        const initResult = await initResponse.json();
+        console.log('랜딩페이지: 초기화 결과:', initResult);
 
         // 그 다음 전문가 프로필 조회
+        console.log('랜딩페이지: 전문가 프로필 조회 중...');
         const response = await fetch('/api/expert-profiles');
         const result = await response.json();
+        console.log('랜딩페이지: 전문가 프로필 조회 결과:', result);
+        
         if (result.success) {
-          setAllExperts(result.data.profiles || []);
+          console.log('랜딩페이지: 전문가 데이터 설정:', result.data.profiles?.length || 0, '명');
+          
+          // API 응답을 ExpertProfile 타입으로 변환
+          const convertedExperts = result.data.profiles.map((apiExpert: any) => ({
+            id: parseInt(apiExpert.id),
+            name: apiExpert.fullName,
+            specialty: apiExpert.specialty,
+            experience: apiExpert.experienceYears,
+            description: apiExpert.bio,
+            education: [],
+            certifications: apiExpert.certifications?.map((cert: any) => cert.name) || [],
+            specialties: apiExpert.keywords || [],
+            specialtyAreas: apiExpert.keywords || [],
+            consultationTypes: apiExpert.consultationTypes || [],
+            languages: ['한국어'],
+            hourlyRate: 0,
+            pricePerMinute: 0,
+            totalSessions: 0,
+            avgRating: 4.5,
+            rating: 4.5,
+            reviewCount: 0,
+            completionRate: 95,
+            repeatClients: 0,
+            responseTime: '1시간 이내',
+            averageSessionDuration: 60,
+            cancellationPolicy: '24시간 전 취소 가능',
+            availability: apiExpert.availability || {},
+            weeklyAvailability: {},
+            holidayPolicy: undefined,
+            contactInfo: {
+              phone: '',
+              email: apiExpert.email || '',
+              location: '서울특별시',
+              website: ''
+            },
+            location: '서울특별시',
+            timeZone: 'Asia/Seoul',
+            profileImage: apiExpert.profileImage || null,
+            portfolioFiles: [],
+            portfolioItems: [],
+            tags: apiExpert.keywords || [],
+            targetAudience: ['성인'],
+            isOnline: true,
+            isProfileComplete: true,
+            createdAt: new Date(apiExpert.createdAt),
+            updatedAt: new Date(apiExpert.updatedAt),
+            price: '₩50,000',
+            image: apiExpert.profileImage || null,
+            consultationStyle: '체계적이고 전문적인 접근',
+            successStories: 50,
+            nextAvailableSlot: '2024-01-22T10:00:00',
+            profileViews: 500,
+            lastActiveAt: new Date(apiExpert.updatedAt),
+            joinedAt: new Date(apiExpert.createdAt),
+            socialProof: {
+              linkedIn: undefined,
+              website: undefined,
+              publications: []
+            },
+            pricingTiers: [
+              { duration: 30, price: 25000, description: '기본 상담' },
+              { duration: 60, price: 45000, description: '상세 상담' },
+              { duration: 90, price: 65000, description: '종합 상담' }
+            ],
+            reschedulePolicy: '12시간 전 일정 변경 가능'
+          }));
+          
+          console.log('랜딩페이지: 변환된 전문가 데이터:', convertedExperts.length, '명');
+          setAllExperts(convertedExperts);
+        } else {
+          console.error('랜딩페이지: API 응답 실패:', result);
+          // API 호출 실패 시 더미 데이터를 fallback으로 사용
+          const fallbackExperts = dummyExperts.map(expert => convertExpertItemToProfile(expert));
+          setAllExperts(fallbackExperts);
         }
       } catch (error) {
-        console.error('전문가 프로필 로드 실패:', error);
+        console.error('랜딩페이지: 전문가 프로필 로드 실패:', error);
+        // API 호출 실패 시 더미 데이터를 fallback으로 사용
+        const fallbackExperts = dummyExperts.map(expert => convertExpertItemToProfile(expert));
+        setAllExperts(fallbackExperts);
       }
     };
 
@@ -123,7 +209,7 @@ export default function HomePage() {
       // 2. 연령대 필터링 (targetAudience 기준)
       const ageGroupName = ageGroups.find(a => a.id === ageGroup)?.name;
       let ageMatch = true;
-      if (ageGroupName) {
+      if (ageGroupName && expert.targetAudience && Array.isArray(expert.targetAudience)) {
         if (ageGroup === "teen") {
           ageMatch = expert.targetAudience.some((target: string) => 
             target.includes("청소년") || target.includes("중학생") || target.includes("고등학생")

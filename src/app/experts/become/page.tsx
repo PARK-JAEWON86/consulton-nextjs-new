@@ -317,7 +317,7 @@ export default function BecomeExpertPage() {
             <Sparkles className="w-3.5 h-3.5" />
             전문가 되기
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">전문가 등록</h1>
+          <h1 className="text-3xl font-bold text-gray-900">전문가 등록</h1>
           <p className="text-gray-600 mt-1">
             경험과 지식을 나누고 수익을 만들어보세요. 4단계로 등록 신청을 완료할 수 있습니다.
           </p>

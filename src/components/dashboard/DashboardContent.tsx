@@ -280,7 +280,7 @@ export default function DashboardContent() {
         {/* 헤더 */}
         <div className="mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-3xl font-bold text-gray-900">
               안녕하세요, {user.name}님!
             </h1>
             <p className="text-gray-600 mt-1">

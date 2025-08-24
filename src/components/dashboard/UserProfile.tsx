@@ -12,7 +12,6 @@ import {
   X,
   Camera,
   Star,
-  Award,
   Target,
   TrendingUp,
   MessageCircle,
@@ -27,6 +26,16 @@ interface User {
   credits: number;
   expertLevel: string;
   role?: 'expert' | 'client' | 'admin';
+  // 프로필 관련 추가 필드들
+  phone?: string;
+  location?: string;
+  birthDate?: string;
+  interests?: string[];
+  bio?: string;
+  profileImage?: string | null;
+  totalConsultations?: number;
+  favoriteExperts?: number;
+  joinDate?: string;
 }
 
 interface AppState {
@@ -45,7 +54,6 @@ interface UserData {
   profileImage?: string | null;
   totalConsultations?: number;
   favoriteExperts?: number;
-  completedGoals?: number;
   joinDate?: string;
 }
 
@@ -82,25 +90,60 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
     loadAppState();
   }, []);
 
-  const loggedInUser = appState.user;
-  
-  // 로그인한 사용자 데이터를 우선 사용
-  const currentUserData = userData || loggedInUser;
+  // 사용자 프로필 데이터 로드
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      console.log('loadUserProfile 실행:', { 
+        isAuthenticated: appState.isAuthenticated, 
+        user: appState.user 
+      });
+      
+      if (appState.isAuthenticated && appState.user) {
+        try {
+          // 실제로는 사용자 프로필 API 호출
+          // const response = await fetch(`/api/users/${appState.user.id}/profile`);
+          // const profileResult = await response.json();
+          // if (profileResult.success) {
+          //   setProfileData(prev => ({ ...prev, ...profileResult.data }));
+          // }
+          
+          // 임시로 더미 데이터 사용 (실제 구현 시 제거)
+          const dummyProfileData = {
+            name: appState.user.name || "테스트 사용자",
+            email: appState.user.email || "test@example.com",
+            phone: "010-1234-5678",
+            location: "서울특별시 강남구",
+            birthDate: "1990-05-15",
+            interests: ["심리상담", "진로상담", "창업상담"],
+            bio: "전문가들과의 상담을 통해 개인적 성장을 추구합니다.",
+            totalConsultations: 12,
+            favoriteExperts: 5,
+            joinDate: "2024-01-15"
+          };
+          
+          console.log('설정할 프로필 데이터:', dummyProfileData);
+          setProfileData(dummyProfileData);
+        } catch (error) {
+          console.error('사용자 프로필 로드 실패:', error);
+        }
+      }
+    };
+
+    loadUserProfile();
+  }, [appState.isAuthenticated, appState.user]);
   
   const [profileData, setProfileData] = useState<UserData>({
-    name: currentUserData?.name || "사용자",
-    email: currentUserData?.email || "user@example.com",
+    name: "사용자", // 기본값
+    email: "user@example.com", // 기본값
     phone: "010-0000-0000", // 기본값
     location: "서울특별시", // 기본값
     birthDate: "1990-01-01", // 기본값
     interests: ["심리상담", "진로상담"], // 기본값
     bio: "전문가들과의 상담을 통해 성장하고 있습니다.",
     profileImage: null,
-    // 통계 정보
-    totalConsultations: 0, // 실제로는 상담 기록에서 계산해야 함
-    favoriteExperts: 0, // 실제로는 즐겨찾기에서 계산해야 함
-    completedGoals: 0, // 기본값
-    joinDate: "2024-01-01", // 기본값
+    totalConsultations: 0,
+    favoriteExperts: 0,
+    joinDate: new Date().toISOString().split('T')[0],
   });
 
   const handleInputChange = (field: keyof UserData, value: string) => {
@@ -122,13 +165,32 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
   const handleSaveProfile = async () => {
     setSaveStatus("saving");
     try {
-      // 실제로는 API 호출
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      onSave?.(profileData);
-      setSaveStatus("success");
-      setIsEditing(false);
-      setTimeout(() => setSaveStatus("idle"), 2000);
+      // 실제 API 호출
+      if (appState.user) {
+        const response = await fetch(`/api/users/${appState.user.id}/profile`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(profileData)
+        });
+        
+        if (!response.ok) {
+          throw new Error('프로필 저장 실패');
+        }
+        
+        const result = await response.json();
+        if (result.success) {
+          onSave?.(profileData);
+          setSaveStatus("success");
+          setIsEditing(false);
+          setTimeout(() => setSaveStatus("idle"), 2000);
+        } else {
+          throw new Error(result.message || '프로필 저장 실패');
+        }
+      }
     } catch (error) {
+      console.error('프로필 저장 실패:', error);
       setSaveStatus("error");
       setTimeout(() => setSaveStatus("idle"), 2000);
     }
@@ -137,21 +199,22 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
   const handleCancel = () => {
     setIsEditing(false);
     setSaveStatus("idle");
-    // 원래 데이터로 복원
-    setProfileData({
-      name: currentUserData?.name || "사용자",
-      email: currentUserData?.email || "user@example.com",
-      phone: "010-0000-0000",
-      location: "서울특별시",
-      birthDate: "1990-01-01",
-      interests: ["심리상담", "진로상담"],
-      bio: "전문가들과의 상담을 통해 성장하고 있습니다.",
-      profileImage: null,
-      totalConsultations: 0,
-      favoriteExperts: 0,
-      completedGoals: 0,
-      joinDate: "2024-01-01",
-    });
+    // 원래 데이터로 복원 - 실제 사용자 데이터 사용
+    if (appState.user) {
+      setProfileData({
+        name: appState.user.name || "테스트 사용자",
+        email: appState.user.email || "test@example.com",
+        phone: "010-1234-5678",
+        location: "서울특별시 강남구",
+        birthDate: "1990-05-15",
+        interests: ["심리상담", "진로상담", "창업상담"],
+        bio: "전문가들과의 상담을 통해 개인적 성장을 추구합니다.",
+        profileImage: null,
+        totalConsultations: 12,
+        favoriteExperts: 5,
+        joinDate: "2024-01-15"
+      });
+    }
   };
 
   const availableInterests = [
@@ -474,18 +537,6 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
 
                 <div className="flex items-center justify-between p-3 bg-white rounded-lg">
                   <div className="flex items-center space-x-2">
-                    <Award className="h-5 w-5 text-green-600" />
-                    <span className="text-sm font-medium text-gray-700">
-                      달성한 목표
-                    </span>
-                  </div>
-                  <span className="text-lg font-bold text-gray-900">
-                    {profileData.completedGoals}개
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between p-3 bg-white rounded-lg">
-                  <div className="flex items-center space-x-2">
                     <Clock className="h-5 w-5 text-purple-600" />
                     <span className="text-sm font-medium text-gray-700">
                       활동 기간
@@ -497,42 +548,7 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
                 </div>
               </div>
 
-              {/* 레벨 시스템 */}
-              <div className="mt-6 p-4 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg text-white">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">사용자 레벨</span>
-                  <Award className="h-5 w-5" />
-                </div>
-                <div className="text-2xl font-bold mb-1">
-                  {(profileData.totalConsultations || 0) >= 20
-                    ? "골드"
-                    : (profileData.totalConsultations || 0) >= 10
-                      ? "실버"
-                      : "브론즈"}
-                </div>
-                <div className="text-xs opacity-90">
-                  {(profileData.totalConsultations || 0) >= 20
-                    ? "최고 레벨입니다!"
-                    : `다음 레벨까지 ${
-                        (profileData.totalConsultations || 0) >= 10
-                          ? 20 - (profileData.totalConsultations || 0)
-                          : 10 - (profileData.totalConsultations || 0)
-                      }회 남음`}
-                </div>
-                <div className="w-full bg-white bg-opacity-30 rounded-full h-2 mt-2">
-                  <div
-                    className="bg-white h-2 rounded-full transition-all duration-300"
-                    style={{
-                      width: `${Math.min(
-                        ((profileData.totalConsultations || 0) /
-                          ((profileData.totalConsultations || 0) >= 10 ? 20 : 10)) *
-                          100,
-                        100,
-                      )}%`,
-                    }}
-                  ></div>
-                </div>
-              </div>
+              {/* 레벨 시스템 제거 - 일반 사용자에게는 불필요 */}
             </div>
           </div>
         </div>
