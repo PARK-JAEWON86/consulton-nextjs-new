@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { CreditCard, LogIn } from "lucide-react";
 import ServiceLayout from "@/components/layout/ServiceLayout";
 import PackCard from "@/components/dashboard/PackCard";
-import CreditBalance from "@/components/dashboard/CreditBalance";
 import { LEVELS, getKoreanTierName } from "@/utils/expertLevels";
 
 import React from "react"; // Added missing import for React
@@ -192,13 +191,6 @@ export default function CreditPackagesPage() {
               </div>
             </div>
           </div>
-
-          {/* 크레딧 잔액 - 로그인된 사용자에게만 표시 */}
-          {isAuthenticated && user && (
-            <div className="mb-6">
-                              <CreditBalance credits={0} />
-            </div>
-          )}
 
           {/* 게스트 사용자를 위한 로그인 유도 메시지 */}
           {!isAuthenticated && (

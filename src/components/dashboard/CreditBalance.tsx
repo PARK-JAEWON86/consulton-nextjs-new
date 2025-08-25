@@ -1,10 +1,30 @@
 "use client";
 
-import { useState } from "react";
-import { CreditCard, Plus, History, TrendingUp } from "lucide-react";
+import { useState, useEffect } from "react";
+import { CreditCard, Plus, History, TrendingUp, Zap, RefreshCw } from "lucide-react";
 
 interface CreditBalanceProps {
   credits: number;
+  userId?: string;
+}
+
+interface AIUsageData {
+  usedCredits: number;
+  purchasedCredits: number;
+  remainingPercent: number;
+  monthlyResetDate: string;
+  totalTurns: number;
+  totalTokens: number;
+  averageTokensPerTurn: number;
+  summary: {
+    totalCredits: number;
+    freeCredits: number;
+    usedFreeCredits: number;
+    usedPurchasedCredits: number;
+    remainingFreeCredits: number;
+    remainingPurchasedCredits: number;
+    nextResetDate: string;
+  };
 }
 
 interface CreditHistoryItem {
@@ -19,6 +39,34 @@ interface CreditHistoryItem {
 
 const CreditBalance = ({ credits }: CreditBalanceProps) => {
   const [showHistory, setShowHistory] = useState(false);
+  const [aiUsageData, setAiUsageData] = useState<AIUsageData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchAIUsageData = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/ai-usage');
+        const data = await response.json();
+        
+        if (data.success) {
+          setAiUsageData(data.data);
+        } else {
+          throw new Error(data.error || 'AI 사용량 조회에 실패했습니다.');
+        }
+      } catch (err) {
+        setError("AI 사용량 데이터를 불러올 수 없습니다.");
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAIUsageData();
+    const interval = setInterval(fetchAIUsageData, 30000); // 30초마다 데이터 갱신
+    return () => clearInterval(interval);
+  }, []);
 
   // 더미 크레딧 히스토리 데이터
   const creditHistory: CreditHistoryItem[] = [
@@ -57,8 +105,8 @@ const CreditBalance = ({ credits }: CreditBalanceProps) => {
   ];
 
   const handlePurchaseCredits = () => {
-    // 크레딧 구매 페이지로 이동
-    console.log("Navigate to credit purchase page");
+    // 결제 및 크레딧 페이지로 이동
+    window.location.href = '/credit-packages';
   };
 
   const getBalanceColor = (credits: number) => {
@@ -73,77 +121,169 @@ const CreditBalance = ({ credits }: CreditBalanceProps) => {
     return "🔴";
   };
 
+  // 사용가능한 상담 시간 계산 (분 단위)
+  const getAvailableMinutes = (credits: number) => {
+    return Math.round(credits / 150);
+  };
+
+  // 게이지바 색상 결정
+  const getGaugeColor = (credits: number) => {
+    const minutes = getAvailableMinutes(credits);
+    if (minutes >= 10) return "bg-blue-600";
+    if (minutes >= 5) return "bg-yellow-500";
+    return "bg-red-500";
+  };
+
+  // 크레딧 충전 권유 메시지 표시 여부
+  const shouldShowTopupRecommendation = (credits: number) => {
+    return getAvailableMinutes(credits) < 10;
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+        <div className="flex justify-center items-center h-32">
+          <RefreshCw className="h-8 w-8 text-blue-500 animate-spin" />
+          <span className="ml-2 text-gray-600">AI 사용량 데이터를 불러오는 중입니다...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+        <div className="flex justify-center items-center h-32 text-red-600">
+          <Zap className="h-8 w-8" />
+          <span className="ml-2">{error}</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!aiUsageData) {
+    return (
+      <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+        <div className="flex justify-center items-center h-32 text-gray-600">
+          <CreditCard className="h-8 w-8" />
+          <span className="ml-2">AI 사용량 데이터를 불러올 수 없습니다.</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-blue-100 rounded-lg">
-            <CreditCard className="h-6 w-6 text-blue-600" />
-          </div>
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">크레딧 잔액</h2>
-            <p className="text-sm text-gray-600">
-              상담 서비스 이용 가능 크레딧
-            </p>
-          </div>
-        </div>
-
-        <button
-          onClick={() => setShowHistory(!showHistory)}
-          className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
-        >
-          <History className="h-5 w-5" />
-        </button>
-      </div>
-
-      {/* 크레딧 잔액 표시 */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-3">
-          <span className="text-2xl">{getBalanceIcon(credits)}</span>
-          <div>
-            <div className={`text-3xl font-bold ${getBalanceColor(credits)}`}>
-              {credits.toLocaleString()}
+      <div className="grid grid-cols-1 gap-8">
+        {/* 크레딧 잔액 */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <CreditCard className="h-6 w-6 text-blue-600" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">크레딧 잔액</h2>
+                <p className="text-sm text-gray-600">
+                  상담 서비스 이용 가능 크레딧
+                </p>
+              </div>
             </div>
-            <div className="text-sm text-gray-500">사용 가능 크레딧</div>
+
+            <button
+              onClick={() => setShowHistory(!showHistory)}
+              className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <History className="h-5 w-5" />
+            </button>
+          </div>
+
+          {/* 크레딧 잔액 표시 */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-3">
+              <span className="text-2xl">{getBalanceIcon(credits)}</span>
+              <div>
+                <div className={`text-3xl font-bold ${getBalanceColor(credits)}`}>
+                  {credits.toLocaleString()}
+                </div>
+                <div className="text-sm text-gray-500">사용 가능 크레딧</div>
+              </div>
+            </div>
+
+            <button
+              onClick={handlePurchaseCredits}
+              className={`flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-300 ${
+                shouldShowTopupRecommendation(credits) ? 'ring-2 ring-blue-400 ring-opacity-75 animate-pulse' : ''
+              }`}
+            >
+              <Plus className="h-4 w-4" />
+              <span>충전하기</span>
+            </button>
+          </div>
+
+          {/* 사용가능한 상담 시간 */}
+          <div className="bg-gray-50 rounded-lg p-4 mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-700">
+                사용가능한 상담 시간
+              </span>
+              <TrendingUp className="h-4 w-4 text-gray-400" />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-lg font-semibold text-gray-900">
+                약 {getAvailableMinutes(credits)}분
+              </span>
+              <span className="text-sm text-gray-500">
+                평균 150크레딧/분 기준
+              </span>
+            </div>
+            <div className="mt-2 bg-gray-200 rounded-full h-2">
+              <div
+                className={`h-2 rounded-full transition-all duration-300 ${getGaugeColor(credits)}`}
+                style={{ width: `${Math.min((credits / 150) / 10 * 100, 100)}%` }}
+              ></div>
+            </div>
+            <div className="mt-2 text-xs text-gray-500">
+              현재 {credits.toLocaleString()} 크레딧으로 상담 가능
+            </div>
+            
+            {/* 크레딧 충전 권유 메시지 */}
+            {shouldShowTopupRecommendation(credits) && (
+              <div className="mt-3 p-3 bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg">
+                <div className="flex items-center space-x-2">
+                  <div className="flex-shrink-0">
+                    <svg
+                      className="h-5 w-5 text-orange-500"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-orange-800">
+                      상담 시간이 부족합니다!
+                    </p>
+                    <p className="text-xs text-orange-700">
+                      {getAvailableMinutes(credits)}분 남음 • 지금 충전하고 더 많은 상담을 받아보세요
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
-        <button
-          onClick={handlePurchaseCredits}
-          className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          <span>충전하기</span>
-        </button>
-      </div>
 
-      {/* 크레딧 사용량 예측 */}
-      <div className="bg-gray-50 rounded-lg p-4 mb-4">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-gray-700">
-            이번 달 예상 사용량
-          </span>
-          <TrendingUp className="h-4 w-4 text-gray-400" />
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-lg font-semibold text-gray-900">
-            ~75 크레딧
-          </span>
-          <span className="text-sm text-gray-500">
-            {Math.ceil(credits / 75)}개월 사용 가능
-          </span>
-        </div>
-        <div className="mt-2 bg-gray-200 rounded-full h-2">
-          <div
-            className="bg-blue-600 h-2 rounded-full"
-            style={{ width: `${Math.min((75 / credits) * 100, 100)}%` }}
-          ></div>
-        </div>
       </div>
 
       {/* 크레딧 히스토리 */}
       {showHistory && (
-        <div className="border-t pt-4">
+        <div className="border-t pt-4 mt-6">
           <h3 className="text-lg font-medium text-gray-900 mb-3">최근 내역</h3>
           <div className="space-y-3 max-h-60 overflow-y-auto">
             {creditHistory.map((item) => (
@@ -173,32 +313,23 @@ const CreditBalance = ({ credits }: CreditBalanceProps) => {
                     </span>
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
-                    {item.date.toLocaleDateString("ko-KR")}{" "}
-                    {item.date.toLocaleTimeString("ko-KR", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                    {item.expertName && (
-                      <span className="ml-2">• {item.expertName}</span>
-                    )}
+                    {item.date.toLocaleDateString("ko-KR")}
+                    {item.expertName && ` • ${item.expertName}`}
                   </div>
                 </div>
-                <div
-                  className={`font-semibold ${
-                    item.amount > 0 ? "text-green-600" : "text-red-600"
-                  }`}
-                >
-                  {item.amount > 0 ? "+" : ""}
-                  {item.amount}
+                <div className="text-right">
+                  <div
+                    className={`text-sm font-semibold ${
+                      item.type === "used" ? "text-red-600" : "text-green-600"
+                    }`}
+                  >
+                    {item.type === "used" ? "-" : "+"}
+                    {Math.abs(item.amount).toLocaleString()}
+                  </div>
+                  <div className="text-xs text-gray-500">크레딧</div>
                 </div>
               </div>
             ))}
-          </div>
-
-          <div className="mt-4 pt-3 border-t">
-            <button className="w-full text-center text-sm text-blue-600 hover:text-blue-700 font-medium">
-              전체 내역 보기
-            </button>
           </div>
         </div>
       )}

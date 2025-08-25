@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 
 import { expertDataService } from "@/services/ExpertDataService";
 import { getChatHistory, ChatHistoryItem } from "@/data/dummy";
+
 import {
   Home,
   MessageCircle,
@@ -87,6 +88,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>([]);
   const [theme, setTheme] = useState<"light" | "dark">("light");
+
   
   // 하이드레이션 완료 후 테마 설정
   useEffect(() => {
@@ -201,6 +203,8 @@ const Sidebar: React.FC<SidebarProps> = ({
 
     loadAppState();
   }, [pathname]);
+
+
 
   // localStorage 변경 감지하여 상태 업데이트
   useEffect(() => {
@@ -990,6 +994,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <div className="text-xs text-gray-500 truncate">
                       {isAuthenticated && user?.email ? user.email : "guest@example.com"}
                     </div>
+                    
+                    
                   </div>
                   <div className="flex-shrink-0 ml-2">
                     <ChevronRight

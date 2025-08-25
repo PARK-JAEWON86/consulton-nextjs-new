@@ -10,11 +10,14 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   CalendarDays,
   BookOpen,
   Star,
   FileText,
   CheckCircle,
+  RefreshCw,
+  Plus,
 } from "lucide-react";
 import CreditBalance from "./CreditBalance";
 import UserProfile from "./UserProfile";
@@ -42,6 +45,10 @@ export default function DashboardContent() {
     isAuthenticated: false,
     user: null
   });
+  const [aiTokenData, setAiTokenData] = useState<any>(null);
+  const [isTokenGuideExpanded, setIsTokenGuideExpanded] = useState(false);
+  const [isPurchasing, setIsPurchasing] = useState(false);
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
 
   // 앱 상태 로드
   useEffect(() => {
@@ -63,10 +70,133 @@ export default function DashboardContent() {
     loadAppState();
   }, []);
 
+  // AI 토큰 데이터 가져오기
+  useEffect(() => {
+    const fetchAiTokenData = async () => {
+      if (appState.isAuthenticated && appState.user) {
+        try {
+          const response = await fetch('/api/ai-usage');
+          const result = await response.json();
+          
+          if (result.success) {
+            setAiTokenData(result.data);
+          }
+        } catch (error) {
+          console.error('AI 토큰 데이터 조회 실패:', error);
+        }
+      }
+    };
+
+    fetchAiTokenData();
+  }, [appState.isAuthenticated, appState.user]);
+
   const loggedInUser = appState.user;
+
+  // AI 토큰 구매 모달 표시
+  const handleShowPurchaseModal = () => {
+    if (!appState.isAuthenticated || !appState.user) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+
+    // 무료 제공량이 30% 미만일 때만 구매 가능
+    if (aiTokenData && aiTokenData.summary?.freeTokensUsagePercent >= 70) {
+      setShowPurchaseModal(true);
+    } else {
+      alert('무료 제공량이 30% 이상 남아있어 구매할 수 없습니다. 무료 제공량을 먼저 사용해주세요.');
+    }
+  };
+
+  // AI 토큰 구매 실행 함수
+  const handleConfirmPurchase = async () => {
+    if (isPurchasing) return;
+
+    try {
+      setIsPurchasing(true);
+      
+      // 1단계: 크레딧 차감
+      const creditResponse = await fetch('/api/credits/deduct', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          amount: 100,
+          reason: 'AI상담 토큰 구매'
+        })
+      });
+
+      const creditResult = await creditResponse.json();
+      
+      if (!creditResult.success) {
+        alert(creditResult.error || '크레딧 차감에 실패했습니다.');
+        return;
+      }
+
+      // 2단계: AI 토큰 추가
+      const tokenResponse = await fetch('/api/ai-usage', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'addPurchasedCredits',
+          data: {
+            credits: 100
+          }
+        })
+      });
+
+      const tokenResult = await tokenResponse.json();
+      
+      if (tokenResult.success) {
+        // AI 토큰 데이터 새로고침
+        const refreshResponse = await fetch('/api/ai-usage');
+        const refreshResult = await refreshResponse.json();
+        if (refreshResult.success) {
+          setAiTokenData(refreshResult.data);
+        }
+        
+        // 사용자 크레딧 정보 업데이트
+        // 크레딧 차감 결과를 반영하여 UI 업데이트
+        if (creditResult.success) {
+          // 사용자 크레딧 잔액 업데이트
+          const updatedUser = {
+            ...user,
+            credits: creditResult.data.newBalance
+          };
+          
+          // 로컬 상태 업데이트 (실제로는 서버에서 처리되어야 함)
+          // 여기서는 UI만 업데이트
+          console.log('크레딧 차감 완료:', creditResult.data);
+          
+          // TODO: 실제로는 앱 상태나 사용자 정보를 업데이트해야 함
+          // setUser(updatedUser); // 사용자 상태가 있다면 업데이트
+        }
+        
+        alert('AI상담 토큰 구매가 완료되었습니다! 100,000토큰이 추가되었습니다.');
+        setShowPurchaseModal(false);
+      } else {
+        alert(tokenResult.error || 'AI 토큰 구매에 실패했습니다.');
+        // TODO: 크레딧 차감 롤백 처리
+      }
+    } catch (error) {
+      console.error('AI 토큰 구매 오류:', error);
+      alert('AI 토큰 구매 중 오류가 발생했습니다.');
+    } finally {
+      setIsPurchasing(false);
+    }
+  };
+
+  // 크레딧 충전 페이지로 이동
+  const handleGoToCreditTopup = () => {
+    window.location.href = '/credit-packages';
+  };
 
   // 로그인한 사용자 데이터 사용, 없으면 기본값
   const user = loggedInUser ? {
+    id: loggedInUser.id || "",
     name: loggedInUser.name || "사용자",
     credits: loggedInUser.credits || 0,
     email: loggedInUser.email || "user@example.com",
@@ -80,6 +210,7 @@ export default function DashboardContent() {
     completedGoals: 0, // 기본값
     joinDate: "2024-01-01", // 기본값
   } : {
+    id: "",
     name: "게스트",
     credits: 0,
     email: "guest@example.com",
@@ -289,9 +420,143 @@ export default function DashboardContent() {
           </div>
         </div>
 
-        {/* 크레딧 잔액 */}
+        {/* 크레딧 잔액 및 AI상담 토큰 */}
         <div className="mb-8">
-          <CreditBalance credits={user.credits} />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* 크레딧 잔액 */}
+            <div>
+              <CreditBalance credits={user.credits} userId={user.id} />
+            </div>
+            
+            {/* AI상담 토큰 */}
+            <div className="bg-white shadow rounded-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center">
+                  <MessageCircle className="h-6 w-6 text-blue-600 mr-3" />
+                  <h3 className="text-lg font-medium text-gray-900">AI상담 토큰</h3>
+                </div>
+                <div className="flex items-center space-x-2 text-xs text-gray-500">
+                  <RefreshCw className="w-4 h-4" />
+                  <span>
+                    다음 리셋까지 {aiTokenData ? (() => {
+                      const now = new Date();
+                      const nextReset = new Date(aiTokenData.summary?.nextResetDate || '');
+                      const diff = nextReset.getTime() - now.getTime();
+                      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                      return `${days}일 ${hours}시간`;
+                    })() : '...일 ...시간'}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="space-y-4">
+                {/* 이번 달 무료 토큰 */}
+                <div className="text-center">
+                  <h4 className="text-sm font-semibold text-gray-800 mb-2">
+                    이번 달 무료 토큰
+                    <span className="text-xs font-normal text-gray-500 ml-2">
+                      (사용기한: {aiTokenData ? (() => {
+                        const nextReset = new Date(aiTokenData.summary?.nextResetDate || '');
+                        return `${nextReset.getMonth() + 1}월 ${nextReset.getDate()}일`;
+                      })() : '...월 ...일'})
+                    </span>
+                  </h4>
+                  <div className="text-3xl font-bold text-blue-600 mb-2">
+                    {aiTokenData && aiTokenData.summary?.remainingFreeTokens ? (
+                      aiTokenData.summary.remainingFreeTokens.toLocaleString()
+                    ) : (
+                      '로딩 중...'
+                    )}
+                  </div>
+                  <p className="text-gray-600">
+                    {/* 턴 대화가능 텍스트 제거됨 */}
+                  </p>
+                </div>
+
+                {/* 진행률 표시 */}
+                <div className="text-center">
+                  <p className="text-sm text-gray-600 mb-2">
+                    무료 제공량 {aiTokenData && aiTokenData.summary?.freeTokensUsagePercent !== undefined ? 
+                      (100 - aiTokenData.summary.freeTokensUsagePercent) : '...'}% 남음
+                  </p>
+                  <div className="w-full bg-gray-200 rounded-full h-2 mb-2 overflow-hidden shadow-inner">
+                    <div 
+                      className={`h-2 rounded-full transition-all duration-500 ease-out shadow-sm ${
+                        aiTokenData && aiTokenData.summary?.freeTokensUsagePercent > 70 ? 'bg-gradient-to-r from-red-400 to-red-500' :
+                        aiTokenData && aiTokenData.summary?.freeTokensUsagePercent > 30 ? 'bg-gradient-to-r from-yellow-400 to-orange-500' :
+                        'bg-gradient-to-r from-green-400 to-green-500'
+                      }`}
+                      style={{ 
+                        width: `${aiTokenData && aiTokenData.summary?.freeTokensUsagePercent !== undefined ? 
+                          Math.max(1, Math.min(100, 100 - aiTokenData.summary.freeTokensUsagePercent)) : 0}%` 
+                      }}
+                    ></div>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    {/* 턴 남음 텍스트 제거됨 */}
+                  </p>
+                </div>
+
+                {/* 토큰 사용량 안내 */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <button
+                    onClick={() => setIsTokenGuideExpanded(!isTokenGuideExpanded)}
+                    className="w-full flex items-center justify-between text-left"
+                  >
+                    <h5 className="font-semibold text-gray-800 text-sm">
+                      토큰 사용량 안내
+                    </h5>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs text-gray-500">
+                        {isTokenGuideExpanded ? '접기' : '펼치기'}
+                      </span>
+                      <ChevronDown 
+                        className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${
+                          isTokenGuideExpanded ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </div>
+                  </button>
+                  
+                  {isTokenGuideExpanded && (
+                    <div className="mt-3 text-center space-y-3">
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <p className="text-blue-800 text-sm font-medium mb-2">
+                          💡 토큰 사용량은 대화의 복잡도에 따라 달라집니다
+                        </p>
+                        <ul className="text-blue-700 text-xs space-y-1 text-left">
+                          <li>• 간단한 질문: 적은 토큰 사용</li>
+                          <li>• 복잡한 상담: 더 많은 토큰 사용</li>
+                          <li>• 긴 대화: 누적 토큰 소모</li>
+                          <li>• 정밀 모드: 1.2배 토큰 소모</li>
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 크레딧 충전 안내 */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Plus className="w-5 h-5 text-blue-600" />
+                    <span className="font-semibold text-blue-800 text-sm">더 많은 대화가 필요하다면</span>
+                  </div>
+                  <p className="text-blue-700 text-center text-sm">
+                    100크레딧으로 더 많은 대화를 즐기세요
+                  </p>
+                  <div className="mt-3 text-center">
+                    <button 
+                      onClick={handleShowPurchaseModal}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                    >
+                      AI상담 토큰 구매하기
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* 프로필 섹션 */}
@@ -722,6 +987,103 @@ export default function DashboardContent() {
 
         {/* (이전 위치) 상담 추천 섹션 제거됨 - 전문가 찾기 페이지 상단으로 이동 */}
       </div>
+
+      {/* AI 토큰 구매 확인 모달 */}
+      {showPurchaseModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="text-center mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                AI상담 토큰 구매
+              </h3>
+              <p className="text-gray-600">
+                100크레딧을 사용하여 100,000토큰을 구매하시겠습니까?
+              </p>
+            </div>
+
+            {/* 크레딧 정보 */}
+            <div className="bg-gray-50 rounded-lg p-4 mb-6">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm text-gray-600">현재 보유 크레딧:</span>
+                <span className="font-semibold text-gray-900">{user.credits.toLocaleString()}크레딧</span>
+              </div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm text-gray-600">사용할 크레딧:</span>
+                <span className="font-semibold text-red-600">-100크레딧</span>
+              </div>
+              <div className="border-t border-gray-200 pt-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">차감 후 크레딧:</span>
+                  <span className={`font-semibold ${user.credits >= 100 ? 'text-green-600' : 'text-red-600'}`}>
+                    {Math.max(0, user.credits - 100).toLocaleString()}크레딧
+                  </span>
+                </div>
+              </div>
+
+            </div>
+
+            {/* 무료 제공량 상태 */}
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+              <div className="text-center">
+                <h4 className="text-sm font-semibold text-yellow-800 mb-2">무료 제공량 상태</h4>
+                <div className="w-full bg-gray-200 rounded-full h-2 mb-2 overflow-hidden">
+                  <div 
+                    className="h-2 rounded-full transition-all duration-500 ease-out bg-gradient-to-r from-green-400 to-yellow-500"
+                    style={{ 
+                      width: `${aiTokenData && aiTokenData.summary?.freeTokensUsagePercent !== undefined ? 
+                        Math.max(1, Math.min(100, 100 - aiTokenData.summary.freeTokensUsagePercent)) : 0}%` 
+                    }}
+                  ></div>
+                </div>
+                <p className="text-sm text-yellow-700">
+                  무료 제공량 {aiTokenData && aiTokenData.summary?.freeTokensUsagePercent !== undefined ? 
+                    (100 - aiTokenData.summary.freeTokensUsagePercent) : '...'}% 남음
+                </p>
+                <p className="text-xs text-yellow-600 mt-1">
+                  {aiTokenData ? Math.floor((aiTokenData.summary?.remainingFreeTokens || 0) / 900) : '...'}턴 남음
+                </p>
+              </div>
+            </div>
+
+            {/* 버튼 그룹 */}
+            <div className="flex space-x-3">
+              {user.credits >= 100 && aiTokenData && aiTokenData.summary?.freeTokensUsagePercent >= 70 ? (
+                <button
+                  onClick={handleConfirmPurchase}
+                  disabled={isPurchasing}
+                  className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    isPurchasing
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white'
+                  }`}
+                >
+                  {isPurchasing ? '구매 중...' : '확인'}
+                </button>
+              ) : user.credits < 100 ? (
+                <button
+                  onClick={handleGoToCreditTopup}
+                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                >
+                  크레딧 충전하기
+                </button>
+              ) : (
+                <button
+                  disabled
+                  className="flex-1 px-4 py-2 bg-gray-400 cursor-not-allowed text-white rounded-lg text-sm font-medium"
+                >
+                  무료 제공량 30% 이상 남음
+                </button>
+              )}
+              <button
+                onClick={() => setShowPurchaseModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg text-sm font-medium transition-colors"
+              >
+                취소
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
