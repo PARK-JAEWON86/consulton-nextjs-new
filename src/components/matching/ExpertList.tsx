@@ -18,6 +18,8 @@ type ExpertItem = {
   creditsPerMinute?: number;
   experience: string;
   availability: "available" | "busy" | "offline" | string;
+  specialty?: string;
+  title?: string;
   [key: string]: unknown;
 };
 

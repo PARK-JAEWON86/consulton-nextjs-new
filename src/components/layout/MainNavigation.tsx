@@ -217,7 +217,7 @@ const MainNavigation = ({}: MainNavigationProps) => {
               onClick={() => router.push("/experts")}
               className="text-gray-900 hover:text-blue-600 px-3 py-2 text-sm font-medium transition-colors"
             >
-              상담 찾기
+              전문가 찾기
             </button>
             <button
               onClick={() => router.push("/experts/become")}
@@ -258,16 +258,10 @@ const MainNavigation = ({}: MainNavigationProps) => {
             {appState.isAuthenticated ? (
               <>
                 <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-sm font-semibold">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                    className="w-4 h-4"
-                  >
-                    <path d="M12 1.5a.75.75 0 0 1 .53.22l9.75 9.75a.75.75 0 1 1-1.06 1.06L12 3.31 2.78 12.53a.75.75 0 1 1-1.06-1.06L11.47 1.72A.75.75 0 0 1 12 1.5z" />
-                    <path d="M3.75 13.5h16.5v6A2.25 2.25 0 0 1 18 21.75H6A2.25 2.25 0 0 1 3.75 19.5v-6z" />
-                  </svg>
-                  <span>보유 크레딧: {appState.user?.credits ?? 0}</span>
+                  <div className="w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xs font-bold">C</span>
+                  </div>
+                  <span>크레딧: {appState.user?.credits ?? 0}</span>
                 </div>
                 <button
                   onClick={handleLogout}

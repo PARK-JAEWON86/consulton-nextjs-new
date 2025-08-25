@@ -1,223 +1,307 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Info, AlertCircle, CreditCard } from "lucide-react";
+import React, { useState, useEffect } from 'react';
+import { Zap, AlertCircle, Plus, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+
+interface TokenUsageData {
+  remainingTokens: number;
+  usedTokens: number;
+  totalTokens: number;
+  remainingPercent: number;
+  monthlyFreeTokens: number;
+  estimatedTurns: number;
+  usedTurns: number;
+  remainingTurns: number;
+  nextResetDate: string;
+  creditToTokens: number;
+  creditToKRW: number;
+  tokensToKRW: number;
+  creditDiscount: number;
+}
 
 interface AITokenUsageBarProps {
   userId: string;
   isExtended?: boolean;
-}
-
-interface TokenUsageData {
-  // 토큰 정보
-  freeTokens: number;
-  paidTokens: number;
-  usedTokens: number;
-  remainingTokens: number;
-  
-  // 턴 정보
-  freeTurns: number;
-  paidTurns: number;
-  usedTurns: number;
-  remainingTurns: number;
-  
-  remainingPercent: number;
-  lastResetDate: string;
-  monthlyFreeTokens: number;
-  monthlyFreeTurns: number;
-  tokensPerTurn: number;
-  
-  // 대화연장 정보
-  extensionTokensFor50Credits: number;
-  extensionTurnsFor50Credits: number;
+  onTurnConsumed?: () => void;
+  showTurnAlert?: boolean;
+  compact?: boolean; // 채팅 페이지용 컴팩트 모드
 }
 
 const AITokenUsageBar: React.FC<AITokenUsageBarProps> = ({
   userId,
   isExtended = false,
+  onTurnConsumed,
+  showTurnAlert = false,
+  compact = false,
 }) => {
   const [tokenData, setTokenData] = useState<TokenUsageData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [showConsumptionAlert, setShowConsumptionAlert] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
-  // 토큰 사용량 조회
-  const fetchTokenUsage = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      const response = await fetch(`/api/ai-chat/tokens?userId=${userId}`);
-      const data = await response.json();
-      
-      if (data.success) {
-        setTokenData(data.data);
-      } else {
-        setError(data.error || '토큰 사용량 조회에 실패했습니다.');
+  // AI 사용량 데이터 가져오기
+  useEffect(() => {
+    const fetchTokenUsage = async () => {
+      try {
+        const response = await fetch('/api/ai-usage');
+        const result = await response.json();
+        
+        if (result.success) {
+          const data = result.data;
+          setTokenData({
+            remainingTokens: data.summary.remainingFreeTokens + data.summary.remainingPurchasedTokens,
+            usedTokens: data.usedTokens,
+            totalTokens: data.summary.totalTokens,
+            remainingPercent: data.remainingPercent,
+            monthlyFreeTokens: data.summary.freeTokens,
+            estimatedTurns: data.summary.totalEstimatedTurns,
+            usedTurns: data.totalTurns,
+            remainingTurns: data.summary.totalEstimatedTurns,
+            nextResetDate: data.summary.nextResetDate,
+            creditToTokens: data.summary.creditToTokens,
+            creditToKRW: data.summary.creditToKRW,
+            tokensToKRW: data.summary.tokensToKRW,
+            creditDiscount: data.summary.creditDiscount
+          });
+        }
+      } catch (error) {
+        console.error('토큰 사용량 조회 실패:', error);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (err) {
-      setError('네트워크 오류가 발생했습니다.');
-    } finally {
-      setIsLoading(false);
+    };
+
+    fetchTokenUsage();
+  }, [userId]);
+
+  // 턴 소모 시 애니메이션
+  useEffect(() => {
+    if (showTurnAlert) {
+      setShowConsumptionAlert(true);
+      setIsAnimating(true);
+      
+      setTimeout(() => {
+        setIsAnimating(false);
+      }, 500);
+      
+      setTimeout(() => {
+        setShowConsumptionAlert(false);
+      }, 3000);
     }
+  }, [showTurnAlert]);
+
+  if (isLoading || !tokenData) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-4 animate-pulse">
+        <div className="h-4 bg-gray-200 rounded mb-2"></div>
+        <div className="h-3 bg-gray-200 rounded w-3/4"></div>
+      </div>
+    );
+  }
+
+  // 다음 리셋까지 남은 시간 계산
+  const getNextResetTime = () => {
+    const now = new Date();
+    const nextReset = new Date(tokenData.nextResetDate);
+    const diff = nextReset.getTime() - now.getTime();
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    return { days, hours };
   };
 
-  // 컴포넌트 마운트 시 토큰 사용량 조회
-  useEffect(() => {
-    if (userId) {
-      fetchTokenUsage();
-    }
-  }, [userId]);
+  const { days, hours } = getNextResetTime();
 
-  // 턴 상태 업데이트 useEffect 제거 - 더 이상 사용하지 않음
-
-  // 5분마다 토큰 사용량 갱신
-  useEffect(() => {
-    const interval = setInterval(fetchTokenUsage, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [userId]);
-
-  if (isLoading) {
+  // 진행률 바 생성
+  const createProgressBar = (percent: number) => {
+    const filledBlocks = Math.floor(percent / 10);
+    const emptyBlocks = 10 - filledBlocks;
+    
     return (
-      <div className="space-y-3">
-        <div className="text-lg font-bold text-gray-800 text-center">
-          <div className="animate-pulse bg-gray-200 h-8 w-24 mx-auto rounded"></div>
-        </div>
-        <div className="flex items-center space-x-3">
-          <div className="flex-1">
-            <div className="bg-gray-200 h-1 rounded animate-pulse"></div>
-          </div>
-          <div className="text-sm text-gray-400">로딩 중...</div>
-        </div>
+      <div className="flex space-x-1">
+        {Array.from({ length: filledBlocks }, (_, i) => (
+          <div key={`filled-${i}`} className="w-3 h-3 bg-blue-500 rounded-full"></div>
+        ))}
+        {Array.from({ length: emptyBlocks }, (_, i) => (
+          <div key={`empty-${i}`} className="w-3 h-3 bg-gray-200 rounded-full"></div>
+        ))}
       </div>
     );
-  }
+  };
 
-  if (error) {
+  // 컴팩트 모드 (채팅 페이지용)
+  if (compact) {
     return (
-      <div className="space-y-3">
-        <div className="text-center text-red-600">
-          <AlertCircle className="w-6 h-6 mx-auto mb-2" />
-          <p className="text-sm">{error}</p>
-          <button
-            onClick={fetchTokenUsage}
-            className="mt-2 text-xs text-blue-600 hover:text-blue-800 underline"
-          >
-            다시 시도
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!tokenData) {
-    return null;
-  }
-
-  // 대화연장 시 실제 구매 가능한 턴 추가로 표시
-  const displayTurns = isExtended
-    ? tokenData.remainingTurns + (tokenData.extensionTurnsFor50Credits || 0)
-    : tokenData.remainingTurns;
-
-  // 대화연장 시 퍼센트도 증가하도록 계산
-  const displayPercent = isExtended
-    ? Math.min(
-        100,
-        Math.max(0, Math.round(100 * ((tokenData.remainingTurns + (tokenData.extensionTurnsFor50Credits || 0)) / tokenData.monthlyFreeTurns)))
-      )
-    : tokenData.remainingPercent;
-
-  // 토큰을 턴으로 변환 (대략적인 계산)
-  const estimatedTurns = Math.floor(tokenData.remainingTokens / 300); // 1턴 = 약 300토큰
-
-  return (
-    <div className="space-y-2">
-      {/* AI 상담 전용 무료 턴 정보 - 게이지와 더 가깝게 */}
-      <div className="text-center mb-1">
-        <div className="text-3xl font-bold text-gray-800">
-          {displayTurns}
-        </div>
-        {isExtended && (
-          <div className="text-xs text-green-600 mt-1">
-            +{tokenData.extensionTurnsFor50Credits}턴 (대화연장)
+      <div className="relative">
+        {/* 간단한 토큰 표시 */}
+        <div className="flex items-center space-x-3 bg-white/90 backdrop-blur-sm rounded-full border border-gray-200 px-4 py-2">
+          {/* 원형 진행률 표시줄 */}
+          <div className="relative w-8 h-8">
+            <svg className="w-8 h-8 transform -rotate-90" viewBox="0 0 32 32">
+              {/* 배경 원 */}
+              <circle
+                cx="16"
+                cy="16"
+                r="14"
+                stroke="#e5e7eb"
+                strokeWidth="3"
+                fill="none"
+              />
+              {/* 진행률 원 */}
+              <circle
+                cx="16"
+                cy="16"
+                r="14"
+                stroke="#3b82f6"
+                strokeWidth="3"
+                fill="none"
+                strokeDasharray={`${2 * Math.PI * 14}`}
+                strokeDashoffset={`${2 * Math.PI * 14 * (1 - tokenData.remainingPercent / 100)}`}
+                strokeLinecap="round"
+                className="transition-all duration-300 ease-out"
+              />
+            </svg>
           </div>
-        )}
-        <div className="text-xs text-gray-500 mt-1">
-          턴 사용 가능
-        </div>
-      </div>
-
-      {/* 턴 진행률 게이지바 */}
-      <div className="flex items-center space-x-3">
-        <div className="flex-1">
-          <div className="bg-gray-200 h-2 rounded-full">
-            <div
-              className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${displayPercent}%` }}
-            />
-          </div>
-        </div>
-        <div className="flex items-center space-x-1 relative group">
-          <Info className="w-4 h-4 text-gray-400 cursor-help" />
           
-          {/* 커스텀 툴팁 */}
-          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
-            📊 AI 상담 전용 무료 턴:
-            <br />
-            • 매월 100턴(질문+응답) 제공
-            <br />
-            • 이월되지 않음 (다음달에 100턴으로 리셋)
-            <br />
-            • AI 상담에서만 사용 가능
-            <br />
-            • 대화연장 시 +50크레딧(약 100턴) 혜택
-            <br />
-            <br />
-            💡 매월 1일에 자동으로 100턴이 리셋됩니다.
-            <br />
-            <br />
-            🔄 질문별 턴 사용량:
-            <br />
-            • 짧은 질문: 약 0.3턴
-            <br />
-            • 일반 질문: 약 1턴
-            <br />
-            • 상세 질문: 약 1.5턴
+          {/* 퍼센트 텍스트 */}
+          <span className="text-sm font-semibold text-gray-700">
+            {tokenData.remainingPercent}%
+          </span>
+          
+
+        </div>
+
+        {/* 호버 시 상세 정보 툴팁 */}
+        <div className="absolute top-full right-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 p-3 min-w-[250px] z-50 opacity-0 hover:opacity-100 transition-opacity duration-200 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto">
+          <div className="space-y-2">
+            <div className="text-center">
+              <p className="text-xs text-gray-600 mb-1">
+                남은 토큰: {tokenData.remainingTokens.toLocaleString()}
+              </p>
+              <p className="text-xs text-gray-500">
+                ≈ {tokenData.remainingTurns}턴 대화 가능
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-gray-500">
+                다음 리셋까지 {days}일 {hours}시간
+              </p>
+            </div>
             
-            {/* 툴팁 화살표 */}
-            <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+            {/* 토큰이 0%일 때만 크레딧 구매 안내 표시 */}
+            {tokenData.remainingPercent === 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 mt-2">
+                <div className="flex items-center space-x-2 mb-1">
+                  <AlertCircle className="w-3 h-3 text-amber-600" />
+                  <span className="text-xs font-medium text-amber-800">
+                    토큰이 부족합니다
+                  </span>
+                </div>
+                <p className="text-xs text-amber-700 text-center mb-2">
+                  크레딧을 구매하여 추가 AI 상담을 받으세요
+                </p>
+                <div className="text-center">
+                  <button 
+                    onClick={() => window.location.href = '/credit-packages'}
+                    className="bg-amber-600 hover:bg-amber-700 text-white px-2 py-1 rounded text-xs font-medium transition-colors"
+                  >
+                    크레딧 구매
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
+    );
+  }
 
-      {/* 턴 사용 정보 */}
-      <div className="text-xs text-gray-500 text-center space-y-1">
-        <div>{tokenData.usedTurns}/{tokenData.monthlyFreeTurns} 턴 사용</div>
-        {tokenData.paidTurns > 0 && (
-          <div className="text-blue-600">
-            +{tokenData.paidTurns} 유료 턴 보유
+  // 전체 모드 (기존)
+  return (
+    <div className="space-y-4">
+      {/* 턴 소모 알림 */}
+      {showConsumptionAlert && (
+        <div className={`bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4 rounded-lg shadow-lg transform transition-all duration-500 ${
+          isAnimating ? 'scale-105' : 'scale-100'
+        }`}>
+          <div className="flex items-center justify-center space-x-2">
+            <Zap className="w-5 h-5 animate-pulse" />
+            <span className="font-semibold">무료 턴 1개가 소모됩니다!</span>
           </div>
-        )}
-      </div>
-
-      {/* 턴 부족 시 경고 */}
-      {tokenData.remainingTurns < 5 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-          <div className="flex items-center space-x-2 text-amber-800">
-            <AlertCircle className="w-4 h-4" />
-            <span className="text-sm font-medium">무료 턴이 부족합니다</span>
-          </div>
-          <p className="text-xs text-amber-700 mt-1">
-            크레딧을 구매하여 추가 턴을 받거나, 다음 달을 기다려주세요.
+          <p className="text-sm text-center mt-1 opacity-90">
+            남은 무료 턴: {tokenData.remainingTurns - 1}개
           </p>
-          <button
-            onClick={() => window.location.href = '/credit-packages'}
-            className="mt-2 w-full bg-amber-600 text-white text-xs py-2 px-3 rounded hover:bg-amber-700 transition-colors flex items-center justify-center space-x-1"
-          >
-            <CreditCard className="w-3 h-3" />
-            <span>크레딧 구매하기</span>
-          </button>
         </div>
       )}
+
+      {/* 메인 토큰 정보 */}
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="space-y-4">
+          {/* 이번 달 무료 토큰 */}
+          <div className="text-center">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">
+              이번 달 무료 토큰
+            </h3>
+            <div className="text-3xl font-bold text-blue-600 mb-2">
+              {tokenData.remainingTokens.toLocaleString()}
+            </div>
+            <p className="text-gray-600">
+              ≈ 약 {tokenData.remainingTurns}턴 대화 가능
+            </p>
+          </div>
+
+          {/* 진행률 표시 */}
+          <div className="text-center">
+            <p className="text-sm text-gray-600 mb-2">
+              무료 제공량 {Math.round(100 - tokenData.remainingPercent)}% 사용 완료
+            </p>
+            <div className="flex justify-center mb-2">
+              {createProgressBar(100 - tokenData.remainingPercent)}
+            </div>
+            <p className="text-sm text-gray-600">
+              {tokenData.remainingTurns}턴 남음
+            </p>
+          </div>
+
+          {/* 상세 사용량 */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h4 className="font-semibold text-gray-800 mb-3 text-center">
+              이번 달 무료 대화: {Math.floor(tokenData.monthlyFreeTokens / 900)}턴
+            </h4>
+            <div className="text-center space-y-2">
+              <p className="text-gray-600">
+                현재까지: {tokenData.usedTurns}턴 사용 ({Math.floor(tokenData.monthlyFreeTokens / 900) - tokenData.usedTurns}턴 남음)
+              </p>
+              <div className="flex items-center justify-center space-x-2 text-sm text-gray-500">
+                <RefreshCw className="w-4 h-4" />
+                <span>다음 리셋까지 {days}일 {hours}시간</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 크레딧 충전 안내 */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center space-x-2 mb-2">
+              <Plus className="w-5 h-5 text-blue-600" />
+              <span className="font-semibold text-blue-800">더 많은 대화가 필요하다면</span>
+            </div>
+            <p className="text-blue-700 text-center">
+              100크레딧(₩1,000)으로 토큰을 충전하세요
+            </p>
+            <div className="mt-3 text-center">
+              <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                크레딧 구매하기
+              </button>
+            </div>
+          </div>
+
+          {/* 크레딧 할인 정보 */}
+          <div className="text-center text-sm text-gray-500">
+            <p>크레딧 구매 시 {tokenData.creditDiscount}% 할인 혜택</p>
+            <p>1크레딧 = ₩{tokenData.creditToKRW} = {tokenData.creditToTokens.toLocaleString()}토큰</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

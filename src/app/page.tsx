@@ -14,6 +14,7 @@ import MatchedExpertsSection from "../components/home/MatchedExpertsSection";
 import StatsSection from "../components/home/StatsSection";
 import PopularCategoriesSection from "../components/home/PopularCategoriesSection";
 import AIChatPromoSection from "../components/home/AIChatPromoSection";
+import TurnUsageSection from "../components/home/TurnUsageSection";
 import Footer from "../components/layout/Footer";
 import { convertExpertItemToProfile } from "../data/dummy/experts";
 import { dummyExperts } from "../data/dummy/experts";
@@ -64,6 +65,50 @@ export default function HomePage() {
 
   // 전문가 프로필 데이터
   const [allExperts, setAllExperts] = useState<any[]>([]);
+
+  // 사용자 인증 상태
+  const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // 사용자 인증 상태 확인
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        // 로컬 스토리지에서 사용자 정보 확인
+        const storedUser = localStorage.getItem('consulton-user');
+        const storedAuth = localStorage.getItem('consulton-auth');
+        
+        if (storedUser && storedAuth) {
+          try {
+            const user = JSON.parse(storedUser);
+            const isAuth = JSON.parse(storedAuth);
+            
+            if (isAuth) {
+              setIsAuthenticated(true);
+              setCurrentUserId(user.id || user.email || "");
+              console.log('로컬 스토리지에서 인증 성공:', { userId: user.id || user.email, isAuth });
+              return;
+            }
+          } catch (error) {
+            console.error('로컬 스토리지 파싱 오류:', error);
+          }
+        }
+        
+        // API에서 앱 상태 로드
+        const response = await fetch('/api/app-state');
+        const result = await response.json();
+        if (result.success) {
+          setIsAuthenticated(result.data.isAuthenticated);
+          setCurrentUserId(result.data.userId || "");
+          console.log('API에서 인증 상태 확인:', { isAuthenticated: result.data.isAuthenticated, userId: result.data.userId });
+        }
+      } catch (error) {
+        console.error('인증 상태 확인 실패:', error);
+      }
+    };
+    
+    checkAuth();
+  }, []);
 
   // 전문가 프로필 데이터 로드
   useEffect(() => {
@@ -296,6 +341,10 @@ export default function HomePage() {
     }, 800);
   };
 
+  // TurnUsageSection 렌더링 디버깅
+  useEffect(() => {
+    console.log('TurnUsageSection 렌더링 상태:', { currentUserId, isAuthenticated });
+  }, [currentUserId, isAuthenticated]);
 
 
   return (
@@ -342,6 +391,9 @@ export default function HomePage() {
 
       {/* AI 채팅상담 섹션 */}
       <AIChatPromoSection />
+
+      {/* 턴 사용량 섹션 */}
+      <TurnUsageSection userId={currentUserId} />
 
       {/* 푸터 */}
       <Footer />

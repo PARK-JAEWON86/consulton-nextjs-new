@@ -1,24 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// AI 크레딧 정책 상수
-const BASE_CREDIT_PER_TURN = 3;
-const MONTHLY_FREE_BUDGET_CREDITS = 300; // (= 100턴 × 3크레딧)
+// AI 토큰 정책 상수
+const MONTHLY_FREE_TOKENS = 100000; // 매월 100,000 토큰 제공 (100%)
+const AVERAGE_TOKENS_PER_TURN = 900; // GPT-5 기준 1턴당 평균 900 토큰
+const AVERAGE_COST_PER_1K_TOKENS = 0.0071; // 1K 토큰당 평균 $0.0071
+const EXCHANGE_RATE_KRW = 1385; // 환율: 1달러 = 1,385원
 
-interface LengthBracket {
-  maxTokens: number;
-  mult: number;
-}
-
-const LENGTH_BRACKETS: LengthBracket[] = [
-  { maxTokens: 400, mult: 1.0 },
-  { maxTokens: 800, mult: 1.5 },
-  { maxTokens: 1200, mult: 2.0 },
-  { maxTokens: Infinity, mult: 3.0 },
-];
+// 크레딧 시스템 상수
+const CREDIT_TO_KRW = 10; // 1크레딧 = ₩10원
+const CREDIT_TO_TOKENS = 1000; // 1크레딧 = 1,000토큰
+const TOKENS_TO_KRW = 0.01; // 1,000토큰 = ₩10원 (크레딧 구매 시)
 
 interface AIUsageState {
-  usedCredits: number;
-  purchasedCredits: number;
+  usedTokens: number;
+  purchasedTokens: number;
   remainingPercent: number;
   monthlyResetDate: string;
   totalTurns: number;
@@ -26,44 +21,76 @@ interface AIUsageState {
   averageTokensPerTurn: number;
 }
 
-// 토큰 길이에 따른 크레딧 계산
-function estimateCreditsForTurn(
-  totalTokens: number,
-  preciseMode?: boolean
-): number {
-  // 토큰 길이에 따른 브라켓 찾기
-  const bracket = LENGTH_BRACKETS.find(
-    (bracket) => totalTokens <= bracket.maxTokens
-  );
-  if (!bracket) {
-    throw new Error("Invalid token count");
-  }
-
-  // 기본 크레딧에 멀티플라이어 적용
-  let credits = BASE_CREDIT_PER_TURN * bracket.mult;
-
-  // 정밀 모드일 경우 1.5배 추가
-  if (preciseMode) {
-    credits *= 1.5;
-  }
-
-  // 올림하여 반환
-  return Math.ceil(credits);
+// 토큰 사용량을 퍼센트로 변환
+function tokensToPercent(tokens: number): number {
+  return Math.round((tokens / MONTHLY_FREE_TOKENS) * 100);
 }
 
-// 남은 크레딧 퍼센트 계산
+// 남은 토큰 퍼센트 계산
 function calcRemainingPercent(
-  usedCredits: number,
-  purchasedCredits: number
+  usedTokens: number,
+  purchasedTokens: number
 ): number {
-  const total = MONTHLY_FREE_BUDGET_CREDITS + purchasedCredits;
-  return Math.max(0, Math.round(100 * (1 - usedCredits / total)));
+  const total = MONTHLY_FREE_TOKENS + purchasedTokens;
+  return Math.max(0, Math.round(100 * (1 - usedTokens / total)));
+}
+
+// summary 객체 생성 helper 함수
+function createSummary(aiUsageState: AIUsageState) {
+  const totalFreeTokens = MONTHLY_FREE_TOKENS;
+  
+  // 구매 토큰이 있으면 구매 토큰을 우선 사용하도록 로직 수정
+  let usedFreeTokens, usedPurchasedTokens, remainingFreeTokens, remainingPurchasedTokens;
+  
+  if (aiUsageState.purchasedTokens > 0) {
+    // 구매 토큰이 있는 경우: 구매 토큰을 먼저 사용
+    usedPurchasedTokens = Math.min(aiUsageState.usedTokens, aiUsageState.purchasedTokens);
+    usedFreeTokens = Math.max(0, aiUsageState.usedTokens - aiUsageState.purchasedTokens);
+    remainingPurchasedTokens = Math.max(0, aiUsageState.purchasedTokens - usedPurchasedTokens);
+    remainingFreeTokens = Math.max(0, totalFreeTokens - usedFreeTokens);
+  } else {
+    // 구매 토큰이 없는 경우: 기존 로직
+    usedFreeTokens = Math.min(aiUsageState.usedTokens, totalFreeTokens);
+    usedPurchasedTokens = Math.max(0, aiUsageState.usedTokens - totalFreeTokens);
+    remainingFreeTokens = Math.max(0, totalFreeTokens - aiUsageState.usedTokens);
+    remainingPurchasedTokens = 0;
+  }
+  
+  // 예상 턴 수 계산
+  const estimatedTurnsFromFree = Math.floor(remainingFreeTokens / AVERAGE_TOKENS_PER_TURN);
+  const estimatedTurnsFromPurchased = Math.floor(remainingPurchasedTokens / AVERAGE_TOKENS_PER_TURN);
+  
+  return {
+    totalTokens: totalFreeTokens + aiUsageState.purchasedTokens,
+    freeTokens: totalFreeTokens,
+    usedFreeTokens,
+    usedPurchasedTokens,
+    remainingFreeTokens,
+    remainingPurchasedTokens,
+    estimatedTurnsFromFree,
+    estimatedTurnsFromPurchased,
+    totalEstimatedTurns: estimatedTurnsFromFree + estimatedTurnsFromPurchased,
+    nextResetDate: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString(),
+    // 무료 제공량 사용률 (무료 토큰만의 사용률)
+    freeTokensUsagePercent: Math.round((usedFreeTokens / totalFreeTokens) * 100),
+    // 비용 정보
+    averageCostPerTurn: (AVERAGE_TOKENS_PER_TURN / 1000) * AVERAGE_COST_PER_1K_TOKENS,
+    monthlyFreeValue: (MONTHLY_FREE_TOKENS / 1000) * AVERAGE_COST_PER_1K_TOKENS,
+    // 원화 비용 정보
+    averageCostPerTurnKRW: (AVERAGE_TOKENS_PER_TURN / 1000) * AVERAGE_COST_PER_1K_TOKENS * EXCHANGE_RATE_KRW,
+    monthlyFreeValueKRW: (MONTHLY_FREE_TOKENS / 1000) * AVERAGE_COST_PER_1K_TOKENS * EXCHANGE_RATE_KRW,
+    // 크레딧 시스템 정보
+    creditToTokens: CREDIT_TO_TOKENS,
+    creditToKRW: CREDIT_TO_KRW,
+    tokensToKRW: TOKENS_TO_KRW,
+    creditDiscount: Math.round((1 - (TOKENS_TO_KRW / (AVERAGE_COST_PER_1K_TOKENS * EXCHANGE_RATE_KRW))) * 100)
+  };
 }
 
 // 메모리 기반 상태 저장 (실제 프로덕션에서는 데이터베이스 사용 권장)
 let aiUsageState: AIUsageState = {
-  usedCredits: 0,
-  purchasedCredits: 0,
+  usedTokens: 0,
+  purchasedTokens: 0,
   remainingPercent: 100,
   monthlyResetDate: new Date().toISOString(),
   totalTurns: 0,
@@ -81,28 +108,20 @@ export async function GET() {
     // 월이 바뀌었는지 확인
     if (now.getMonth() !== lastReset.getMonth() || now.getFullYear() !== lastReset.getFullYear()) {
       // 월간 리셋 실행
-      aiUsageState.usedCredits = 0;
+      aiUsageState.usedTokens = 0;
       aiUsageState.totalTurns = 0;
       aiUsageState.totalTokens = 0;
       aiUsageState.averageTokensPerTurn = 0;
       aiUsageState.monthlyResetDate = now.toISOString();
       aiUsageState.remainingPercent = calcRemainingPercent(
-        aiUsageState.usedCredits,
-        aiUsageState.purchasedCredits
+        aiUsageState.usedTokens,
+        aiUsageState.purchasedTokens
       );
     }
 
     const responseData = {
       ...aiUsageState,
-      summary: {
-        totalCredits: MONTHLY_FREE_BUDGET_CREDITS + aiUsageState.purchasedCredits,
-        freeCredits: MONTHLY_FREE_BUDGET_CREDITS,
-        usedFreeCredits: Math.min(aiUsageState.usedCredits, MONTHLY_FREE_BUDGET_CREDITS),
-        usedPurchasedCredits: Math.max(0, aiUsageState.usedCredits - MONTHLY_FREE_BUDGET_CREDITS),
-        remainingFreeCredits: Math.max(0, MONTHLY_FREE_BUDGET_CREDITS - aiUsageState.usedCredits),
-        remainingPurchasedCredits: Math.max(0, aiUsageState.purchasedCredits - Math.max(0, aiUsageState.usedCredits - MONTHLY_FREE_BUDGET_CREDITS)),
-        nextResetDate: new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString(),
-      }
+      summary: createSummary(aiUsageState)
     };
 
     return NextResponse.json({
@@ -134,26 +153,68 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        const spentCredits = estimateCreditsForTurn(totalTokens, preciseMode);
+        // 정밀 모드일 경우 1.2배 토큰 소모
+        const actualTokensUsed = preciseMode ? Math.round(totalTokens * 1.2) : totalTokens;
         
         // 사용량 업데이트
-        aiUsageState.usedCredits += spentCredits;
+        aiUsageState.usedTokens += actualTokensUsed;
         aiUsageState.totalTurns += 1;
-        aiUsageState.totalTokens += totalTokens;
+        aiUsageState.totalTokens += actualTokensUsed;
         aiUsageState.averageTokensPerTurn = Math.round(aiUsageState.totalTokens / aiUsageState.totalTurns);
         
-        // 남은 크레딧 퍼센트 재계산
+        // 남은 토큰 퍼센트 재계산
         aiUsageState.remainingPercent = calcRemainingPercent(
-          aiUsageState.usedCredits,
-          aiUsageState.purchasedCredits
+          aiUsageState.usedTokens,
+          aiUsageState.purchasedTokens
         );
+
+        // 예상 남은 턴 수 계산
+        const remainingTokensAfterUsage = Math.max(0, (MONTHLY_FREE_TOKENS + aiUsageState.purchasedTokens) - aiUsageState.usedTokens);
+        const estimatedRemainingTurnsAfterUsage = Math.floor(remainingTokensAfterUsage / AVERAGE_TOKENS_PER_TURN);
 
         return NextResponse.json({
           success: true,
           data: {
-            spentCredits,
-            newState: aiUsageState,
-            message: `턴 사용량이 추가되었습니다. 소모된 크레딧: ${spentCredits}`
+            spentTokens: actualTokensUsed,
+            newState: {
+              ...aiUsageState,
+              summary: createSummary(aiUsageState)
+            },
+            estimatedRemainingTurns: estimatedRemainingTurnsAfterUsage,
+            message: `턴 사용량이 추가되었습니다. 소모된 토큰: ${actualTokensUsed} (${preciseMode ? '정밀 모드' : '일반 모드'})`
+          }
+        });
+
+      case 'addPurchasedTokens':
+        const { tokens } = data;
+        
+        if (!tokens || tokens <= 0) {
+          return NextResponse.json(
+            { success: false, error: '유효하지 않은 토큰 수' },
+            { status: 400 }
+          );
+        }
+
+        aiUsageState.purchasedTokens += tokens;
+        
+        // 남은 토큰 퍼센트 재계산
+        aiUsageState.remainingPercent = calcRemainingPercent(
+          aiUsageState.usedTokens,
+          aiUsageState.purchasedTokens
+        );
+
+        // 예상 추가 턴 수 계산
+        const additionalTurns = Math.floor(tokens / AVERAGE_TOKENS_PER_TURN);
+
+        return NextResponse.json({
+          success: true,
+          data: {
+            newState: {
+              ...aiUsageState,
+              summary: createSummary(aiUsageState)
+            },
+            additionalTurns,
+            message: `${tokens.toLocaleString()} 토큰이 구매되었습니다. (예상 ${additionalTurns}턴)`
           }
         });
 
@@ -167,19 +228,33 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        aiUsageState.purchasedCredits += credits;
+        // 크레딧을 토큰으로 변환
+        const tokensFromCredits = credits * CREDIT_TO_TOKENS;
+        const costInKRW = credits * CREDIT_TO_KRW;
         
-        // 남은 크레딧 퍼센트 재계산
+        aiUsageState.purchasedTokens += tokensFromCredits;
+        
+        // 남은 토큰 퍼센트 재계산
         aiUsageState.remainingPercent = calcRemainingPercent(
-          aiUsageState.usedCredits,
-          aiUsageState.purchasedCredits
+          aiUsageState.usedTokens,
+          aiUsageState.purchasedTokens
         );
+
+        // 예상 추가 턴 수 계산
+        const additionalTurnsFromCredits = Math.floor(tokensFromCredits / AVERAGE_TOKENS_PER_TURN);
 
         return NextResponse.json({
           success: true,
           data: {
-            newState: aiUsageState,
-            message: `${credits} 크레딧이 구매되었습니다.`
+            newState: {
+              ...aiUsageState,
+              summary: createSummary(aiUsageState)
+            },
+            purchasedCredits: credits,
+            purchasedTokens: tokensFromCredits,
+            costInKRW,
+            additionalTurns: additionalTurnsFromCredits,
+            message: `${credits}크레딧(₩${costInKRW.toLocaleString()})으로 ${tokensFromCredits.toLocaleString()} 토큰이 구매되었습니다. (예상 ${additionalTurnsFromCredits}턴)`
           }
         });
 
@@ -193,42 +268,49 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        const grantedCredits = turns * BASE_CREDIT_PER_TURN;
-        aiUsageState.purchasedCredits += grantedCredits;
+        // 1턴당 평균 토큰 수로 계산
+        const grantedTokens = turns * AVERAGE_TOKENS_PER_TURN;
+        aiUsageState.purchasedTokens += grantedTokens;
         
-        // 남은 크레딧 퍼센트 재계산
+        // 남은 토큰 퍼센트 재계산
         aiUsageState.remainingPercent = calcRemainingPercent(
-          aiUsageState.usedCredits,
-          aiUsageState.purchasedCredits
+          aiUsageState.usedTokens,
+          aiUsageState.purchasedTokens
         );
 
         return NextResponse.json({
           success: true,
           data: {
-            grantedCredits,
-            newState: aiUsageState,
-            message: `${turns}턴이 부여되었습니다. (${grantedCredits} 크레딧)`
+            grantedTokens,
+            newState: {
+              ...aiUsageState,
+              summary: createSummary(aiUsageState)
+            },
+            message: `${turns}턴이 부여되었습니다. (${grantedTokens.toLocaleString()} 토큰)`
           }
         });
 
       case 'resetMonthly':
-        // 월간 리셋 (무료 크레딧 사용량만 리셋)
-        aiUsageState.usedCredits = 0;
+        // 월간 리셋 (무료 토큰 사용량만 리셋)
+        aiUsageState.usedTokens = 0;
         aiUsageState.totalTurns = 0;
         aiUsageState.totalTokens = 0;
         aiUsageState.averageTokensPerTurn = 0;
         aiUsageState.monthlyResetDate = new Date().toISOString();
         
-        // 남은 크레딧 퍼센트 재계산
+        // 남은 토큰 퍼센트 재계산
         aiUsageState.remainingPercent = calcRemainingPercent(
-          aiUsageState.usedCredits,
-          aiUsageState.purchasedCredits
+          aiUsageState.usedTokens,
+          aiUsageState.purchasedTokens
         );
 
         return NextResponse.json({
           success: true,
           data: {
-            newState: aiUsageState,
+            newState: {
+              ...aiUsageState,
+              summary: createSummary(aiUsageState)
+            },
             message: '월간 사용량이 리셋되었습니다.'
           }
         });
@@ -236,8 +318,8 @@ export async function POST(request: NextRequest) {
       case 'resetAll':
         // 모든 사용량 리셋
         aiUsageState = {
-          usedCredits: 0,
-          purchasedCredits: 0,
+          usedTokens: 0,
+          purchasedTokens: 0,
           remainingPercent: 100,
           monthlyResetDate: new Date().toISOString(),
           totalTurns: 0,
@@ -248,7 +330,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           success: true,
           data: {
-            newState: aiUsageState,
+            newState: {
+              ...aiUsageState,
+              summary: createSummary(aiUsageState)
+            },
             message: '모든 AI 사용량이 리셋되었습니다.'
           }
         });
@@ -256,20 +341,23 @@ export async function POST(request: NextRequest) {
       case 'initializeUsage':
         // 더미 데이터로 초기화
         aiUsageState = {
-          usedCredits: 150,
-          purchasedCredits: 100,
+          usedTokens: 45000, // 50턴 × 900 토큰
+          purchasedTokens: 90000, // 추가 구매 토큰
           remainingPercent: 70,
           monthlyResetDate: new Date().toISOString(),
           totalTurns: 50,
-          totalTokens: 25000,
-          averageTokensPerTurn: 500,
+          totalTokens: 45000,
+          averageTokensPerTurn: 900,
         };
 
         return NextResponse.json({
           success: true,
           data: {
-            newState: aiUsageState,
-            message: 'AI 사용량이 더미 데이터로 초기화되었습니다.'
+            newState: {
+              ...aiUsageState,
+              summary: createSummary(aiUsageState)
+            },
+            message: 'AI 사용량이 초기화되었습니다.'
           }
         });
 
@@ -284,24 +372,28 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        let totalSpentCredits = 0;
         let totalSimTokens = 0;
 
         for (let i = 0; i < simTurns; i++) {
-          const spentCredits = estimateCreditsForTurn(simTokensPerTurn, simPreciseMode);
-          totalSpentCredits += spentCredits;
-          totalSimTokens += simTokensPerTurn;
+          const tokensForTurn = simPreciseMode ? Math.round(simTokensPerTurn * 1.2) : simTokensPerTurn;
+          totalSimTokens += tokensForTurn;
         }
 
         // 실제 상태에 반영하지 않고 시뮬레이션 결과만 반환
+        const remainingTokensForSim = Math.max(0, (MONTHLY_FREE_TOKENS + aiUsageState.purchasedTokens) - aiUsageState.usedTokens);
+        const estimatedRemainingTurnsForSim = Math.floor(remainingTokensForSim / AVERAGE_TOKENS_PER_TURN);
+        const canAffordTurns = Math.floor(remainingTokensForSim / (simPreciseMode ? simTokensPerTurn * 1.2 : simTokensPerTurn));
+
         const simulationResult = {
           turns: simTurns,
           tokensPerTurn: simTokensPerTurn,
           totalTokens: totalSimTokens,
-          totalSpentCredits,
-          averageCreditsPerTurn: Math.round(totalSpentCredits / simTurns),
           preciseMode: simPreciseMode,
-          estimatedRemainingCredits: Math.max(0, (MONTHLY_FREE_BUDGET_CREDITS + aiUsageState.purchasedCredits) - totalSpentCredits)
+          estimatedRemainingTurns: estimatedRemainingTurnsForSim,
+          canAffordTurns,
+          remainingTokens: remainingTokensForSim,
+          costEstimate: (totalSimTokens / 1000) * AVERAGE_COST_PER_1K_TOKENS,
+          costEstimateKRW: (totalSimTokens / 1000) * AVERAGE_COST_PER_1K_TOKENS * EXCHANGE_RATE_KRW
         };
 
         return NextResponse.json({
@@ -335,10 +427,10 @@ export async function PATCH(request: NextRequest) {
     // 사용량 업데이트
     Object.assign(aiUsageState, updates);
     
-    // 남은 크레딧 퍼센트 재계산
+    // 남은 토큰 퍼센트 재계산
     aiUsageState.remainingPercent = calcRemainingPercent(
-      aiUsageState.usedCredits,
-      aiUsageState.purchasedCredits
+      aiUsageState.usedTokens,
+      aiUsageState.purchasedTokens
     );
     
     // 평균 토큰 수 재계산
@@ -350,6 +442,7 @@ export async function PATCH(request: NextRequest) {
       success: true,
       data: {
         newState: aiUsageState,
+        summary: createSummary(aiUsageState),
         message: 'AI 사용량이 업데이트되었습니다.'
       }
     });
@@ -365,8 +458,8 @@ export async function PATCH(request: NextRequest) {
 export async function DELETE() {
   try {
     aiUsageState = {
-      usedCredits: 0,
-      purchasedCredits: 0,
+      usedTokens: 0,
+      purchasedTokens: 0,
       remainingPercent: 100,
       monthlyResetDate: new Date().toISOString(),
       totalTurns: 0,
