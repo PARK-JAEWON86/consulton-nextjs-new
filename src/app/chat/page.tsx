@@ -4,6 +4,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Send, Plus, Mic, Bot, User, X, Image, File } from "lucide-react";
 import ServiceLayout from "@/components/layout/ServiceLayout";
+import { useSpecificEventRefresh } from "@/hooks/useEventBasedRefresh";
+import { eventBus, CREDIT_EVENTS, CHAT_EVENTS } from "@/utils/eventBus";
 
 interface ChatMessage {
   id: string;
@@ -30,6 +32,11 @@ export default function ChatPage() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [hasStartedChat, setHasStartedChat] = useState(false);
   const [isComposing, setIsComposing] = useState(false);
+  const [aiUsageData, setAiUsageData] = useState<any>(null);
+  const [isLoadingAIUsage, setIsLoadingAIUsage] = useState(true);
+  
+  // 이벤트 기반 새로고침 훅 사용
+  const { registerRefreshFunction } = useSpecificEventRefresh(CREDIT_EVENTS.AI_USAGE_UPDATED);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -129,6 +136,14 @@ export default function ChatPage() {
     }
   }, [hasStartedChat]);
 
+  // 새채팅 시작 시 스크롤 위치 초기화
+  useEffect(() => {
+    if (!hasStartedChat) {
+      // 새채팅 시작 시 페이지 최상단으로 스크롤
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [hasStartedChat]);
+
   // 메시지가 추가될 때마다 스크롤을 맨 아래로
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -147,6 +162,33 @@ export default function ChatPage() {
     }
   }, []);
 
+  // AI 사용량 데이터 가져오기
+  const fetchAIUsage = useCallback(async () => {
+    try {
+      setIsLoadingAIUsage(true);
+      const response = await fetch('/api/ai-usage');
+      const result = await response.json();
+      
+      if (result.success) {
+        setAiUsageData(result.data);
+      }
+    } catch (error) {
+      console.error('AI 사용량 조회 실패:', error);
+    } finally {
+      setIsLoadingAIUsage(false);
+    }
+  }, []);
+
+  // AI 사용량 초기 로드 (한 번만)
+  useEffect(() => {
+    fetchAIUsage();
+  }, []); // 의존성 배열을 비워서 마운트 시 한 번만 실행
+
+  // 이벤트 기반 새로고침 등록
+  useEffect(() => {
+    registerRefreshFunction(fetchAIUsage);
+  }, [registerRefreshFunction]);
+
   // 초기 입력 필드 높이 자동 조정
   const adjustInitialTextareaHeight = useCallback(() => {
     const textarea = document.querySelector('textarea:not([ref])') as HTMLTextAreaElement;
@@ -161,6 +203,12 @@ export default function ChatPage() {
     const trimmedValue = inputValue.trim();
     
     if (!trimmedValue || isLoading) return;
+    
+    // 토큰 한도 체크
+    if (aiUsageData && aiUsageData.remainingPercent <= 0) {
+      alert('토큰 한도에 도달했습니다. 새채팅을 시작해주세요.');
+      return;
+    }
 
     // 즉시 입력 필드 초기화
     setInputValue("");
@@ -179,6 +227,26 @@ export default function ChatPage() {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    
+    // AI 사용량 API를 통해 토큰 사용량 업데이트
+    try {
+      await fetch('/api/ai-usage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'addTurnUsage',
+          data: { totalTokens: 900 } // 평균 토큰 사용량
+        })
+      });
+      
+      // 이벤트 발행으로 다른 컴포넌트들에게 알림
+      eventBus.publish(CREDIT_EVENTS.AI_USAGE_UPDATED, {
+        tokensUsed: 900,
+        action: 'userMessage'
+      });
+    } catch (error) {
+      console.error('토큰 사용량 업데이트 실패:', error);
+    }
 
     // 새로운 채팅 시작 시 사이드바에 추가
     if (messages.length === 0) {
@@ -229,6 +297,27 @@ export default function ChatPage() {
     };
     
     setMessages(prev => [...prev, aiMessage]);
+    
+    // AI 응답에 대한 토큰 사용량도 업데이트
+    try {
+      await fetch('/api/ai-usage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'addTurnUsage',
+          data: { totalTokens: 900 } // AI 응답 평균 토큰 사용량
+        })
+      });
+      
+      // 이벤트 발행으로 다른 컴포넌트들에게 알림
+      eventBus.publish(CREDIT_EVENTS.AI_USAGE_UPDATED, {
+        tokensUsed: 900,
+        action: 'aiResponse'
+      });
+    } catch (error) {
+      console.error('AI 응답 토큰 사용량 업데이트 실패:', error);
+    }
+    
     setIsLoading(false);
   };
 
@@ -299,24 +388,86 @@ export default function ChatPage() {
 
   return (
     <ServiceLayout>
+            {/* 채팅 헤더 - 항상 표시 (고정 높이) */}
+      <div className="w-full h-16 bg-gray-50/95 backdrop-blur-sm sticky top-16 z-50">
+        <div className="max-w-4xl mx-auto px-4 py-2 h-full">
+          {hasStartedChat ? (
+            // 채팅 진행 중: 새채팅 버튼 + 토큰 사용량
+            <div className="flex items-center justify-between h-full">
+              {/* 새채팅 버튼 */}
+              <button 
+                onClick={() => {
+                  // 모든 상태 초기화
+                  setMessages([]);
+                  setInputValue("");
+                  setHasStartedChat(false);
+                  setSelectedFiles([]);
+                  
+                  // 페이지 최상단으로 스크롤
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                  
+                  // 새채팅 시작 시 이벤트 발행
+                  eventBus.publish(CHAT_EVENTS.CHAT_STARTED, {
+                    timestamp: new Date().toISOString()
+                  });
+                }}
+                className={`flex items-center space-x-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                  aiUsageData && aiUsageData.remainingPercent <= 20
+                    ? 'text-red-700 hover:text-red-800 hover:bg-red-100 bg-red-50'
+                    : aiUsageData && aiUsageData.remainingPercent <= 40
+                      ? 'text-yellow-700 hover:text-yellow-800 hover:bg-yellow-100 bg-yellow-50'
+                      : 'text-gray-700 hover:text-blue-600 hover:bg-blue-50'
+                }`}
+              >
+                <Plus className="w-4 h-4" />
+                <span>새채팅</span>
+              </button>
+              
+              {/* 토큰 사용량 표시 */}
+              <div className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-600 bg-gray-50 rounded-lg">
+                {isLoadingAIUsage ? (
+                  <div className="flex items-center space-x-2">
+                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
+                    <span>로딩 중...</span>
+                  </div>
+                ) : aiUsageData ? (
+                  <>
+                    <div className={`w-2 h-2 rounded-full ${
+                      aiUsageData.remainingPercent <= 20 ? 'bg-red-500' : 
+                      aiUsageData.remainingPercent <= 40 ? 'bg-yellow-500' : 'bg-green-500'
+                    }`}></div>
+                    <span>남은 토큰: {aiUsageData.remainingPercent}%</span>
+                  </>
+                ) : (
+                  <span>토큰 정보 없음</span>
+                )}
+              </div>
+            </div>
+          ) : (
+            // 채팅 시작 전: 빈 공간
+            <div className="h-full"></div>
+          )}
+        </div>
+      </div>
+      
       <div className={`min-h-screen bg-gray-50 flex flex-col ${
         !hasStartedChat ? 'overflow-hidden' : ''
       }`} style={!hasStartedChat ? { minHeight: '100vh' } : {}}>
         {/* 메인 채팅 영역 */}
         <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full relative">
           {/* 메시지 목록 - 스크롤 가능한 영역 */}
-          <div className={`flex-1 px-4 py-6 space-y-6 ${
+          <div className={`flex-1 px-4 py-2 space-y-6 ${
             hasStartedChat 
               ? 'overflow-y-auto pb-32' 
-              : 'overflow-hidden pb-6'
+              : 'overflow-hidden pb-4'
           }`}>
             {messages.length === 0 && !hasStartedChat ? (
               // 초기 화면 (ChatGPT 스타일) - 스크롤 방지
-              <div className="flex flex-col items-center justify-center py-20 text-center mt-16" style={{ overflow: 'hidden' }}>
-                <h1 className="text-3xl font-semibold text-gray-900 mb-4">
+              <div className="flex flex-col items-center justify-center py-12 text-center mt-8" style={{ overflow: 'hidden' }}>
+                <h1 className="text-3xl font-semibold text-gray-900 mb-3">
                   어떤 상담을 받아야 할지 모르시나요?
                 </h1>
-                <p className="text-lg text-gray-600 mb-8 max-w-2xl">
+                <p className="text-lg text-gray-600 mb-6 max-w-2xl">
                   AI 채팅 상담을 통해 먼저 문제를 정리해보세요. 전문가 매칭 전에 AI가 도움을 드릴게요
                 </p>
                 
@@ -435,8 +586,8 @@ export default function ChatPage() {
                   )}
                   
                   {/* 입력 예시 카드들 */}
-                  <div className="mt-6">
-                    <h3 className="text-sm font-medium text-gray-700 mb-3 text-center">💡 질문예시</h3>
+                  <div className="mt-4">
+                    <h3 className="text-sm font-medium text-gray-700 mb-2 text-center">💡 질문예시</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
                         <p className="text-xs text-gray-700 leading-relaxed">
@@ -457,7 +608,7 @@ export default function ChatPage() {
                   </div>
                   
                   {/* AI 상담 어시스턴트 경고문 */}
-                  <div className="mt-6 text-center">
+                  <div className="mt-4 text-center">
                     <p className="text-xs text-gray-500">
                       AI 상담 어시스턴트는 실수를 할 수 있습니다. 중요한 정보는 재차 확인하세요.
                     </p>
@@ -466,7 +617,7 @@ export default function ChatPage() {
               </div>
             ) : (
               // 메시지들 표시 - 첫 질문 후에도 중앙 정렬 유지
-              <div className="flex flex-col items-center justify-center min-h-[40vh] pt-20">
+              <div className="flex flex-col items-center justify-center min-h-[40vh] pt-12">
                 <div className="w-full max-w-4xl space-y-6">
                   {messages.map((message) => (
                     <div

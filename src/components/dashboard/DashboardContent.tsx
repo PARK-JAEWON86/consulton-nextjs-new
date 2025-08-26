@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   BarChart3,
   MessageCircle,
@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 import CreditBalance from "./CreditBalance";
 import UserProfile from "./UserProfile";
+import { useEventBasedRefresh } from "@/hooks/useEventBasedRefresh";
+import { eventBus, CREDIT_EVENTS, USER_EVENTS } from "@/utils/eventBus";
 
 interface User {
   id: string;
@@ -49,46 +51,63 @@ export default function DashboardContent() {
   const [isTokenGuideExpanded, setIsTokenGuideExpanded] = useState(false);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // 앱 상태 로드
-  useEffect(() => {
-    const loadAppState = async () => {
-      try {
-        const response = await fetch('/api/app-state');
-        const result = await response.json();
-        if (result.success) {
-          setAppState({
-            isAuthenticated: result.data.isAuthenticated,
-            user: result.data.user
-          });
-        }
-      } catch (error) {
-        console.error('앱 상태 로드 실패:', error);
+  // 이벤트 기반 새로고침 훅 사용
+  const { registerRefreshFunction } = useEventBasedRefresh();
+
+  // 데이터 새로고침 함수
+  const refreshData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      // 병렬로 데이터 로드
+      const [appStateResponse, aiTokenResponse] = await Promise.all([
+        fetch('/api/app-state'),
+        fetch('/api/ai-usage')
+      ]);
+
+      const [appStateResult, aiTokenResult] = await Promise.all([
+        appStateResponse.json(),
+        aiTokenResponse.json()
+      ]);
+
+      if (appStateResult.success) {
+        setAppState({
+          isAuthenticated: appStateResult.data.isAuthenticated,
+          user: appStateResult.data.user
+        });
       }
-    };
 
-    loadAppState();
+      if (aiTokenResult.success) {
+        setAiTokenData(aiTokenResult.data);
+      }
+    } catch (error) {
+      console.error('데이터 로드 실패:', error);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  // AI 토큰 데이터 가져오기
+  // 앱 상태 및 AI 토큰 데이터 초기 로드 (한 번만)
   useEffect(() => {
-    const fetchAiTokenData = async () => {
-      if (appState.isAuthenticated && appState.user) {
-        try {
-          const response = await fetch('/api/ai-usage');
-          const result = await response.json();
-          
-          if (result.success) {
-            setAiTokenData(result.data);
-          }
-        } catch (error) {
-          console.error('AI 토큰 데이터 조회 실패:', error);
-        }
-      }
-    };
+    refreshData();
+  }, []); // 의존성 배열을 비워서 마운트 시 한 번만 실행
 
-    fetchAiTokenData();
-  }, [appState.isAuthenticated, appState.user]);
+  // 이벤트 기반 새로고침 등록
+  useEffect(() => {
+    // 크레딧 관련 이벤트에 새로고침 함수 등록
+    registerRefreshFunction(CREDIT_EVENTS.CREDITS_UPDATED, refreshData);
+    registerRefreshFunction(CREDIT_EVENTS.CREDITS_PURCHASED, refreshData);
+    registerRefreshFunction(CREDIT_EVENTS.CREDITS_DEDUCTED, refreshData);
+    
+    // 사용자 관련 이벤트에 새로고침 함수 등록
+    registerRefreshFunction(USER_EVENTS.USER_PROFILE_UPDATED, refreshData);
+  }, [registerRefreshFunction, refreshData]);
+
+  // 수동 새로고침 핸들러
+  const handleManualRefresh = () => {
+    refreshData();
+  };
 
   const loggedInUser = appState.user;
 
@@ -151,29 +170,11 @@ export default function DashboardContent() {
       const tokenResult = await tokenResponse.json();
       
       if (tokenResult.success) {
-        // AI 토큰 데이터 새로고침
-        const refreshResponse = await fetch('/api/ai-usage');
-        const refreshResult = await refreshResponse.json();
-        if (refreshResult.success) {
-          setAiTokenData(refreshResult.data);
-        }
-        
-        // 사용자 크레딧 정보 업데이트
-        // 크레딧 차감 결과를 반영하여 UI 업데이트
-        if (creditResult.success) {
-          // 사용자 크레딧 잔액 업데이트
-          const updatedUser = {
-            ...user,
-            credits: creditResult.data.newBalance
-          };
-          
-          // 로컬 상태 업데이트 (실제로는 서버에서 처리되어야 함)
-          // 여기서는 UI만 업데이트
-          console.log('크레딧 차감 완료:', creditResult.data);
-          
-          // TODO: 실제로는 앱 상태나 사용자 정보를 업데이트해야 함
-          // setUser(updatedUser); // 사용자 상태가 있다면 업데이트
-        }
+        // 이벤트 발행으로 다른 컴포넌트들에게 알림
+        eventBus.publish(CREDIT_EVENTS.CREDITS_PURCHASED, {
+          creditsUsed: 100,
+          tokensAdded: 100000
+        });
         
         alert('AI상담 토큰 구매가 완료되었습니다! 100,000토큰이 추가되었습니다.');
         setShowPurchaseModal(false);
@@ -410,13 +411,29 @@ export default function DashboardContent() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 헤더 */}
         <div className="mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              안녕하세요, {user.name}님!
-            </h1>
-            <p className="text-gray-600 mt-1">
-              오늘도 전문가와 함께 성장해보세요.
-            </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                안녕하세요, {user.name}님!
+              </h1>
+              <p className="text-gray-600 mt-1">
+                오늘도 전문가와 함께 성장해보세요.
+              </p>
+            </div>
+            
+            {/* 새로고침 버튼 */}
+            <button
+              onClick={handleManualRefresh}
+              disabled={isLoading}
+              className={`p-2 rounded-lg transition-all duration-200 ${
+                isLoading
+                  ? 'bg-gray-100 cursor-not-allowed text-gray-400'
+                  : 'bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-blue-600'
+              }`}
+              title="데이터 새로고침"
+            >
+              <RefreshCw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
+            </button>
           </div>
         </div>
 
@@ -430,131 +447,140 @@ export default function DashboardContent() {
             
             {/* AI상담 토큰 */}
             <div className="bg-white shadow rounded-lg p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center">
-                  <MessageCircle className="h-6 w-6 text-blue-600 mr-3" />
-                  <h3 className="text-lg font-medium text-gray-900">AI상담 토큰</h3>
+              {isLoading ? (
+                <div className="flex justify-center items-center h-32">
+                  <RefreshCw className="h-8 w-8 text-blue-500 animate-spin" />
+                  <span className="ml-2 text-gray-600">데이터를 불러오는 중입니다...</span>
                 </div>
-                <div className="flex items-center space-x-2 text-xs text-gray-500">
-                  <RefreshCw className="w-4 h-4" />
-                  <span>
-                    다음 리셋까지 {aiTokenData ? (() => {
-                      const now = new Date();
-                      const nextReset = new Date(aiTokenData.summary?.nextResetDate || '');
-                      const diff = nextReset.getTime() - now.getTime();
-                      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-                      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                      return `${days}일 ${hours}시간`;
-                    })() : '...일 ...시간'}
-                  </span>
-                </div>
-              </div>
-              
-              <div className="space-y-4">
-                {/* 이번 달 무료 토큰 */}
-                <div className="text-center">
-                  <h4 className="text-sm font-semibold text-gray-800 mb-2">
-                    이번 달 무료 토큰
-                    <span className="text-xs font-normal text-gray-500 ml-2">
-                      (사용기한: {aiTokenData ? (() => {
-                        const nextReset = new Date(aiTokenData.summary?.nextResetDate || '');
-                        return `${nextReset.getMonth() + 1}월 ${nextReset.getDate()}일`;
-                      })() : '...월 ...일'})
-                    </span>
-                  </h4>
-                  <div className="text-3xl font-bold text-blue-600 mb-2">
-                    {aiTokenData && aiTokenData.summary?.remainingFreeTokens ? (
-                      aiTokenData.summary.remainingFreeTokens.toLocaleString()
-                    ) : (
-                      '로딩 중...'
-                    )}
-                  </div>
-                  <p className="text-gray-600">
-                    {/* 턴 대화가능 텍스트 제거됨 */}
-                  </p>
-                </div>
-
-                {/* 진행률 표시 */}
-                <div className="text-center">
-                  <p className="text-sm text-gray-600 mb-2">
-                    무료 제공량 {aiTokenData && aiTokenData.summary?.freeTokensUsagePercent !== undefined ? 
-                      (100 - aiTokenData.summary.freeTokensUsagePercent) : '...'}% 남음
-                  </p>
-                  <div className="w-full bg-gray-200 rounded-full h-2 mb-2 overflow-hidden shadow-inner">
-                    <div 
-                      className={`h-2 rounded-full transition-all duration-500 ease-out shadow-sm ${
-                        aiTokenData && aiTokenData.summary?.freeTokensUsagePercent > 70 ? 'bg-gradient-to-r from-red-400 to-red-500' :
-                        aiTokenData && aiTokenData.summary?.freeTokensUsagePercent > 30 ? 'bg-gradient-to-r from-yellow-400 to-orange-500' :
-                        'bg-gradient-to-r from-green-400 to-green-500'
-                      }`}
-                      style={{ 
-                        width: `${aiTokenData && aiTokenData.summary?.freeTokensUsagePercent !== undefined ? 
-                          Math.max(1, Math.min(100, 100 - aiTokenData.summary.freeTokensUsagePercent)) : 0}%` 
-                      }}
-                    ></div>
-                  </div>
-                  <p className="text-sm text-gray-600">
-                    {/* 턴 남음 텍스트 제거됨 */}
-                  </p>
-                </div>
-
-                {/* 토큰 사용량 안내 */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <button
-                    onClick={() => setIsTokenGuideExpanded(!isTokenGuideExpanded)}
-                    className="w-full flex items-center justify-between text-left"
-                  >
-                    <h5 className="font-semibold text-gray-800 text-sm">
-                      토큰 사용량 안내
-                    </h5>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-xs text-gray-500">
-                        {isTokenGuideExpanded ? '접기' : '펼치기'}
-                      </span>
-                      <ChevronDown 
-                        className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${
-                          isTokenGuideExpanded ? 'rotate-180' : ''
-                        }`}
-                      />
+              ) : (
+                <>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center">
+                      <MessageCircle className="h-6 w-6 text-blue-600 mr-3" />
+                      <h3 className="text-lg font-medium text-gray-900">AI상담 토큰</h3>
                     </div>
-                  </button>
+                    <div className="flex items-center space-x-2 text-xs text-gray-500">
+                      <RefreshCw className="w-4 h-4" />
+                      <span>
+                        다음 리셋까지 {aiTokenData ? (() => {
+                          const now = new Date();
+                          const nextReset = new Date(aiTokenData.summary?.nextResetDate || '');
+                          const diff = nextReset.getTime() - now.getTime();
+                          const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                          const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                          return `${days}일 ${hours}시간`;
+                        })() : '...일 ...시간'}
+                      </span>
+                    </div>
+                  </div>
                   
-                  {isTokenGuideExpanded && (
-                    <div className="mt-3 text-center space-y-3">
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                        <p className="text-blue-800 text-sm font-medium mb-2">
-                          💡 토큰 사용량은 대화의 복잡도에 따라 달라집니다
-                        </p>
-                        <ul className="text-blue-700 text-xs space-y-1 text-left">
-                          <li>• 간단한 질문: 적은 토큰 사용</li>
-                          <li>• 복잡한 상담: 더 많은 토큰 사용</li>
-                          <li>• 긴 대화: 누적 토큰 소모</li>
-                          <li>• 정밀 모드: 1.2배 토큰 소모</li>
-                        </ul>
+                  <div className="space-y-4">
+                    {/* 이번 달 무료 토큰 */}
+                    <div className="text-center">
+                      <h4 className="text-sm font-semibold text-gray-800 mb-2">
+                        이번 달 무료 토큰
+                        <span className="text-xs font-normal text-gray-500 ml-2">
+                          (사용기한: {aiTokenData ? (() => {
+                            const nextReset = new Date(aiTokenData.summary?.nextResetDate || '');
+                            return `${nextReset.getMonth() + 1}월 ${nextReset.getDate()}일`;
+                          })() : '...월 ...일'})
+                        </span>
+                      </h4>
+                      <div className="text-3xl font-bold text-blue-600 mb-2">
+                        {aiTokenData && aiTokenData.summary?.remainingFreeTokens ? (
+                          aiTokenData.summary.remainingFreeTokens.toLocaleString()
+                        ) : (
+                          '로딩 중...'
+                        )}
+                      </div>
+                      <p className="text-gray-600">
+                        {/* 턴 대화가능 텍스트 제거됨 */}
+                      </p>
+                    </div>
+
+                    {/* 진행률 표시 */}
+                    <div className="text-center">
+                      <p className="text-sm text-gray-600 mb-2">
+                        무료 제공량 {aiTokenData && aiTokenData.summary?.freeTokensUsagePercent !== undefined ? 
+                          (100 - aiTokenData.summary.freeTokensUsagePercent) : '...'}% 남음
+                      </p>
+                      <div className="w-full bg-gray-200 rounded-full h-2 mb-2 overflow-hidden shadow-inner">
+                        <div 
+                          className={`h-2 rounded-full transition-all duration-500 ease-out shadow-sm ${
+                            aiTokenData && aiTokenData.summary?.freeTokensUsagePercent > 70 ? 'bg-gradient-to-r from-red-400 to-red-500' :
+                            aiTokenData && aiTokenData.summary?.freeTokensUsagePercent > 30 ? 'bg-gradient-to-r from-yellow-400 to-orange-500' :
+                            'bg-gradient-to-r from-green-400 to-green-500'
+                          }`}
+                          style={{ 
+                            width: `${aiTokenData && aiTokenData.summary?.freeTokensUsagePercent !== undefined ? 
+                              Math.max(1, Math.min(100, 100 - aiTokenData.summary.freeTokensUsagePercent)) : 0}%` 
+                          }}
+                        ></div>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        {/* 턴 남음 텍스트 제거됨 */}
+                      </p>
+                    </div>
+
+                    {/* 토큰 사용량 안내 */}
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <button
+                        onClick={() => setIsTokenGuideExpanded(!isTokenGuideExpanded)}
+                        className="w-full flex items-center justify-between text-left"
+                      >
+                        <h5 className="font-semibold text-gray-800 text-sm">
+                          토큰 사용량 안내
+                        </h5>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs text-gray-500">
+                            {isTokenGuideExpanded ? '접기' : '펼치기'}
+                          </span>
+                          <ChevronDown 
+                            className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${
+                              isTokenGuideExpanded ? 'rotate-180' : ''
+                            }`}
+                          />
+                        </div>
+                      </button>
+                      
+                      {isTokenGuideExpanded && (
+                        <div className="mt-3 text-center space-y-3">
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                            <p className="text-blue-800 text-sm font-medium mb-2">
+                              💡 토큰 사용량은 대화의 복잡도에 따라 달라집니다
+                            </p>
+                            <ul className="text-blue-700 text-xs space-y-1 text-left">
+                              <li>• 간단한 질문: 적은 토큰 사용</li>
+                              <li>• 복잡한 상담: 더 많은 토큰 사용</li>
+                              <li>• 긴 대화: 누적 토큰 소모</li>
+                              <li>• 정밀 모드: 1.2배 토큰 소모</li>
+                            </ul>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 크레딧 충전 안내 */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <Plus className="w-5 h-5 text-blue-600" />
+                        <span className="font-semibold text-blue-800 text-sm">더 많은 대화가 필요하다면</span>
+                      </div>
+                      <p className="text-blue-700 text-center text-sm">
+                        100크레딧으로 더 많은 대화를 즐기세요
+                      </p>
+                      <div className="mt-3 text-center">
+                        <button 
+                          onClick={handleShowPurchaseModal}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                        >
+                          AI상담 토큰 구매하기
+                        </button>
                       </div>
                     </div>
-                  )}
-                </div>
-
-                {/* 크레딧 충전 안내 */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <Plus className="w-5 h-5 text-blue-600" />
-                    <span className="font-semibold text-blue-800 text-sm">더 많은 대화가 필요하다면</span>
                   </div>
-                  <p className="text-blue-700 text-center text-sm">
-                    100크레딧으로 더 많은 대화를 즐기세요
-                  </p>
-                  <div className="mt-3 text-center">
-                    <button 
-                      onClick={handleShowPurchaseModal}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
-                    >
-                      AI상담 토큰 구매하기
-                    </button>
-                  </div>
-                </div>
-              </div>
+                </>
+              )}
             </div>
           </div>
         </div>

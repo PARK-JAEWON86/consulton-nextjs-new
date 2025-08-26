@@ -131,6 +131,46 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
 
     loadUserProfile();
   }, [appState.isAuthenticated, appState.user]);
+
+  // 카테고리 데이터 로드
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        setIsLoadingInterests(true);
+        const response = await fetch('/api/categories?activeOnly=true');
+        const result = await response.json();
+        
+        if (result.success) {
+          const categoryNames = result.data.map((cat: any) => cat.name);
+          setAvailableInterests(categoryNames);
+        } else {
+          console.error('카테고리 로드 실패:', result.message);
+          // API 실패 시 기본 분야들로 fallback
+          setAvailableInterests([
+            "진로상담", "심리상담", "재무상담", "법률상담", "건강상담", 
+            "교육상담", "관계상담", "사업상담", "기술상담", "디자인상담",
+            "언어상담", "예술상담", "스포츠상담", "여행상담", "요리상담",
+            "패션상담", "반려동물상담", "정원상담", "투자상담", "세무상담",
+            "보험상담", "진학상담", "부동산상담", "창업상담", "IT상담", "기타"
+          ]);
+        }
+      } catch (error) {
+        console.error('카테고리 로드 실패:', error);
+        // 네트워크 오류 시 기본 분야들로 fallback
+        setAvailableInterests([
+          "진로상담", "심리상담", "재무상담", "법률상담", "건강상담", 
+          "교육상담", "관계상담", "사업상담", "기술상담", "디자인상담",
+          "언어상담", "예술상담", "스포츠상담", "여행상담", "요리상담",
+          "패션상담", "반려동물상담", "정원상담", "투자상담", "세무상담",
+          "보험상담", "진학상담", "부동산상담", "창업상담", "IT상담", "기타"
+        ]);
+      } finally {
+        setIsLoadingInterests(false);
+      }
+    };
+
+    loadCategories();
+  }, []);
   
   const [profileData, setProfileData] = useState<UserData>({
     name: "사용자", // 기본값
@@ -154,12 +194,27 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
   };
 
   const handleInterestToggle = (interest: string) => {
-    setProfileData((prev) => ({
-      ...prev,
-      interests: prev.interests?.includes(interest)
-        ? prev.interests.filter((i: string) => i !== interest)
-        : [...(prev.interests || []), interest],
-    }));
+    setProfileData((prev) => {
+      const currentInterests = prev.interests || [];
+      
+      if (currentInterests.includes(interest)) {
+        // 이미 선택된 분야라면 제거
+        return {
+          ...prev,
+          interests: currentInterests.filter((i: string) => i !== interest),
+        };
+      } else {
+        // 새로운 분야를 선택하려는 경우, 최대 10개까지만 허용
+        if (currentInterests.length >= 10) {
+          alert('관심분야는 최대 10개까지만 선택할 수 있습니다.');
+          return prev;
+        }
+        return {
+          ...prev,
+          interests: [...currentInterests, interest],
+        };
+      }
+    });
   };
 
   const handleSaveProfile = async () => {
@@ -217,18 +272,8 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
     }
   };
 
-  const availableInterests = [
-    "진로상담",
-    "심리상담",
-    "재무상담",
-    "법률상담",
-    "건강상담",
-    "교육상담",
-    "부동산상담",
-    "IT상담",
-    "창업상담",
-    "인간관계",
-  ];
+  const [availableInterests, setAvailableInterests] = useState<string[]>([]);
+  const [isLoadingInterests, setIsLoadingInterests] = useState(true);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -464,40 +509,67 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
               </div>
             </div>
 
-            {/* 관심 분야 */}
+                        {/* 관심 분야 */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                <Target className="h-4 w-4 inline mr-1" />
-                관심 분야
-              </label>
-              {isEditing ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                  {availableInterests.map((interest) => (
-                    <label
-                      key={interest}
-                      className="flex items-center space-x-2 p-2 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={profileData.interests?.includes(interest)}
-                        onChange={() => handleInterestToggle(interest)}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className="text-sm text-gray-700">{interest}</span>
-                    </label>
-                  ))}
+              <div className="flex items-center justify-between mb-3">
+                <label className="block text-sm font-medium text-gray-700">
+                  <Target className="h-4 w-4 inline mr-1" />
+                  관심 분야
+                </label>
+                {isEditing && (
+                  <span className="text-sm text-gray-500">
+                    {profileData.interests?.length || 0}/10 선택됨
+                  </span>
+                )}
+              </div>
+              {isEditing && (
+                <p className="text-xs text-gray-500 mb-3">
+                  관심있는 상담 분야를 선택하면 맞춤형 전문가 추천을 받을 수 있습니다. (최대 10개)
+                </p>
+              )}
+              {isLoadingInterests ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <span className="ml-2 text-gray-500">분야 목록을 불러오는 중...</span>
                 </div>
               ) : (
-                <div className="flex flex-wrap gap-2">
-                  {profileData.interests?.map((interest, index) => (
-                    <span
-                      key={index}
-                      className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800"
-                    >
-                      {interest}
-                    </span>
-                  ))}
-                </div>
+                isEditing ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {availableInterests.map((interest) => {
+                      const isSelected = profileData.interests?.includes(interest);
+                      const isDisabled = !isSelected && (profileData.interests?.length || 0) >= 10;
+                      return (
+                        <button
+                          key={interest}
+                          type="button"
+                          onClick={() => handleInterestToggle(interest)}
+                          disabled={isDisabled}
+                          className={`p-3 text-sm font-medium rounded-lg border-2 transition-all duration-200 ${
+                            isSelected
+                              ? 'bg-blue-500 text-white border-blue-500 hover:bg-blue-600 cursor-pointer'
+                              : isDisabled
+                              ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                              : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400 hover:bg-blue-50 cursor-pointer'
+                          }`}
+                          title={isDisabled ? '관심분야는 최대 10개까지만 선택할 수 있습니다' : ''}
+                        >
+                          {interest}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {profileData.interests?.map((interest, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800"
+                      >
+                        {interest}
+                      </span>
+                    ))}
+                  </div>
+                )
               )}
             </div>
           </div>

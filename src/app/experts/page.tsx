@@ -91,6 +91,31 @@ const ExpertSearch = () => {
     useState(true);
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [allExperts, setAllExperts] = useState<ExpertItem[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
+
+  // 카테고리 데이터 로드
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        setIsLoadingCategories(true);
+        const response = await fetch('/api/categories?activeOnly=true');
+        const result = await response.json();
+        
+        if (result.success) {
+          setCategories(result.data);
+        } else {
+          console.error('카테고리 로드 실패:', result.message);
+        }
+      } catch (error) {
+        console.error('카테고리 로드 실패:', error);
+      } finally {
+        setIsLoadingCategories(false);
+      }
+    };
+
+    loadCategories();
+  }, []);
 
   // 전문가 프로필 데이터 로드
   useEffect(() => {
@@ -214,24 +239,26 @@ const ExpertSearch = () => {
     loadExpertProfiles();
   }, []);
 
-  const specialtyOptions: string[] = [
-    "심리상담",
-    "법률상담",
-    "재무상담",
-    "건강상담",
-    "진로상담",
-    "부동산상담",
-    "IT상담",
-    "교육상담",
-    "유튜브상담",
-    "인플루언서상담",
-    "창업상담",
-    "투자상담",
-    "디자인상담",
-    "마케팅상담",
-    "언어상담",
-    "쇼핑몰상담",
-  ];
+  const specialtyOptions: string[] = categories.length > 0 
+    ? categories.map(cat => cat.name)
+    : [
+        "심리상담",
+        "법률상담",
+        "재무상담",
+        "건강상담",
+        "진로상담",
+        "부동산상담",
+        "IT상담",
+        "교육상담",
+        "유튜브상담",
+        "인플루언서상담",
+        "창업상담",
+        "투자상담",
+        "디자인상담",
+        "마케팅상담",
+        "언어상담",
+        "쇼핑몰상담",
+      ];
 
   // 필터링 로직
   useEffect(() => {
@@ -293,7 +320,7 @@ const ExpertSearch = () => {
 
     setFilteredExperts(filtered);
     setCurrentPage(1);
-  }, [searchQuery, selectedFilters, sortBy, allExperts]);
+  }, [searchQuery, selectedFilters, sortBy, allExperts, categories]);
 
   const handleFilterChange = (
     filterType: keyof SelectedFilters,

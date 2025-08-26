@@ -43,10 +43,10 @@ export default function AIChatPromoSection() {
             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
               <DollarSign className="h-8 w-8 text-white mx-auto mb-3" />
               <h3 className="text-lg font-semibold text-white mb-2">
-                완전 무료
+                월간 무료
               </h3>
               <p className="text-blue-100 text-sm">
-                AI 채팅상담은 100% 무료로 제공됩니다
+                월 100,000 토큰 무료 제공
               </p>
             </div>
           </div>
@@ -58,7 +58,7 @@ export default function AIChatPromoSection() {
             무료 AI 채팅상담 시작하기 →
           </button>
           <p className="text-blue-200 text-sm mt-6">
-            평균 3-5분 소요 • 별도 가입 불필요 • 즉시 시작 가능
+            평균 3-5분 소요 • 월간 무료 할당량 제공 • 크레딧으로 추가 이용 가능
           </p>
         </div>
       </div>

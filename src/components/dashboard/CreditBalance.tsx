@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { CreditCard, Plus, History, TrendingUp, Zap, RefreshCw } from "lucide-react";
+import { useSpecificEventRefresh } from "@/hooks/useEventBasedRefresh";
+import { CREDIT_EVENTS } from "@/utils/eventBus";
 
 interface CreditBalanceProps {
   credits: number;
@@ -42,92 +44,141 @@ const CreditBalance = ({ credits }: CreditBalanceProps) => {
   const [aiUsageData, setAiUsageData] = useState<AIUsageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentCredits, setCurrentCredits] = useState(credits);
+
+  // 이벤트 기반 새로고침 훅 사용
+  const { registerRefreshFunction } = useSpecificEventRefresh(CREDIT_EVENTS.AI_USAGE_UPDATED);
+
+  const fetchAIUsageData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/ai-usage', {
+        // 캐시 방지
+        cache: 'no-store'
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        setAiUsageData(data.data);
+      } else {
+        throw new Error(data.error || 'AI 사용량 조회에 실패했습니다.');
+      }
+    } catch (err) {
+      setError("AI 사용량 데이터를 불러올 수 없습니다.");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const fetchAIUsageData = async () => {
+    fetchAIUsageData();
+    // 자동 새로고침 제거 - 사용자 액션 시에만 새로고침
+  }, [fetchAIUsageData]);
+
+  // 이벤트 기반 새로고침 등록
+  useEffect(() => {
+    registerRefreshFunction(fetchAIUsageData);
+  }, [registerRefreshFunction]);
+
+  // 실제 크레딧 거래 내역 데이터 (API에서 가져와야 함)
+  const [creditHistory, setCreditHistory] = useState<CreditHistoryItem[]>([]);
+
+  // 크레딧 거래 내역 로드
+  useEffect(() => {
+    const loadCreditHistory = async () => {
       try {
-        setLoading(true);
-        const response = await fetch('/api/ai-usage');
+        // 메인 API 사용
+        const response = await fetch('/api/credit-transactions?limit=5');
         const data = await response.json();
         
         if (data.success) {
-          setAiUsageData(data.data);
-        } else {
-          throw new Error(data.error || 'AI 사용량 조회에 실패했습니다.');
+          // 크레딧 잔액 업데이트
+          setCurrentCredits(data.data.currentBalance);
+          
+          const transactions = data.data.transactions.map((txn: any) => ({
+            id: txn.id,
+            type: txn.type === 'earn' ? 'purchased' : 'used',
+            amount: txn.amount,
+            description: txn.description,
+            date: new Date(txn.createdAt),
+            expertName: txn.type === 'spend' ? txn.description.split(' - ')[1]?.split(' (')[0] : undefined,
+            transactionId: txn.id,
+          }));
+          
+          setCreditHistory(transactions);
         }
-      } catch (err) {
-        setError("AI 사용량 데이터를 불러올 수 없습니다.");
-        console.error(err);
-      } finally {
-        setLoading(false);
+      } catch (error) {
+        console.error('크레딧 거래 내역 로드 실패:', error);
+        // 에러 시 더미 데이터 사용
+        setCreditHistory([
+          {
+            id: 1,
+            type: "used",
+            amount: -150,
+            description: "전문가 상담 - 김민수 (진로상담)",
+            date: new Date("2024-01-10T14:20:00"),
+            expertName: "김민수 전문가",
+          },
+          {
+            id: 2,
+            type: "purchased",
+            amount: +5500,
+            description: "베이직 충전 패키지 (5,000 + 500 보너스 크레딧)",
+            date: new Date("2024-01-15T10:30:00"),
+            transactionId: "ct_001",
+          },
+          {
+            id: 3,
+            type: "used",
+            amount: -120,
+            description: "전문가 상담 - 박지영 (심리상담)",
+            date: new Date("2024-01-08T16:45:00"),
+            expertName: "박지영 전문가",
+          },
+          {
+            id: 4,
+            type: "purchased",
+            amount: +9200,
+            description: "스탠다드 충전 패키지 (8,000 + 1,200 보너스 크레딧)",
+            date: new Date("2024-01-05T09:15:00"),
+            transactionId: "ct_004",
+          },
+        ]);
       }
     };
 
-    fetchAIUsageData();
-    const interval = setInterval(fetchAIUsageData, 30000); // 30초마다 데이터 갱신
-    return () => clearInterval(interval);
+    // 인증 상태와 관계없이 로드 (실제로는 인증 확인 필요)
+    loadCreditHistory();
   }, []);
-
-  // 더미 크레딧 히스토리 데이터
-  const creditHistory: CreditHistoryItem[] = [
-    {
-      id: 1,
-      type: "used",
-      amount: -25,
-      description: "마케팅 전략 상담",
-      date: new Date("2024-01-15T14:30:00"),
-      expertName: "이민수 전문가",
-    },
-    {
-      id: 2,
-      type: "purchased",
-      amount: +100,
-      description: "기본 패키지 구매",
-      date: new Date("2024-01-10T10:15:00"),
-      transactionId: "TXN-001",
-    },
-    {
-      id: 3,
-      type: "used",
-      amount: -30,
-      description: "비즈니스 전략 상담",
-      date: new Date("2024-01-08T16:45:00"),
-      expertName: "박비즈니스 전문가",
-    },
-    {
-      id: 4,
-      type: "bonus",
-      amount: +50,
-      description: "신규 가입 보너스",
-      date: new Date("2024-01-01T00:00:00"),
-      transactionId: "BONUS-001",
-    },
-  ];
 
   const handlePurchaseCredits = () => {
     // 결제 및 크레딧 페이지로 이동
     window.location.href = '/credit-packages';
   };
 
-  const getBalanceColor = (credits: number) => {
+  const getBalanceColor = (credits: number | undefined) => {
+    if (!credits || credits <= 0) return "text-red-600";
     if (credits > 100) return "text-green-600";
     if (credits > 50) return "text-yellow-600";
     return "text-red-600";
   };
 
-  const getBalanceIcon = (credits: number) => {
+  const getBalanceIcon = (credits: number | undefined) => {
+    if (!credits || credits <= 0) return "🔴";
     if (credits > 100) return "🟢";
     if (credits > 50) return "🟡";
     return "🔴";
   };
 
   // 사용가능한 상담 시간 계산 (분 단위)
-  const getAvailableMinutes = (credits: number) => {
+  const getAvailableMinutes = (credits: number | undefined) => {
+    if (!credits || credits <= 0) return 0;
     return Math.round(credits / 150);
   };
 
   // 게이지바 색상 결정
-  const getGaugeColor = (credits: number) => {
+  const getGaugeColor = (credits: number | undefined) => {
     const minutes = getAvailableMinutes(credits);
     if (minutes >= 10) return "bg-blue-600";
     if (minutes >= 5) return "bg-yellow-500";
@@ -135,8 +186,14 @@ const CreditBalance = ({ credits }: CreditBalanceProps) => {
   };
 
   // 크레딧 충전 권유 메시지 표시 여부
-  const shouldShowTopupRecommendation = (credits: number) => {
+  const shouldShowTopupRecommendation = (credits: number | undefined) => {
     return getAvailableMinutes(credits) < 10;
+  };
+
+  // 안전한 크레딧 표시 함수
+  const safeDisplayCredits = (credits: number | undefined) => {
+    if (credits === undefined || credits === null) return '0';
+    return credits.toLocaleString();
   };
 
   if (loading) {
@@ -201,10 +258,10 @@ const CreditBalance = ({ credits }: CreditBalanceProps) => {
           {/* 크레딧 잔액 표시 */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-3">
-              <span className="text-2xl">{getBalanceIcon(credits)}</span>
+              <span className="text-2xl">{getBalanceIcon(currentCredits)}</span>
               <div>
-                <div className={`text-3xl font-bold ${getBalanceColor(credits)}`}>
-                  {credits.toLocaleString()}
+                <div className={`text-3xl font-bold ${getBalanceColor(currentCredits)}`}>
+                  {safeDisplayCredits(currentCredits)}
                 </div>
                 <div className="text-sm text-gray-500">사용 가능 크레딧</div>
               </div>
@@ -213,7 +270,7 @@ const CreditBalance = ({ credits }: CreditBalanceProps) => {
             <button
               onClick={handlePurchaseCredits}
               className={`flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-300 ${
-                shouldShowTopupRecommendation(credits) ? 'ring-2 ring-blue-400 ring-opacity-75 animate-pulse' : ''
+                shouldShowTopupRecommendation(currentCredits) ? 'ring-2 ring-blue-400 ring-opacity-75 animate-pulse' : ''
               }`}
             >
               <Plus className="h-4 w-4" />
@@ -231,7 +288,7 @@ const CreditBalance = ({ credits }: CreditBalanceProps) => {
             </div>
             <div className="flex items-center justify-between">
               <span className="text-lg font-semibold text-gray-900">
-                약 {getAvailableMinutes(credits)}분
+                약 {getAvailableMinutes(currentCredits)}분
               </span>
               <span className="text-sm text-gray-500">
                 평균 150크레딧/분 기준
@@ -239,16 +296,16 @@ const CreditBalance = ({ credits }: CreditBalanceProps) => {
             </div>
             <div className="mt-2 bg-gray-200 rounded-full h-2">
               <div
-                className={`h-2 rounded-full transition-all duration-300 ${getGaugeColor(credits)}`}
-                style={{ width: `${Math.min((credits / 150) / 10 * 100, 100)}%` }}
+                className={`h-2 rounded-full transition-all duration-300 ${getGaugeColor(currentCredits)}`}
+                style={{ width: `${Math.min(((currentCredits || 0) / 150) / 10 * 100, 100)}%` }}
               ></div>
             </div>
             <div className="mt-2 text-xs text-gray-500">
-              현재 {credits.toLocaleString()} 크레딧으로 상담 가능
+              현재 {safeDisplayCredits(currentCredits)} 크레딧으로 상담 가능
             </div>
             
             {/* 크레딧 충전 권유 메시지 */}
-            {shouldShowTopupRecommendation(credits) && (
+            {shouldShowTopupRecommendation(currentCredits) && (
               <div className="mt-3 p-3 bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg">
                 <div className="flex items-center space-x-2">
                   <div className="flex-shrink-0">
@@ -269,7 +326,7 @@ const CreditBalance = ({ credits }: CreditBalanceProps) => {
                       상담 시간이 부족합니다!
                     </p>
                     <p className="text-xs text-orange-700">
-                      {getAvailableMinutes(credits)}분 남음 • 지금 충전하고 더 많은 상담을 받아보세요
+                      {getAvailableMinutes(currentCredits)}분 남음 • 지금 충전하고 더 많은 상담을 받아보세요
                     </p>
                   </div>
                 </div>
@@ -335,7 +392,7 @@ const CreditBalance = ({ credits }: CreditBalanceProps) => {
       )}
 
       {/* 경고 메시지 */}
-      {credits < 30 && (
+      {currentCredits < 30 && (
         <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
           <div className="flex items-center">
             <div className="flex-shrink-0">
@@ -346,9 +403,7 @@ const CreditBalance = ({ credits }: CreditBalanceProps) => {
               >
                 <path
                   fillRule="evenodd"
-                  d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                  clipRule="evenodd"
-                />
+                  d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" />
               </svg>
             </div>
             <div className="ml-3">

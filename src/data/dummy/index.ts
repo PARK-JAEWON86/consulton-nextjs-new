@@ -10,6 +10,9 @@ export * from './consultations';
 // 사용자 관련
 export * from './users';
 
+// 결제 관련
+export * from './payment';
+
 // 카테고리 관련
 export * from './categories';
 export { getExtendedCategories, getExtendedAgeGroups, getExtendedDurations } from './categories';
@@ -22,6 +25,9 @@ export * from './posts';
 
 // 채팅 기록 관련
 export * from './chatHistory';
+
+// 리뷰 관련
+export * from './reviews';
 
 // 더미 데이터 사용 여부를 확인하는 플래그
 export const USING_DUMMY_DATA = true;

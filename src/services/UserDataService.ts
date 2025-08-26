@@ -3,6 +3,8 @@
  * 전문가가 아닌 일반 사용자들의 더미 데이터 제공
  */
 
+import { dummyUserProfile } from '@/data/dummy/users';
+
 export interface ClientUser {
   id: string;
   name: string;
@@ -36,27 +38,29 @@ export class UserDataService {
   }
 
   /**
-   * 더미 사용자 데이터 생성 (1개만)
+   * 더미 사용자 데이터 생성 (더미데이터 활용)
    */
   private generateDummyUsers(): ClientUser[] {
-    return [
+    const users = [
       {
         id: "client_1",
-        name: "김철수",
+        name: dummyUserProfile.name,
         email: "user@example.com",
         password: "password123", // 고정된 비밀번호
-        credits: 500,
+        credits: dummyUserProfile.credits,
         role: 'client' as const,
-        phone: "010-1234-5678",
-        location: "서울특별시 강남구",
-        birthDate: "1990-05-15",
-        interests: ["심리상담", "진로상담"],
-        bio: "다양한 분야의 전문가들과 상담을 통해 성장하고 있습니다.",
-        totalConsultations: 5,
-        favoriteExperts: 3,
-        joinDate: "2024-01-15"
+        phone: dummyUserProfile.phone,
+        location: dummyUserProfile.location,
+        birthDate: dummyUserProfile.birthDate,
+        interests: dummyUserProfile.interests,
+        bio: dummyUserProfile.bio,
+        totalConsultations: dummyUserProfile.totalConsultations,
+        favoriteExperts: dummyUserProfile.favoriteExperts,
+        joinDate: dummyUserProfile.joinDate
       }
     ];
+    
+    return users;
   }
 
   /**
@@ -137,5 +141,4 @@ export const userDataService = UserDataService.getInstance();
 // 개발 환경에서 브라우저 콘솔에 등록
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   (window as any).userDataService = userDataService;
-  (window as any).printDummyUsers = () => userDataService.printDummyUsers();
 }

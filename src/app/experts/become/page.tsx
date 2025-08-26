@@ -127,6 +127,29 @@ export default function BecomeExpertPage() {
     }
   }, []);
 
+  // 카테고리 데이터 로드
+  useEffect(() => {
+      const loadCategories = async () => {
+    try {
+      setIsLoadingCategories(true);
+      const response = await fetch('/api/categories?activeOnly=true');
+      const result = await response.json();
+      
+      if (result.success) {
+        setCategories(result.data);
+      } else {
+        console.error('카테고리 로드 실패:', result.message);
+      }
+    } catch (error) {
+      console.error('카테고리 로드 실패:', error);
+    } finally {
+      setIsLoadingCategories(false);
+    }
+  };
+
+  loadCategories();
+}, []);
+
   // 인증되지 않은 사용자는 인증 상태 확인 완료 후 로그인 페이지로 리다이렉트
   useEffect(() => {
     if (isAuthChecked && !isAuthenticated) {
@@ -148,6 +171,42 @@ export default function BecomeExpertPage() {
   const [consultationTypes, setConsultationTypes] = useState<
     ConsultationType[]
   >([]);
+  
+  // 카테고리 데이터
+  const [categories, setCategories] = useState<any[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
+  const [suggestedKeywords, setSuggestedKeywords] = useState<string[]>([]);
+
+  // 전문분야별 추천 키워드 생성 함수
+  const getRecommendedKeywords = (specialtyName: string): string[] => {
+    const keywordMap: { [key: string]: string[] } = {
+      "심리상담": ["스트레스", "우울", "불안", "트라우마", "인간관계", "자존감", "감정조절"],
+      "법률상담": ["계약법", "노동법", "가족법", "상속법", "부동산법", "회사법", "지적재산권"],
+      "재무상담": ["투자", "자산관리", "세무", "보험", "연금", "부동산", "주식"],
+      "건강상담": ["영양", "운동", "건강관리", "다이어트", "만성질환", "예방의학"],
+      "진로상담": ["취업", "이직", "창업", "자격증", "스킬개발", "커리어계획"],
+      "IT상담": ["프로그래밍", "웹개발", "앱개발", "데이터분석", "AI", "클라우드", "보안"],
+      "교육상담": ["학습법", "입시", "유학", "자격증", "온라인교육", "언어학습"],
+      "부동산상담": ["매매", "임대", "투자", "개발", "법규", "시장분석"],
+      "창업상담": ["사업계획", "자금조달", "마케팅", "법무", "세무", "인사관리"],
+      "투자상담": ["주식", "부동산", "펀드", "채권", "암호화폐", "리스크관리"],
+      "디자인상담": ["UI/UX", "그래픽디자인", "브랜딩", "웹디자인", "로고디자인", "패키지디자인"],
+      "마케팅상담": ["디지털마케팅", "콘텐츠마케팅", "SNS마케팅", "SEO", "광고", "브랜드전략"],
+      "언어상담": ["외국어", "통역", "번역", "언어학습", "문화교류", "비즈니스언어"],
+      "예술상담": ["음악", "미술", "공연", "창작", "예술치료", "문화예술"],
+      "스포츠상담": ["운동", "훈련", "경기", "체력관리", "부상예방", "스포츠심리"],
+      "여행상담": ["여행계획", "가이드", "숙박", "문화체험", "여행보험", "여행법"],
+      "요리상담": ["요리법", "영양", "식단", "식문화", "푸드스타일링", "식품안전"],
+      "패션상담": ["스타일링", "코디", "이미지", "패션트렌드", "색채", "체형별코디"],
+      "반려동물상담": ["훈련", "건강", "케어", "행동교정", "영양", "동물의학"],
+      "정원상담": ["식물키우기", "조경", "원예", "가드닝", "식물병해", "환경조성"],
+      "보험상담": ["생명보험", "손해보험", "연금", "의료보험", "자동차보험", "보험설계"],
+      "진학상담": ["대입", "수시", "정시", "입시전략", "학과선택", "진학준비"],
+      "기타": ["상담", "컨설팅", "자문", "코칭", "멘토링", "교육"]
+    };
+    
+    return keywordMap[specialtyName] || ["상담", "컨설팅", "자문"];
+  };
 
   // 3단계: 일정 및 자격증
   const [availability, setAvailability] = useState<Availability>({
@@ -174,6 +233,16 @@ export default function BecomeExpertPage() {
     bio.trim().length >= 30 &&
     consultationTypes.length > 0;
   const canGoNextStep3 = true;
+
+  // 전문분야 변경 시 추천 키워드 업데이트
+  useEffect(() => {
+    if (specialty && categories.length > 0) {
+      const keywords = getRecommendedKeywords(specialty);
+      setSuggestedKeywords(keywords);
+    } else {
+      setSuggestedKeywords([]);
+    }
+  }, [specialty, categories]);
 
   const handleProfileImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -313,10 +382,6 @@ export default function BecomeExpertPage() {
     <ServiceLayout>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <header className="mb-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-semibold border border-blue-100 mb-3">
-            <Sparkles className="w-3.5 h-3.5" />
-            전문가 되기
-          </div>
           <h1 className="text-3xl font-bold text-gray-900">전문가 등록</h1>
           <p className="text-gray-600 mt-1">
             경험과 지식을 나누고 수익을 만들어보세요. 4단계로 등록 신청을 완료할 수 있습니다.
@@ -433,20 +498,24 @@ export default function BecomeExpertPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">전문 분야</label>
-                  <select
-                    value={specialty}
-                    onChange={(e) => setSpecialty(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">선택하세요</option>
-                    <option value="심리상담">심리상담</option>
-                    <option value="법률상담">법률상담</option>
-                    <option value="재무상담">재무상담</option>
-                    <option value="건강상담">건강상담</option>
-                    <option value="진로상담">진로상담</option>
-                    <option value="IT상담">IT상담</option>
-                    <option value="교육상담">교육상담</option>
-                  </select>
+                  {isLoadingCategories ? (
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 animate-pulse">
+                      <div className="h-4 bg-gray-300 rounded"></div>
+                    </div>
+                  ) : (
+                    <select
+                      value={specialty}
+                      onChange={(e) => setSpecialty(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">선택하세요</option>
+                      {categories.map((category) => (
+                        <option key={category.id} value={category.name}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">경력 (년)</label>
@@ -496,13 +565,71 @@ export default function BecomeExpertPage() {
                     </div>
                   ))}
                 </div>
-                <button
-                  type="button"
-                  onClick={addKeyword}
-                  className="mt-2 inline-flex items-center text-blue-600 hover:text-blue-700 text-sm font-medium"
-                >
-                  <Plus className="w-4 h-4 mr-1" /> 키워드 추가
-                </button>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <button
+                    type="button"
+                    onClick={addKeyword}
+                    className="inline-flex items-center text-blue-600 hover:text-blue-700 text-sm font-medium"
+                  >
+                    <Plus className="w-4 h-4 mr-1" /> 키워드 추가
+                  </button>
+                  {specialty && categories.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // 선택된 전문분야에 맞는 추천 키워드 추가
+                        const recommendedKeywords = getRecommendedKeywords(specialty);
+                        recommendedKeywords.forEach(keyword => {
+                          if (!keywords.includes(keyword) && keywords.length < 5) {
+                            addKeyword();
+                            setTimeout(() => {
+                              const newIndex = keywords.length;
+                              updateKeyword(newIndex, keyword);
+                            }, 100);
+                          }
+                        });
+                      }}
+                      className="inline-flex items-center text-green-600 hover:text-green-700 text-sm font-medium"
+                    >
+                      <Sparkles className="w-4 h-4 mr-1" /> 추천 키워드
+                    </button>
+                  )}
+                </div>
+                
+                {/* 추천 키워드 표시 */}
+                {suggestedKeywords.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-sm text-gray-600 mb-2">💡 추천 키워드:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {suggestedKeywords.slice(0, 8).map((keyword, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => {
+                            if (!keywords.includes(keyword) && keywords.length < 5) {
+                              addKeyword();
+                              setTimeout(() => {
+                                const newIndex = keywords.length;
+                                updateKeyword(newIndex, keyword);
+                              }, 100);
+                            }
+                          }}
+                          disabled={keywords.includes(keyword) || keywords.length >= 5}
+                          className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                            keywords.includes(keyword)
+                              ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                              : keywords.length >= 5
+                              ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                              : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 cursor-pointer'
+                          }`}
+                          title={keywords.includes(keyword) ? '이미 추가됨' : keywords.length >= 5 ? '최대 5개까지 추가 가능' : '클릭하여 추가'}
+                        >
+                          {keyword}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* 상담 유형 */}

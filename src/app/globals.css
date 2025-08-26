@@ -96,6 +96,28 @@ body {
   transform-origin: top left !important;
 }
 
+/* 텍스트 줄 제한 유틸리티 */
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.line-clamp-3 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
 .small-calendar .react-datepicker__header {
   padding: 0.5rem !important;
   background-color: #f8fafc !important;

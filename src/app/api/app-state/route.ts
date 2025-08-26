@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { userDataService } from '@/services/UserDataService';
 
 interface ChatHistoryItem {
   id: string;
@@ -34,37 +35,33 @@ let appState: AppState = {
   currentPage: "/",
   viewMode: "user",
   user: null,
-  chatHistory: [
-    {
-      id: "1",
-      title: "이직 준비 어떻게 해야 할까요?",
-      timestamp: new Date("2024-01-15T10:30:00"),
-      category: "커리어",
-      summary: "이직 준비 과정과 주의사항에 대한 상담"
-    },
-    {
-      id: "2",
-      title: "프로젝트 관리 방법 알려주세요",
-      timestamp: new Date("2024-01-15T14:20:00"),
-      category: "업무",
-      summary: "효율적인 프로젝트 관리와 일정 조율 방법"
-    },
-    {
-      id: "3",
-      title: "면접 질문 대비 방법",
-      timestamp: new Date("2024-01-14T16:45:00"),
-      category: "커리어",
-      summary: "면접에서 자주 나오는 질문과 답변 팁"
-    }
-  ],
+  chatHistory: [], // 빈 배열로 초기화 (더미데이터에서 가져올 예정)
 };
 
 // GET: 현재 앱 상태 조회
 export async function GET() {
   try {
+    // 더미 사용자 데이터 가져오기
+    const dummyUsers = userDataService.getAllUsers();
+    const kimCheolsu = dummyUsers.find(user => user.name === "김철수");
+    
+    // 기본 상태에 더미 사용자 정보 추가
+    const responseData = {
+      ...appState,
+      isAuthenticated: true, // 김철수를 로그인된 상태로 설정
+      user: kimCheolsu ? {
+        id: kimCheolsu.id,
+        email: kimCheolsu.email,
+        name: kimCheolsu.name,
+        credits: kimCheolsu.credits, // 더미데이터에서 크레딧 가져오기
+        expertLevel: null, // 하드코딩 제거
+        role: 'client' as const
+      } : null
+    };
+
     const response = NextResponse.json({ 
       success: true, 
-      data: appState 
+      data: responseData 
     });
     
     // CORS 헤더 추가
@@ -72,8 +69,12 @@ export async function GET() {
     response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
     response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
     
+    // 캐싱 헤더 추가 (5초간 캐시)
+    response.headers.set('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=10');
+    
     return response;
   } catch (error) {
+    console.error('app-state API 오류:', error);
     const errorResponse = NextResponse.json(
       { success: false, error: '상태 조회 실패' },
       { status: 500 }

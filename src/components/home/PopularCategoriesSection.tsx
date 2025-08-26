@@ -31,6 +31,7 @@ interface PopularCategoriesSectionProps {
   categories: CategoryOption[];
   showAllCategories: boolean;
   setShowAllCategories: (value: boolean) => void;
+  isLoading?: boolean;
 }
 
 // 아이콘 문자열을 실제 컴포넌트로 매핑
@@ -69,6 +70,7 @@ export default function PopularCategoriesSection({
   categories,
   showAllCategories,
   setShowAllCategories,
+  isLoading = false,
 }: PopularCategoriesSectionProps) {
   return (
     <section className="py-24 bg-gray-50">
@@ -83,25 +85,41 @@ export default function PopularCategoriesSection({
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {categories.slice(0, 5).map((category) => {
-            const IconComponent = getIconComponent(category.icon as string);
-            return (
+          {isLoading ? (
+            // 로딩 상태: 스켈레톤 UI 표시
+            Array.from({ length: 5 }).map((_, index) => (
               <div
-                key={category.id}
-                className="bg-white rounded-xl p-4 text-center hover:shadow-lg transition-shadow duration-200 cursor-pointer min-h-[160px] flex flex-col justify-center"
+                key={index}
+                className="bg-white rounded-xl p-4 text-center min-h-[160px] flex flex-col justify-center animate-pulse"
               >
                 <div className="flex justify-center mb-3">
-                  <IconComponent className="h-10 w-10 text-blue-600" />
+                  <div className="w-10 h-10 bg-gray-300 rounded-full"></div>
                 </div>
-                <h3 className="font-semibold text-gray-900 mb-2 text-sm">
-                  {category.name}
-                </h3>
-                <p className="text-xs text-gray-600 leading-relaxed">
-                  {category.description}
-                </p>
+                <div className="h-4 bg-gray-300 rounded mb-2"></div>
+                <div className="h-3 bg-gray-300 rounded"></div>
               </div>
-            );
-          })}
+            ))
+          ) : (
+            categories.slice(0, 5).map((category) => {
+              const IconComponent = getIconComponent(category.icon as string);
+              return (
+                <div
+                  key={category.id}
+                  className="bg-white rounded-xl p-4 text-center hover:shadow-lg transition-shadow duration-200 cursor-pointer min-h-[160px] flex flex-col justify-center"
+                >
+                  <div className="flex justify-center mb-3">
+                    <IconComponent className="h-10 w-10 text-blue-600" />
+                  </div>
+                  <h3 className="font-semibold text-gray-900 mb-2 text-sm">
+                    {category.name}
+                  </h3>
+                  <p className="text-xs text-gray-600 leading-relaxed">
+                    {category.description}
+                  </p>
+                </div>
+              );
+            })
+          )}
 
           <div
             onClick={() => setShowAllCategories(!showAllCategories)}
@@ -118,12 +136,12 @@ export default function PopularCategoriesSection({
               {showAllCategories ? "접기" : "더 많은 분야"}
             </h3>
             <p className="text-xs text-gray-600">
-              총 {categories.length}개의 상담 분야
+              {isLoading ? "로딩 중..." : `총 ${categories.length}개의 상담 분야`}
             </p>
           </div>
         </div>
 
-        {showAllCategories && (
+        {showAllCategories && !isLoading && (
           <div className="mt-8">
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
               {categories.slice(5).map((category) => {

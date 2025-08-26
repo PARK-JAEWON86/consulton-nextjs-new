@@ -18,6 +18,8 @@ export default function CommunityPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
   const postsPerPage = 5; // 페이지당 게시글 수
 
   // 인증 상태 확인
@@ -94,6 +96,35 @@ export default function CommunityPage() {
         window.removeEventListener('authStateChanged', handleStorageChange);
       };
     }
+  }, []);
+
+  // 카테고리 데이터 로드
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        setIsLoadingCategories(true);
+        const response = await fetch('/api/categories?activeOnly=true');
+        const result = await response.json();
+        
+        if (result.success) {
+          // API 응답을 커뮤니티 카테고리 형식에 맞게 변환
+          const transformedCategories = result.data.map((cat: any, index: number) => ({
+            id: cat.id,
+            name: cat.name,
+            count: Math.floor(Math.random() * 50) + 10 // 임시 카운트 (실제로는 API에서 제공)
+          }));
+          setCategories(transformedCategories);
+        } else {
+          console.error('카테고리 로드 실패:', result.message);
+        }
+      } catch (error) {
+        console.error('카테고리 로드 실패:', error);
+      } finally {
+        setIsLoadingCategories(false);
+      }
+    };
+
+    loadCategories();
   }, []);
 
 
@@ -249,7 +280,7 @@ export default function CommunityPage() {
           {/* 데스크톱 사이드바 */}
           <div className="hidden lg:block w-72 flex-shrink-0">
             <CategorySidebar
-              categories={getCategoriesWithCount()}
+              categories={categories.length > 0 ? categories : getCategoriesWithCount()}
               activeTab={activeTab}
               onTabChange={handleTabChange}
               popularTags={["상담후기", "전문가추천", "진로고민", "투자조언"]}
@@ -285,7 +316,7 @@ export default function CommunityPage() {
                 {/* 사이드바 내용 */}
                 <div className="p-4">
                   <CategorySidebar
-                    categories={getCategoriesWithCount()}
+                    categories={categories.length > 0 ? categories : getCategoriesWithCount()}
                     activeTab={activeTab}
                     onTabChange={(categoryId) => {
                       handleTabChange(categoryId);

@@ -31,6 +31,7 @@ import {
   getLevelBadgeStyles,
   getKoreanLevelName,
   calculateCreditsPerMinute,
+  calculateCreditsByLevel,
 } from "../../utils/expertLevels";
 
 type ConsultationType = "video" | "chat" | "voice";
@@ -89,12 +90,15 @@ interface ExpertProfileProps {
   onSave: (updated: ExpertProfileData & { isProfileComplete: boolean }) => void;
   isEditing?: boolean;
   onEditingChange?: (editing: boolean) => void;
+  onExpertDataUpdate?: (updated: Partial<ExpertProfileData> & { isProfileComplete?: boolean }) => void;
 }
 
 const ExpertProfile = ({ expertData, onSave, isEditing: externalIsEditing, onEditingChange }: ExpertProfileProps) => {
   const [internalIsEditing, setInternalIsEditing] = useState(!expertData?.isProfileComplete);
   const isEditing = externalIsEditing !== undefined ? externalIsEditing : internalIsEditing;
   const setIsEditing = onEditingChange || setInternalIsEditing;
+  const [isPricingExpanded, setIsPricingExpanded] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [profileData, setProfileData] = useState({
     name: expertData?.name || "",
@@ -106,7 +110,11 @@ const ExpertProfile = ({ expertData, onSave, isEditing: externalIsEditing, onEdi
     specialties: expertData?.specialties || [""],
     consultationTypes: expertData?.consultationTypes || [],
     languages: expertData?.languages || ["한국어"],
-    hourlyRate: expertData?.hourlyRate || "",
+    hourlyRate: expertData?.hourlyRate || (() => {
+      // 현재 레벨의 최고 요금을 기본값으로 설정
+      const currentLevel = Number(expertData?.level) || 1;
+      return calculateCreditsByLevel(currentLevel);
+    })(),
     // 레벨 관련 데이터
     totalSessions: expertData?.totalSessions || 0,
     avgRating: expertData?.avgRating || 0,
@@ -152,7 +160,11 @@ const ExpertProfile = ({ expertData, onSave, isEditing: externalIsEditing, onEdi
         specialties: expertData?.specialties || prev.specialties,
         consultationTypes: expertData?.consultationTypes || prev.consultationTypes,
         languages: expertData?.languages || prev.languages,
-        hourlyRate: expertData?.hourlyRate || prev.hourlyRate,
+        hourlyRate: expertData?.hourlyRate || prev.hourlyRate || (() => {
+          // 현재 레벨의 최고 요금을 기본값으로 설정
+          const currentLevel = Number(expertData?.level) || Number(prev.level) || 1;
+          return calculateCreditsByLevel(currentLevel);
+        })(),
         totalSessions: expertData?.totalSessions || prev.totalSessions,
         avgRating: expertData?.avgRating || prev.avgRating,
         level: expertData?.level || prev.level,
@@ -221,6 +233,16 @@ const ExpertProfile = ({ expertData, onSave, isEditing: externalIsEditing, onEdi
   ];
 
   const handleInputChange = (field: string, value: unknown) => {
+    // 이름과 전문분야는 승인 후 수정 불가
+    if (field === "name") {
+      console.warn("이름은 승인 후 수정할 수 없습니다.");
+      return;
+    }
+    if (field === "specialty") {
+      console.warn("전문분야는 승인 후 수정할 수 없습니다.");
+      return;
+    }
+    
     if (field.includes(".")) {
       const [parent, child] = field.split(".") as [
         "contactInfo",
@@ -391,13 +413,46 @@ const ExpertProfile = ({ expertData, onSave, isEditing: externalIsEditing, onEdi
     }
   };
 
-  const handleSave = () => {
-    const updatedData = {
-      ...profileData,
-      isProfileComplete: true,
-    };
-    onSave(updatedData);
-    setIsEditing(false);
+  const handleSave = async () => {
+    try {
+      // 저장 중 상태 설정
+      setIsSaving(true);
+      
+      // 이름과 전문분야는 원래 값으로 유지 (승인 후 수정 불가)
+      const updatedData = {
+        ...profileData,
+        name: expertData?.name || profileData.name, // 원래 이름 값 유지
+        specialty: expertData?.specialty || profileData.specialty, // 원래 전문분야 값 유지
+        hourlyRate: profileData.hourlyRate, // 편집된 상담요금 포함
+        isProfileComplete: true,
+      };
+      
+      // 저장 실행
+      onSave(updatedData);
+      
+      // 부모 컴포넌트의 expertData 업데이트
+      if (onExpertDataUpdate) {
+        onExpertDataUpdate(updatedData);
+      }
+      
+      // 편집 모드 종료
+      setIsEditing(false);
+      
+      // 성공 메시지 표시
+      alert("프로필이 성공적으로 저장되었습니다!");
+      
+      // 로컬 상태도 즉시 업데이트하여 UI에 반영
+      setProfileData(prev => ({
+        ...prev,
+        ...updatedData
+      }));
+    } catch (error) {
+      console.error('프로필 저장 중 오류 발생:', error);
+      alert("프로필 저장 중 오류가 발생했습니다. 다시 시도해주세요.");
+    } finally {
+      // 저장 완료 후 로딩 상태 해제
+      setIsSaving(false);
+    }
   };
 
   const formatFileSize = (bytes: number) => {
@@ -410,6 +465,12 @@ const ExpertProfile = ({ expertData, onSave, isEditing: externalIsEditing, onEdi
 
   if (!isEditing && expertData?.isProfileComplete) {
     // 프로필 보기 모드 - 사용자 페이지와 비슷한 구성
+    // 보기 모드에서는 expertData를 우선적으로 사용하여 최신 데이터 표시
+    const displayData = {
+      ...profileData,
+      ...expertData, // expertData가 우선 (최신 데이터)
+    };
+    
     return (
       <div>
         <div className="max-w-6xl mx-auto">
@@ -425,15 +486,15 @@ const ExpertProfile = ({ expertData, onSave, isEditing: externalIsEditing, onEdi
                     <div className="flex-shrink-0">
                       <div className="relative">
                         <div className="w-36 h-48 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl flex items-center justify-center overflow-hidden border-2 border-gray-100 shadow-md">
-              {profileData.profileImage ? (
+              {displayData.profileImage ? (
                 <img
-                  src={profileData.profileImage}
-                              alt={profileData.name}
+                  src={displayData.profileImage}
+                              alt={displayData.name}
                               className="w-full h-full object-cover"
                 />
               ) : (
                             <span className="text-blue-600 text-4xl font-bold">
-                              {profileData.name.charAt(0)}
+                              {displayData.name.charAt(0)}
                             </span>
               )}
             </div>
@@ -443,7 +504,7 @@ const ExpertProfile = ({ expertData, onSave, isEditing: externalIsEditing, onEdi
                           // 실제 레벨 숫자 계산
                           const actualLevel = Math.min(
                             999,
-                            Math.max(1, Math.floor((profileData.totalSessions || 0) / 10) + Math.floor((profileData.avgRating || 0) * 10))
+                            Math.max(1, Math.floor((displayData.totalSessions || 0) / 10) + Math.floor((displayData.avgRating || 0) * 10))
                           );
 
                           // 색상 결정
@@ -472,7 +533,15 @@ const ExpertProfile = ({ expertData, onSave, isEditing: externalIsEditing, onEdi
                       {/* 상단: 이름과 활성 상태 */}
                       <div className="flex items-start justify-between">
                         <div className="flex items-center space-x-2">
-                          <h1 className="text-xl font-bold text-gray-900 truncate">{profileData.name}</h1>
+                          <h1 
+                            className="text-xl font-bold text-gray-900 truncate cursor-help"
+                            title="이름은 승인 후 수정할 수 없습니다. 변경이 필요한 경우 고객센터(1588-0000)로 문의해주세요."
+                          >
+                            {displayData.name}
+                          </h1>
+                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                            승인 후 수정 불가
+                          </span>
                         </div>
                         <div className="flex items-center bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs flex-shrink-0">
                           <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1"></div>
@@ -481,29 +550,39 @@ const ExpertProfile = ({ expertData, onSave, isEditing: externalIsEditing, onEdi
               </div>
 
                       {/* 전문 분야 */}
-                      <p className="text-base text-gray-600 font-medium">{profileData.specialty}</p>
+                      <div className="flex items-center space-x-2">
+                        <p 
+                          className="text-base text-gray-600 font-medium cursor-help"
+                          title="전문분야는 승인 후 수정할 수 없습니다. 변경이 필요한 경우 고객센터(1588-0000)로 문의해주세요."
+                        >
+                          {displayData.specialty}
+                        </p>
+                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                          승인 후 수정 불가
+                        </span>
+                      </div>
                       
                       {/* 평점 및 정보 */}
                       <div className="flex items-center space-x-4">
                         <div className="flex items-center">
                           <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                          <span className="text-sm font-semibold text-gray-900 ml-1">{(profileData.avgRating || 0).toFixed(1)}</span>
-                          <span className="text-sm text-gray-500 ml-1">({profileData.reviewCount || 0}개 리뷰)</span>
+                          <span className="text-sm font-semibold text-gray-900 ml-1">{(displayData.avgRating || 0).toFixed(1)}</span>
+                          <span className="text-sm text-gray-500 ml-1">({displayData.reviewCount || 0}개 리뷰)</span>
               </div>
                         <div className="flex items-center text-sm text-gray-500">
                           <Award className="h-4 w-4 mr-1" />
-                          {profileData.experience}년 경력
+                          {displayData.experience}년 경력
             </div>
           </div>
 
                       {/* 설명 */}
                       <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
-                        {profileData.description}
+                        {displayData.description}
                       </p>
 
                       {/* 전문 분야 태그 */}
                       <div className="flex gap-1.5 overflow-hidden">
-                        {profileData.specialties.filter(s => s).slice(0, 4).map((tag, index) => (
+                        {displayData.specialties.filter(s => s).slice(0, 4).map((tag, index) => (
                           <span
                             key={index}
                             className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs rounded-full border border-blue-100 flex-shrink-0"
@@ -511,9 +590,9 @@ const ExpertProfile = ({ expertData, onSave, isEditing: externalIsEditing, onEdi
                             {tag}
                   </span>
                         ))}
-                        {profileData.specialties.filter(s => s).length > 4 && (
+                        {displayData.specialties.filter(s => s).length > 4 && (
                           <span className="px-2.5 py-1 bg-gray-50 text-gray-600 text-xs rounded-full border border-gray-100 flex-shrink-0">
-                            +{profileData.specialties.filter(s => s).length - 4}
+                            +{displayData.specialties.filter(s => s).length - 4}
                   </span>
                         )}
                 </div>
@@ -521,7 +600,7 @@ const ExpertProfile = ({ expertData, onSave, isEditing: externalIsEditing, onEdi
                       {/* 상담 방식 및 답변 시간 */}
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
-                          {profileData.consultationTypes.map((type) => {
+                          {displayData.consultationTypes.map((type) => {
                             let Icon = MessageCircle;
                             let label = "채팅";
                             
@@ -557,15 +636,15 @@ const ExpertProfile = ({ expertData, onSave, isEditing: externalIsEditing, onEdi
                       <div className="flex items-center space-x-6 text-sm text-gray-600 pt-4 border-t border-gray-100">
                   <div className="flex items-center">
                           <Users className="h-4 w-4 mr-1" />
-                          <span>{profileData.totalSessions || 0}회 상담</span>
+                          <span>{displayData.totalSessions || 0}회 상담</span>
                   </div>
                   <div className="flex items-center">
                           <CheckCircle className="h-4 w-4 mr-1" />
-                          <span>{profileData.completionRate || 95}% 완료율</span>
+                          <span>{displayData.completionRate || 95}% 완료율</span>
                   </div>
                         <div className="flex items-center">
                           <Award className="h-4 w-4 mr-1" />
-                          <span>{profileData.repeatClients || 0}명 재방문</span>
+                          <span>{displayData.repeatClients || 0}명 재방문</span>
                 </div>
               </div>
             </div>
@@ -889,10 +968,24 @@ const ExpertProfile = ({ expertData, onSave, isEditing: externalIsEditing, onEdi
           )}
           <button
             onClick={handleSave}
-            className="flex items-center px-3 py-1.5 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+            disabled={isSaving}
+            className={`flex items-center px-3 py-1.5 text-sm rounded-lg transition-colors ${
+              isSaving 
+                ? 'bg-gray-400 cursor-not-allowed text-white' 
+                : 'bg-blue-500 hover:bg-blue-600 text-white'
+            }`}
           >
-            <Save className="h-4 w-4 mr-1" />
-            저장
+            {isSaving ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-1"></div>
+                저장 중...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-1" />
+                저장
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -910,29 +1003,47 @@ const ExpertProfile = ({ expertData, onSave, isEditing: externalIsEditing, onEdi
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   이름 <span className="text-red-500">*</span>
+                  <span className="ml-2 text-xs text-gray-500 font-normal">
+                    (승인 후 수정 불가)
+                  </span>
                 </label>
+                
                 <input
                   type="text"
                   value={profileData.name}
                   onChange={(e) => handleInputChange("name", e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                  disabled={true}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed transition-colors"
                   placeholder="전문가 이름을 입력하세요"
+                  title="이름은 승인 후 수정할 수 없습니다. 변경이 필요한 경우 고객센터(1588-0000)로 문의해주세요."
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  이름은 승인 후 수정할 수 없습니다. 변경이 필요한 경우 고객센터에 문의해주세요.
+                </p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   전문 분야 <span className="text-red-500">*</span>
+                  <span className="ml-2 text-xs text-gray-500 font-normal">
+                    (승인 후 수정 불가)
+                  </span>
                 </label>
+                
                 <input
                   type="text"
                   value={profileData.specialty}
                   onChange={(e) =>
                     handleInputChange("specialty", e.target.value)
                   }
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                  disabled={true}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed transition-colors"
                   placeholder="예: 심리상담, 법률상담 등"
+                  title="전문분야는 승인 후 수정할 수 없습니다. 변경이 필요한 경우 고객센터(1588-0000)로 문의해주세요."
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  전문분야는 승인 후 수정할 수 없습니다. 변경이 필요한 경우 고객센터에 문의해주세요.
+                </p>
               </div>
 
               <div>
@@ -953,18 +1064,97 @@ const ExpertProfile = ({ expertData, onSave, isEditing: externalIsEditing, onEdi
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  시간당 요금 (크레딧)
+                  상담요금 (크레딧/분)
                 </label>
+                
                 <input
                   type="number"
                   value={profileData.hourlyRate}
-                  onChange={(e) =>
-                    handleInputChange("hourlyRate", e.target.value)
-                  }
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value) || 0;
+                    const currentLevel = Number(profileData.level) || 1;
+                    const maxRate = calculateCreditsByLevel(currentLevel);
+                    
+                    // 10크레딧 단위로만 입력 가능
+                    if (value % 10 !== 0) {
+                      alert("상담요금은 10크레딧 단위로만 입력 가능합니다.");
+                      return;
+                    }
+                    
+                    if (value <= maxRate) {
+                      handleInputChange("hourlyRate", value);
+                    } else {
+                      alert(`현재 레벨(Lv.${currentLevel})에서는 최대 ${maxRate} 크레딧/분까지만 설정할 수 있습니다.`);
+                    }
+                  }}
+                  onBlur={(e) => {
+                    // 포커스 아웃 시 10크레딧 단위로 자동 조정
+                    const value = parseInt(e.target.value) || 0;
+                    if (value % 10 !== 0) {
+                      const adjustedValue = Math.round(value / 10) * 10;
+                      const currentLevel = Number(profileData.level) || 1;
+                      const maxRate = calculateCreditsByLevel(currentLevel);
+                      
+                      if (adjustedValue <= maxRate) {
+                        handleInputChange("hourlyRate", adjustedValue);
+                      } else {
+                        // 최대값을 초과하는 경우 최대값으로 설정
+                        handleInputChange("hourlyRate", maxRate);
+                      }
+                    }
+                  }}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                  placeholder="시간당 요금 (크레딧)"
+                  placeholder="상담요금 (크레딧/분) - 10크레딧 단위"
                   min="0"
+                  max={calculateCreditsByLevel(Number(profileData.level) || 1)}
+                  step="10"
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  현재 레벨 최고 요금: <span className="font-medium text-blue-600">{calculateCreditsByLevel(Number(profileData.level) || 1)} 크레딧/분</span>
+                  <span className="ml-2 text-gray-400">• 10크레딧 단위로만 입력 가능</span>
+                </p>
+                
+                {/* 전문가 레벨별 최고 요금 안내 */}
+                <div className="mt-3 border border-blue-200 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setIsPricingExpanded(!isPricingExpanded)}
+                    className="w-full p-3 bg-blue-50 hover:bg-blue-100 transition-colors flex items-center justify-between text-left"
+                  >
+                    <div className="flex items-center">
+                      <svg className="h-5 w-5 text-blue-400 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                      </svg>
+                      <span className="text-sm font-medium text-blue-800">
+                        전문가 레벨별 최고 요금 확인하기
+                      </span>
+                    </div>
+                    <svg 
+                      className={`h-4 w-4 text-blue-400 transition-transform ${isPricingExpanded ? 'rotate-180' : ''}`} 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  
+                  {isPricingExpanded && (
+                    <div className="p-3 bg-blue-50 border-t border-blue-200">
+                      <div className="space-y-1 text-xs text-blue-700">
+                        <div>• Lv.1-99: 최대 100 크레딧/분</div>
+                        <div>• Lv.100-199: 최대 150 크레딧/분</div>
+                        <div>• Lv.200-299: 최대 200 크레딧/분</div>
+                        <div>• Lv.400-499: 최대 300 크레딧/분</div>
+                        <div>• Lv.500-599: 최대 350 크레딧/분</div>
+                        <div>• Lv.600-699: 최대 400 크레딧/분</div>
+                        <div>• Lv.700-799: 최대 450 크레딧/분</div>
+                        <div>• Lv.800-899: 최대 500 크레딧/분</div>
+                        <div>• Lv.900-998: 최대 500 크레딧/분</div>
+                        <div>• Lv.999: 최대 600 크레딧/분</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 

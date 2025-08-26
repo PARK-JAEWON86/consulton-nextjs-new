@@ -14,6 +14,127 @@ export interface ConsultationItem {
   notes: string;
 }
 
+export interface Review {
+  id: string;
+  userName: string;
+  userAvatar: string;
+  rating: number;
+  content: string;
+  category: string;
+  date: string;
+}
+
+export const reviews: Review[] = [
+  {
+    id: "1",
+    userName: "김민수",
+    userAvatar: "/avatars/user1.jpg",
+    rating: 5,
+    content: "전문가 상담을 통해 비즈니스 아이디어를 구체화할 수 있었어요. 정말 도움이 많이 되었습니다!",
+    category: "비즈니스",
+    date: "2024-01-15"
+  },
+  {
+    id: "2",
+    userName: "이지영",
+    userAvatar: "/avatars/user2.jpg",
+    rating: 5,
+    content: "법률 상담이 필요했는데, 전문가님이 친절하게 설명해주셔서 이해하기 쉬웠어요.",
+    category: "법률",
+    date: "2024-01-14"
+  },
+  {
+    id: "3",
+    userName: "박준호",
+    userAvatar: "/avatars/user3.jpg",
+    rating: 4,
+    content: "투자 상담을 받았는데, 전문적인 조언을 얻을 수 있어서 만족스러웠습니다.",
+    category: "투자",
+    date: "2024-01-13"
+  },
+  {
+    id: "4",
+    userName: "최수진",
+    userAvatar: "/avatars/user4.jpg",
+    rating: 5,
+    content: "건강 상담을 통해 올바른 운동 방법을 알 수 있었어요. 체계적으로 관리할 수 있게 되었습니다.",
+    category: "건강",
+    date: "2024-01-12"
+  },
+  {
+    id: "5",
+    userName: "정현우",
+    userAvatar: "/avatars/user5.jpg",
+    rating: 4,
+    content: "교육 상담을 받았는데, 아이의 학습 방향을 잡는 데 큰 도움이 되었어요.",
+    category: "교육",
+    date: "2024-01-11"
+  },
+  {
+    id: "6",
+    userName: "한소영",
+    userAvatar: "/avatars/user6.jpg",
+    rating: 5,
+    content: "심리 상담을 통해 마음의 안정을 찾을 수 있었습니다. 전문가님의 따뜻한 조언이 인상적이었어요.",
+    category: "심리",
+    date: "2024-01-10"
+  },
+  {
+    id: "7",
+    userName: "강동훈",
+    userAvatar: "/avatars/user7.jpg",
+    rating: 4,
+    content: "부동산 상담을 받았는데, 시장 동향과 투자 전략에 대해 자세히 설명해주셔서 좋았습니다.",
+    category: "부동산",
+    date: "2024-01-09"
+  },
+  {
+    id: "8",
+    userName: "윤미라",
+    userAvatar: "/avatars/user8.jpg",
+    rating: 5,
+    content: "창업 상담을 통해 구체적인 실행 계획을 세울 수 있었어요. 전문가님의 경험이 정말 귀중했습니다.",
+    category: "창업",
+    date: "2024-01-08"
+  },
+  {
+    id: "9",
+    userName: "임태현",
+    userAvatar: "/avatars/user9.jpg",
+    rating: 4,
+    content: "재무 상담을 받았는데, 개인 재무 관리에 대한 새로운 관점을 얻을 수 있었습니다.",
+    category: "재무",
+    date: "2024-01-07"
+  },
+  {
+    id: "10",
+    userName: "송은지",
+    userAvatar: "/avatars/user10.jpg",
+    rating: 5,
+    content: "커리어 상담을 통해 직장에서의 성장 방향을 명확하게 설정할 수 있었어요.",
+    category: "커리어",
+    date: "2024-01-06"
+  },
+  {
+    id: "11",
+    userName: "오승준",
+    userAvatar: "/avatars/user11.jpg",
+    rating: 4,
+    content: "마케팅 상담을 받았는데, 브랜드 전략에 대한 인사이트를 얻을 수 있어서 유익했습니다.",
+    category: "마케팅",
+    date: "2024-01-05"
+  },
+  {
+    id: "12",
+    userName: "류하은",
+    userAvatar: "/avatars/user12.jpg",
+    rating: 5,
+    content: "디자인 상담을 통해 프로젝트의 방향성을 잡을 수 있었어요. 창의적인 아이디어가 많이 나왔습니다.",
+    category: "디자인",
+    date: "2024-01-04"
+  }
+];
+
 // 더미 리뷰 데이터
 export const dummyReviews: Review[] = [
   {

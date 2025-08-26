@@ -303,7 +303,7 @@ export default function CreditPackagesPage() {
                           {pack.usageTime}
                         </div>
                         <div className="text-xs text-gray-500">
-                          (평균 ₩{averageRatePerMinute.toLocaleString()}/분
+                          (평균 {averageCreditsPerMinute}크레딧/분
                           기준)
                         </div>
                       </td>
@@ -381,7 +381,7 @@ export default function CreditPackagesPage() {
                             {pack.usageTime}
                           </div>
                           <div className="text-xs text-gray-500 mt-1">
-                            (평균 ₩{averageRatePerMinute.toLocaleString()}/분
+                            (평균 {averageCreditsPerMinute}크레딧/분
                             기준)
                           </div>
                         </div>

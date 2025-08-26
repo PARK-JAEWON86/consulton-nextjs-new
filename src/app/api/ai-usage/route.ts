@@ -124,10 +124,15 @@ export async function GET() {
       summary: createSummary(aiUsageState)
     };
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       data: responseData
     });
+
+    // 캐싱 헤더 추가 (3초간 캐시)
+    response.headers.set('Cache-Control', 'public, s-maxage=3, stale-while-revalidate=5');
+    
+    return response;
   } catch (error) {
     return NextResponse.json(
       { success: false, error: 'AI 사용량 조회 실패' },

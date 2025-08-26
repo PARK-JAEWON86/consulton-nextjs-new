@@ -53,6 +53,10 @@ export default function ExpertConsultationPage() {
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [sessionTime, setSessionTime] = useState(0);
 
+  // 카테고리 데이터
+  const [categories, setCategories] = useState<any[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
+
   // 즐겨찾기 전문가 데이터
   const [favoriteExperts, setFavoriteExperts] = useState<FavoriteExpert[]>([
     {
@@ -75,6 +79,29 @@ export default function ExpertConsultationPage() {
     },
   ]);
 
+  // 카테고리 데이터 로드
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        setIsLoadingCategories(true);
+        const response = await fetch('/api/categories?activeOnly=true');
+        const result = await response.json();
+        
+        if (result.success) {
+          setCategories(result.data);
+        } else {
+          console.error('카테고리 로드 실패:', result.message);
+        }
+      } catch (error) {
+        console.error('카테고리 로드 실패:', error);
+      } finally {
+        setIsLoadingCategories(false);
+      }
+    };
+
+    loadCategories();
+  }, []);
+
   // 더미 데이터 로드
   useEffect(() => {
     const dummyConsultations: ConsultationSession[] = [
@@ -83,7 +110,7 @@ export default function ExpertConsultationPage() {
         expertId: "expert_1",
         expertName: "박지영",
         expertAvatar: "박",
-        expertSpecialty: "심리상담",
+        expertSpecialty: categories.length > 0 ? categories[0]?.name || "심리상담" : "심리상담",
         topic: "스트레스 관리 및 불안감 치료",
         scheduledTime: "2024-01-15T14:00:00",
         duration: 60,
@@ -97,7 +124,7 @@ export default function ExpertConsultationPage() {
         expertId: "expert_2",
         expertName: "이민수",
         expertAvatar: "이",
-        expertSpecialty: "법률상담",
+        expertSpecialty: categories.length > 1 ? categories[2]?.name || "법률상담" : "법률상담",
         topic: "계약서 검토 및 법적 자문",
         scheduledTime: "2024-01-15T16:00:00",
         duration: 45,
@@ -111,7 +138,7 @@ export default function ExpertConsultationPage() {
         expertId: "expert_3",
         expertName: "이소연",
         expertAvatar: "이",
-        expertSpecialty: "재무상담",
+        expertSpecialty: categories.length > 2 ? categories[2]?.name || "재무상담" : "재무상담",
         topic: "투자 포트폴리오 구성",
         scheduledTime: "2024-01-16T10:00:00",
         duration: 90,

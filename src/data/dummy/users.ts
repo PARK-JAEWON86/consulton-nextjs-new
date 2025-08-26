@@ -52,7 +52,7 @@ export interface ExpertProfileData {
 // 사용자 프로필 더미 데이터
 export const dummyUserProfile: UserProfile = {
   name: "김철수",
-  credits: 150,
+  credits: 8850, // credit-transactions API와 동일한 최신 잔액
   email: "kimcheolsu@example.com",
   phone: "010-1234-5678",
   location: "서울특별시 강남구",

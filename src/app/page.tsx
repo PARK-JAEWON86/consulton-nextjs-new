@@ -13,8 +13,8 @@ import SearchingSection from "../components/home/SearchingSection";
 import MatchedExpertsSection from "../components/home/MatchedExpertsSection";
 import StatsSection from "../components/home/StatsSection";
 import PopularCategoriesSection from "../components/home/PopularCategoriesSection";
+import UserReviewsSection from "../components/home/UserReviewsSection";
 import AIChatPromoSection from "../components/home/AIChatPromoSection";
-import TurnUsageSection from "../components/home/TurnUsageSection";
 import Footer from "../components/layout/Footer";
 import { convertExpertItemToProfile } from "../data/dummy/experts";
 import { dummyExperts } from "../data/dummy/experts";
@@ -47,7 +47,7 @@ import {
   UserCheck,
   X,
 } from "lucide-react";
-import { categoriesWithStringIcons, getExtendedAgeGroups, getExtendedDurations } from "@/data/dummy/categories";
+import { getExtendedAgeGroups, getExtendedDurations } from "@/data/dummy/categories";
 
 export default function HomePage() {
   // 검색 상태
@@ -224,8 +224,55 @@ export default function HomePage() {
     loadExpertProfiles();
   }, []);
 
-  // 상담 카테고리 옵션 (문자열 아이콘 이름 사용)
-  const categories = categoriesWithStringIcons;
+  // 카테고리 데이터 로드
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        setIsLoadingCategories(true);
+        const response = await fetch('/api/categories?activeOnly=true');
+        const result = await response.json();
+        
+        if (result.success) {
+          // API 응답을 기존 형식에 맞게 변환
+          const transformedCategories = result.data.map((cat: any) => ({
+            id: cat.id,
+            name: cat.name,
+            icon: cat.icon,
+            description: cat.description
+          }));
+          setCategories(transformedCategories);
+        } else {
+          console.error('카테고리 로드 실패:', result.message);
+          // API 실패 시 기본 카테고리로 fallback
+          setCategories([
+            { id: "career", name: "진로상담", icon: "Target", description: "취업, 이직, 진로 탐색" },
+            { id: "psychology", name: "심리상담", icon: "Brain", description: "스트레스, 우울, 불안" },
+            { id: "finance", name: "재무상담", icon: "DollarSign", description: "투자, 자산관리, 세무" },
+            { id: "legal", name: "법률상담", icon: "Scale", description: "계약, 분쟁, 상속" },
+            { id: "education", name: "교육상담", icon: "BookOpen", description: "학습법, 입시, 유학" }
+          ]);
+        }
+      } catch (error) {
+        console.error('카테고리 로드 실패:', error);
+        // 네트워크 오류 시 기본 카테고리로 fallback
+        setCategories([
+          { id: "career", name: "진로상담", icon: "Target", description: "취업, 이직, 진로 탐색" },
+          { id: "psychology", name: "심리상담", icon: "Brain", description: "스트레스, 우울, 불안" },
+          { id: "finance", name: "재무상담", icon: "DollarSign", description: "투자, 자산관리, 세무" },
+          { id: "legal", name: "법률상담", icon: "Scale", description: "계약, 분쟁, 상속" },
+          { id: "education", name: "교육상담", icon: "BookOpen", description: "학습법, 입시, 유학" }
+        ]);
+      } finally {
+        setIsLoadingCategories(false);
+      }
+    };
+
+    loadCategories();
+  }, []);
+
+  // 상담 카테고리 옵션 (API에서 동적 로드)
+  const [categories, setCategories] = useState<any[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
 
   // 연령대 옵션
   const ageGroups = [
@@ -341,10 +388,7 @@ export default function HomePage() {
     }, 800);
   };
 
-  // TurnUsageSection 렌더링 디버깅
-  useEffect(() => {
-    console.log('TurnUsageSection 렌더링 상태:', { currentUserId, isAuthenticated });
-  }, [currentUserId, isAuthenticated]);
+
 
 
   return (
@@ -387,13 +431,14 @@ export default function HomePage() {
         categories={categories}
         showAllCategories={showAllCategories}
         setShowAllCategories={setShowAllCategories}
+        isLoading={isLoadingCategories}
       />
+
+      {/* 사용자 리뷰 섹션 */}
+      <UserReviewsSection />
 
       {/* AI 채팅상담 섹션 */}
       <AIChatPromoSection />
-
-      {/* 턴 사용량 섹션 */}
-      <TurnUsageSection userId={currentUserId} />
 
       {/* 푸터 */}
       <Footer />
