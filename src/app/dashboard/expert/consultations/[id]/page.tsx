@@ -55,18 +55,16 @@ function getMethodLabel(method?: string) {
 
 // 고객이 리뷰를 남겼는지 확인하는 함수
 function hasCustomerLeftReview(customerName: string, expertId: number = 1) {
-  return dummyReviews.some(review => 
-    review.userName === customerName && 
-    review.expertId === expertId
-  );
+  // 실제 프로덕션에서는 API에서 리뷰를 조회해야 함
+  // 현재는 false 반환
+  return false;
 }
 
 // 고객이 남긴 리뷰 찾기
 function getCustomerReview(customerName: string, expertId: number = 1) {
-  return dummyReviews.find(review => 
-    review.userName === customerName && 
-    review.expertId === expertId
-  );
+  // 실제 프로덕션에서는 API에서 리뷰를 조회해야 함
+  // 현재는 null 반환
+  return null;
 }
 
 export default function ExpertConsultationDetailPage() {
@@ -97,19 +95,8 @@ export default function ExpertConsultationDetailPage() {
         }
       } catch (error) {
         console.error('상담 기록 로드 실패:', error);
-        // API 실패 시 더미 데이터 사용
-        setItems(dummyConsultations.map((consultation) => ({
-          id: consultation.id,
-          date: consultation.date,
-          customer: consultation.customer,
-          topic: consultation.topic,
-          amount: consultation.amount,
-          status: consultation.status,
-          method: consultation.method,
-          duration: consultation.duration,
-          summary: consultation.summary,
-          notes: consultation.notes,
-        })));
+        // API 실패 시 빈 배열로 설정
+        setItems([]);
       }
     };
 
@@ -140,39 +127,21 @@ export default function ExpertConsultationDetailPage() {
   
   // 현재 상담의 고객이 리뷰를 남겼는지 확인
   const customerHasReview = useMemo(() => {
-    const consultation = dummyConsultations.find(c => c.id === id);
+    const consultation = items.find(c => c.id === id);
     if (!consultation) return false;
     return hasCustomerLeftReview(consultation.customer);
-  }, [id]);
+  }, [id, items]);
 
   // 고객이 남긴 리뷰 데이터
   const customerReview = useMemo(() => {
-    const consultation = dummyConsultations.find(c => c.id === id);
+    const consultation = items.find(c => c.id === id);
     if (!consultation) return null;
     return getCustomerReview(consultation.customer);
-  }, [id]);
-
-  const fallbackItems: DetailItem[] = useMemo(
-    () => dummyConsultations.map((consultation) => ({
-      id: consultation.id,
-      date: consultation.date,
-      customer: consultation.customer,
-      topic: consultation.topic,
-      amount: consultation.amount,
-      status: consultation.status,
-      method: consultation.method,
-      duration: consultation.duration,
-      summary: consultation.summary,
-      notes: consultation.notes,
-    })),
-    []
-  );
+  }, [id, items]);
 
   const record: DetailItem | undefined = useMemo(() => {
-    const fromStore = items.find((it) => it.id === id);
-    if (fromStore) return fromStore;
-    return fallbackItems.find((it) => it.id === id);
-  }, [items, id, fallbackItems]);
+    return items.find((it) => it.id === id);
+  }, [items, id]);
 
   if (!record) {
     return (
@@ -254,18 +223,12 @@ export default function ExpertConsultationDetailPage() {
                     </div>
                   )}
                 </div>
-                {customerHasReview && customerReview && (
-                  <button
-                    onClick={() => {
-                      // 리뷰 관리 페이지로 이동하면서 해당 리뷰로 스크롤
-                      router.push(`/dashboard/expert/reviews?highlight=${customerReview.id}`);
-                    }}
-                    className="inline-flex items-center px-2 py-1 text-xs text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors"
-                  >
+                {/* 리뷰 보기 기능은 현재 비활성화됨 */}
+                {customerHasReview && (
+                  <div className="inline-flex items-center px-2 py-1 text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-md">
                     <Star className="h-3 w-3 mr-1" />
-                    리뷰 보기
-                    <ExternalLink className="h-3 w-3 ml-1" />
-                  </button>
+                    리뷰 있음
+                  </div>
                 )}
               </div>
             </div>

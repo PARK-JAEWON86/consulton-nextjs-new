@@ -1,11 +1,40 @@
 import { Star, Quote } from 'lucide-react';
-import { reviews } from '@/data/dummy';
 import { useEffect, useRef, useState } from 'react';
+
+// 리뷰 타입 정의
+interface Review {
+  id: string;
+  userName: string;
+  userAvatar: string;
+  rating: number;
+  content: string;
+  category: string;
+  date: string;
+}
 
 export default function UserReviewsSection() {
   const [isReversed, setIsReversed] = useState(false);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const animationRef = useRef<HTMLDivElement>(null);
   const animationRef2 = useRef<HTMLDivElement>(null);
+
+  // 리뷰 데이터 로드
+  useEffect(() => {
+    const loadReviews = async () => {
+      try {
+        // 실제 프로덕션에서는 API에서 리뷰를 가져와야 함
+        // 현재는 빈 배열로 설정
+        setReviews([]);
+      } catch (error) {
+        console.error('리뷰 로드 실패:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadReviews();
+  }, []);
 
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }, (_, i) => (
@@ -17,6 +46,47 @@ export default function UserReviewsSection() {
       />
     ));
   };
+
+  // 로딩 중이거나 리뷰가 없으면 기본 메시지 표시
+  if (isLoading) {
+    return (
+      <section className="py-32 bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="w-full px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              사용자들의 생생한 후기
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              실제로 상담을 받은 사용자들의 솔직한 리뷰를 확인해보세요
+            </p>
+          </div>
+          <div className="text-center text-gray-500">
+            리뷰를 불러오는 중입니다...
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (reviews.length === 0) {
+    return (
+      <section className="py-32 bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="w-full px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              사용자들의 생생한 후기
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              실제로 상담을 받은 사용자들의 솔직한 리뷰를 확인해보세요
+            </p>
+          </div>
+          <div className="text-center text-gray-500">
+            아직 리뷰가 없습니다. 첫 번째 리뷰를 남겨보세요!
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   const topRowReviews = reviews.slice(0, 6);
   const bottomRowReviews = reviews.slice(6, 12);

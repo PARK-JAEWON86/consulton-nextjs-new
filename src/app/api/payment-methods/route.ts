@@ -14,9 +14,6 @@ interface PaymentMethod {
   updatedAt: string;
 }
 
-// 더미 데이터 (실제로는 데이터베이스에서 가져와야 함)
-import { dummyPaymentMethods, getUserPaymentMethods } from '@/data/dummy/payment';
-
 // GET: 사용자의 결제 수단 목록 조회
 export async function GET(request: NextRequest) {
   try {
@@ -42,8 +39,9 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // 사용자의 결제 수단만 조회
-    const userPaymentMethods = getUserPaymentMethods(userId);
+    // 실제 프로덕션에서는 데이터베이스에서 결제 수단을 조회해야 함
+    // 현재는 빈 배열 반환
+    const userPaymentMethods: PaymentMethod[] = [];
     
     return NextResponse.json({
       success: true,
@@ -62,16 +60,28 @@ export async function GET(request: NextRequest) {
 // POST: 새로운 결제 수단 추가
 export async function POST(request: NextRequest) {
   try {
-    // 인증 확인
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    // 인증 확인 (쿠키 기반)
+    const authToken = request.cookies.get('auth-token')?.value;
+    const userData = request.cookies.get('user-data')?.value;
+    
+    if (!authToken || !userData) {
       return NextResponse.json(
         { error: '인증이 필요합니다.' },
         { status: 401 }
       );
     }
 
-    const userId = session.user.id;
+    let userId: string;
+    try {
+      const user = JSON.parse(userData);
+      userId = user.id || user.email;
+    } catch {
+      return NextResponse.json(
+        { error: '사용자 정보를 확인할 수 없습니다.' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     
     // 입력 데이터 검증
@@ -98,27 +108,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 새로운 결제 수단 생성
+    // 실제 프로덕션에서는 데이터베이스에 결제 수단을 저장해야 함
+    // 현재는 성공 응답만 반환
     const newPaymentMethod: PaymentMethod = {
-      id: `pm_${Date.now()}`,
+      id: Date.now().toString(),
       userId,
       type,
       name,
       last4,
       bankName,
-      isDefault: false, // 새로 추가되는 결제 수단은 기본값이 아님
+      isDefault: false,
       expiryDate,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
 
-    // 실제로는 데이터베이스에 저장해야 함
-    // dummyPaymentMethods.push(newPaymentMethod);
-
     return NextResponse.json({
       success: true,
-      data: newPaymentMethod,
-      message: '결제 수단이 성공적으로 추가되었습니다.'
+      message: '결제 수단이 추가되었습니다.',
+      data: newPaymentMethod
     }, { status: 201 });
 
   } catch (error) {
@@ -130,23 +138,34 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PUT: 결제 수단 수정
+// PUT: 결제 수단 정보 수정
 export async function PUT(request: NextRequest) {
   try {
-    // 인증 확인
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    // 인증 확인 (쿠키 기반)
+    const authToken = request.cookies.get('auth-token')?.value;
+    const userData = request.cookies.get('user-data')?.value;
+    
+    if (!authToken || !userData) {
       return NextResponse.json(
         { error: '인증이 필요합니다.' },
         { status: 401 }
       );
     }
 
-    const userId = session.user.id;
+    let userId: string;
+    try {
+      const user = JSON.parse(userData);
+      userId = user.id || user.email;
+    } catch {
+      return NextResponse.json(
+        { error: '사용자 정보를 확인할 수 없습니다.' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
-    
-    const { id, name, isDefault } = body;
-    
+    const { id, ...updates } = body;
+
     if (!id) {
       return NextResponse.json(
         { error: '결제 수단 ID가 필요합니다.' },
@@ -154,37 +173,23 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // 사용자의 결제 수단인지 확인
-    const userPaymentMethods = getUserPaymentMethods(userId);
-    const existingMethod = userPaymentMethods.find(method => method.id === id);
-    
-    if (!existingMethod) {
-      return NextResponse.json(
-        { error: '해당 결제 수단을 찾을 수 없습니다.' },
-        { status: 404 }
-      );
-    }
-
-    // 기본 결제 수단 설정 시 다른 결제 수단들의 기본값 해제
-    if (isDefault) {
-      // 실제로는 데이터베이스에서 업데이트해야 함
-      // userPaymentMethods.forEach(method => {
-      //   if (method.id !== id) method.isDefault = false;
-      // });
-    }
-
-    // 결제 수단 정보 업데이트
-    const updatedMethod: PaymentMethod = {
-      ...existingMethod,
-      name: name || existingMethod.name,
-      isDefault: isDefault !== undefined ? isDefault : existingMethod.isDefault,
-      updatedAt: new Date().toISOString()
+    // 실제 프로덕션에서는 데이터베이스에서 결제 수단을 조회하고 수정해야 함
+    // 현재는 성공 응답만 반환
+    const updatedPaymentMethod: PaymentMethod = {
+      id,
+      userId,
+      type: 'card',
+      name: '수정된 결제 수단',
+      isDefault: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      ...updates
     };
 
     return NextResponse.json({
       success: true,
-      data: updatedMethod,
-      message: '결제 수단이 성공적으로 수정되었습니다.'
+      message: '결제 수단이 수정되었습니다.',
+      data: updatedPaymentMethod
     });
 
   } catch (error) {
@@ -199,19 +204,31 @@ export async function PUT(request: NextRequest) {
 // DELETE: 결제 수단 삭제
 export async function DELETE(request: NextRequest) {
   try {
-    // 인증 확인
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    // 인증 확인 (쿠키 기반)
+    const authToken = request.cookies.get('auth-token')?.value;
+    const userData = request.cookies.get('user-data')?.value;
+    
+    if (!authToken || !userData) {
       return NextResponse.json(
         { error: '인증이 필요합니다.' },
         { status: 401 }
       );
     }
 
-    const userId = session.user.id;
+    let userId: string;
+    try {
+      const user = JSON.parse(userData);
+      userId = user.id || user.email;
+    } catch {
+      return NextResponse.json(
+        { error: '사용자 정보를 확인할 수 없습니다.' },
+        { status: 401 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
-    
+
     if (!id) {
       return NextResponse.json(
         { error: '결제 수단 ID가 필요합니다.' },
@@ -219,32 +236,11 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // 사용자의 결제 수단인지 확인
-    const userPaymentMethods = getUserPaymentMethods(userId);
-    const existingMethod = userPaymentMethods.find(method => method.id === id);
-    
-    if (!existingMethod) {
-      return NextResponse.json(
-        { error: '해당 결제 수단을 찾을 수 없습니다.' },
-        { status: 404 }
-      );
-    }
-
-    // 기본 결제 수단은 삭제 불가
-    if (existingMethod.isDefault) {
-      return NextResponse.json(
-        { error: '기본 결제 수단은 삭제할 수 없습니다.' },
-        { status: 400 }
-      );
-    }
-
-    // 실제로는 데이터베이스에서 삭제해야 함
-    // const index = dummyPaymentMethods.findIndex(method => method.id === id);
-    // if (index > -1) dummyPaymentMethods.splice(index, 1);
-
+    // 실제 프로덕션에서는 데이터베이스에서 결제 수단을 삭제해야 함
+    // 현재는 성공 응답만 반환
     return NextResponse.json({
       success: true,
-      message: '결제 수단이 성공적으로 삭제되었습니다.'
+      message: '결제 수단이 삭제되었습니다.'
     });
 
   } catch (error) {

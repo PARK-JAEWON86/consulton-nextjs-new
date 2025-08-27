@@ -309,13 +309,20 @@ export default function ChatPage() {
 
             // 사이드바 채팅 기록 업데이트를 위한 이벤트 발행
             console.log('사이드바 업데이트 이벤트 발행 시작:', sessionResult.data);
-            window.dispatchEvent(new CustomEvent('chatHistoryUpdated', {
+            
+            // CustomEvent를 사용하여 사이드바에 알림
+            const chatHistoryEvent = new CustomEvent('chatHistoryUpdated', {
               detail: {
                 action: 'newSession',
                 session: sessionResult.data
               }
-            }));
-            console.log('사이드바 업데이트 이벤트 발행 완료');
+            });
+            
+            // 이벤트 발행 전에 약간의 지연을 두어 API 응답이 완전히 처리되도록 함
+            setTimeout(() => {
+              window.dispatchEvent(chatHistoryEvent);
+              console.log('사이드바 업데이트 이벤트 발행 완료');
+            }, 100);
           }
         }
       } catch (error) {

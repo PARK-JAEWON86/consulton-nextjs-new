@@ -202,22 +202,25 @@ const LanguageSettings = () => {
   };
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div className="px-6 py-4 border-b border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+          <Globe className="h-5 w-5 mr-2 text-blue-600" />
           언어 및 지역 설정
-        </h2>
-        <p className="text-gray-600 mb-6">
+        </h3>
+        <p className="text-sm text-gray-600 mt-1">
           언어, 날짜 형식, 통화 등을 설정하세요.
         </p>
       </div>
 
-      {/* 주요 언어 설정 */}
-      <div className="bg-gray-50 rounded-lg p-6">
-        <div className="flex items-center space-x-3 mb-4">
-          <Globe className="h-5 w-5 text-blue-600" />
-          <h3 className="text-lg font-medium text-gray-900">언어 설정</h3>
-        </div>
+      <div className="p-6">
+        <div className="space-y-8">
+          {/* 주요 언어 설정 */}
+          <div className="bg-gray-50 rounded-lg p-6">
+            <div className="flex items-center space-x-3 mb-4">
+              <Globe className="h-5 w-5 text-blue-600" />
+              <h4 className="text-md font-medium text-gray-900">언어 설정</h4>
+            </div>
 
         <div className="space-y-6">
           {/* 주요 언어 */}
@@ -348,7 +351,7 @@ const LanguageSettings = () => {
 
       {/* 지역 설정 */}
       <div className="bg-gray-50 rounded-lg p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">지역 설정</h3>
+        <h4 className="text-md font-medium text-gray-900 mb-4">지역 설정</h4>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* 날짜 형식 */}
@@ -475,9 +478,9 @@ const LanguageSettings = () => {
 
       {/* 언어팩 다운로드 */}
       <div className="bg-gray-50 rounded-lg p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">
+        <h4 className="text-md font-medium text-gray-900 mb-4">
           언어팩 다운로드
-        </h3>
+        </h4>
         <p className="text-sm text-gray-600 mb-4">
           오프라인에서도 사용할 수 있도록 언어팩을 다운로드하세요.
         </p>
@@ -552,6 +555,8 @@ const LanguageSettings = () => {
           </div>
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 };

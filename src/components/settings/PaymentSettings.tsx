@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { CreditCard, Wallet, History, Plus, Trash2, Edit, ChevronUp, ChevronDown } from 'lucide-react';
+import { CreditCard, Wallet, History, Plus, Trash2, Edit } from 'lucide-react';
 import { 
   PaymentMethod, 
   PaymentHistory, 
@@ -16,8 +16,8 @@ export default function PaymentSettings() {
   const [creditTransactions, setCreditTransactions] = useState<any[]>([]);
   const [showAddMethod, setShowAddMethod] = useState(false);
   const [editingMethod, setEditingMethod] = useState<PaymentMethod | null>(null);
-  const [showTopupHistory, setShowTopupHistory] = useState(false);
-  const [showUsageHistory, setShowUsageHistory] = useState(false);
+  const [showTopupHistory, setShowTopupHistory] = useState(true);
+  const [showUsageHistory, setShowUsageHistory] = useState(true);
 
   // 더미 데이터 로드
   useEffect(() => {
@@ -185,121 +185,99 @@ export default function PaymentSettings() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* 좌측: 크레딧 충전 내역 */}
             <div className="bg-gray-50 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-4">
+              <div className="mb-4">
                 <h5 className="text-md font-medium text-gray-900 flex items-center">
                   <Plus className="h-4 w-4 mr-2 text-green-600" />
                   크레딧 충전 내역
                 </h5>
-                <button 
-                  onClick={() => setShowTopupHistory(!showTopupHistory)}
-                  className="flex items-center space-x-1 text-sm text-blue-600 hover:text-blue-800"
-                >
-                  {showTopupHistory ? '접기' : '펼치기'}
-                  {showTopupHistory ? (
-                    <ChevronUp className="h-3 w-3" />
-                  ) : (
-                    <ChevronDown className="h-3 w-3" />
-                  )}
-                </button>
               </div>
 
-              {showTopupHistory ? (
-                <div className="space-y-3">
-                  {paymentHistory
-                    .filter(item => item.type === 'topup')
-                    .slice(0, 5)
-                    .map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-gray-900 text-sm truncate">
-                            {item.description}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {new Date(item.date).toLocaleDateString('ko-KR')}
-                          </div>
-                          {item.credits && (
-                            <div className="text-xs text-blue-600 font-medium">
-                              +{item.credits} 크레딧
-                            </div>
-                          )}
+              <div className="space-y-3">
+                {paymentHistory
+                  .filter(item => item.type === 'topup')
+                  .slice(0, 5)
+                  .map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-gray-900 text-sm truncate">
+                          {item.description}
                         </div>
-
-                        <div className="flex items-center space-x-2 ml-3">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
-                            {item.status === 'completed' && '완료'}
-                            {item.status === 'pending' && '대기중'}
-                            {item.status === 'failed' && '실패'}
-                          </span>
-                          <span className="font-medium text-green-600 text-sm">
-                            +{formatAmount(item.amount)}
-                          </span>
+                        <div className="text-xs text-gray-500">
+                          {new Date(item.date).toLocaleDateString('ko-KR')}
                         </div>
+                        {item.credits && (
+                          <div className="text-xs text-blue-600 font-medium">
+                            +{item.credits} 크레딧
+                          </div>
+                        )}
                       </div>
-                    ))}
-                  
-                  {paymentHistory.filter(item => item.type === 'topup').length === 0 && (
-                    <div className="text-center py-6 text-gray-500">
-                      <Plus className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                      <p className="text-sm">아직 크레딧 충전 내역이 없습니다.</p>
+
+                      <div className="flex items-center space-x-2 ml-3">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
+                          {item.status === 'completed' && '완료'}
+                          {item.status === 'pending' && '대기중'}
+                          {item.status === 'failed' && '실패'}
+                        </span>
+                        <span className="font-medium text-green-600 text-sm">
+                          +{formatAmount(item.amount)}
+                        </span>
+                      </div>
                     </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center py-6 text-gray-500">
-                  <Plus className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                  <p className="text-sm">크레딧 충전 내역을 확인하려면 펼쳐보세요</p>
-                </div>
-              )}
+                  ))}
+                
+                {paymentHistory.filter(item => item.type === 'topup').length > 5 && (
+                  <div className="text-center py-3">
+                    <button className="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                      더보기
+                    </button>
+                  </div>
+                )}
+                
+                {paymentHistory.filter(item => item.type === 'topup').length === 0 && (
+                  <div className="text-center py-6 text-gray-500">
+                    <Plus className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                    <p className="text-sm">아직 크레딧 충전 내역이 없습니다.</p>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* 우측: 크레딧 사용 내역 */}
             <div className="bg-gray-50 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-4">
+              <div className="mb-4">
                 <h5 className="text-md font-medium text-gray-900 flex items-center">
                   <CreditCard className="h-4 w-4 mr-2 text-red-600" />
                   크레딧 사용 내역
                 </h5>
-                <button 
-                  onClick={() => setShowUsageHistory(!showUsageHistory)}
-                  className="flex items-center space-x-1 text-sm text-blue-600 hover:text-blue-800"
-                >
-                  {showUsageHistory ? '접기' : '펼치기'}
-                  {showUsageHistory ? (
-                    <ChevronUp className="h-3 w-3" />
-                  ) : (
-                    <ChevronDown className="h-3 w-3" />
-                  )}
-                </button>
               </div>
 
-              {showUsageHistory ? (
-                <div className="space-y-3">
-                  {creditTransactions
-                    .filter(transaction => transaction.type === 'spend')
-                    .slice(0, 5)
-                    .map((transaction) => (
-                      <div
-                        key={transaction.id}
-                        className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-gray-900 text-sm truncate">
-                            {transaction.description}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {new Date(transaction.createdAt).toLocaleDateString('ko-KR')}
-                          </div>
-                          {transaction.consultationId && (
-                            <div className="text-xs text-blue-600">
-                              상담 ID: {transaction.consultationId}
-                            </div>
-                          )}
+              <div className="space-y-3">
+                {creditTransactions
+                  .filter(transaction => transaction.type === 'spend')
+                  .slice(0, 5)
+                  .map((transaction) => (
+                    <div
+                      key={transaction.id}
+                      className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-gray-900 text-sm truncate">
+                          {transaction.description}
                         </div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(transaction.createdAt).toLocaleDateString('ko-KR')}
+                        </div>
+                        {transaction.consultationId && (
+                          <div className="text-xs text-blue-600">
+                            상담 ID: {transaction.consultationId}
+                          </div>
+                        )}
+                      </div>
 
-                        <div className="flex items-center space-x-2 ml-3">
+                                              <div className="flex items-center space-x-2 ml-3">
                           <span className="px-2 py-1 rounded-full text-xs font-medium text-red-600 bg-red-100">
                             사용
                           </span>
@@ -312,22 +290,24 @@ export default function PaymentSettings() {
                             </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  
-                  {creditTransactions.filter(transaction => transaction.type === 'spend').length === 0 && (
-                    <div className="text-center py-6 text-gray-500">
-                      <CreditCard className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                      <p className="text-sm">아직 크레딧 사용 내역이 없습니다.</p>
                     </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center py-6 text-gray-500">
-                  <CreditCard className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                  <p className="text-sm">크레딧 사용 내역을 확인하려면 펼쳐보세요</p>
-                </div>
-              )}
+                  ))}
+                
+                {creditTransactions.filter(transaction => transaction.type === 'spend').length > 5 && (
+                  <div className="text-center py-3">
+                    <button className="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                      더보기
+                    </button>
+                  </div>
+                )}
+                
+                {creditTransactions.filter(transaction => transaction.type === 'spend').length === 0 && (
+                  <div className="text-center py-6 text-gray-500">
+                    <CreditCard className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                    <p className="text-sm">아직 크레딧 사용 내역이 없습니다.</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -25,23 +25,23 @@ AI 채팅 상담의 채팅 세션과 메시지를 관리하는 API입니다. 전
   "success": true,
   "data": [
     {
-      "id": "1",
-      "title": "마케팅 전략 상담",
+      "id": "1705123456789",
+      "title": "새로운 상담",
       "userId": "user1",
-      "expertId": "expert1",
+      "expertId": null,
       "expert": {
-        "name": "이민수",
-        "title": "마케팅 전문가",
+        "name": "AI 상담 어시스턴트",
+        "title": "AI 상담사",
         "avatar": null
       },
-      "lastMessage": "네, 인스타그램 마케팅에 대해 더 자세히 알려드릴게요.",
+      "lastMessage": "",
       "timestamp": "2024-01-15T14:30:00.000Z",
-      "duration": 45,
-      "status": "completed",
-      "messageCount": 23,
-      "creditsUsed": 25,
-      "category": "마케팅",
-      "createdAt": "2024-01-15T14:00:00.000Z",
+      "duration": 0,
+      "status": "in_progress",
+      "messageCount": 0,
+      "creditsUsed": 0,
+      "category": "일반",
+      "createdAt": "2024-01-15T14:30:00.000Z",
       "updatedAt": "2024-01-15T14:30:00.000Z"
     }
   ],
@@ -61,8 +61,8 @@ AI 채팅 상담의 채팅 세션과 메시지를 관리하는 API입니다. 전
 {
   "title": "새로운 상담",
   "userId": "user1",
-  "expertId": "expert1",
-  "category": "마케팅"
+  "expertId": null,
+  "category": "일반"
 }
 ```
 
@@ -75,7 +75,7 @@ AI 채팅 상담의 채팅 세션과 메시지를 관리하는 API입니다. 전
     "id": "1705123456789",
     "title": "새로운 상담",
     "userId": "user1",
-    "expertId": "expert1",
+    "expertId": null,
     "expert": {
       "name": "AI 상담 어시스턴트",
       "title": "AI 상담사",
@@ -87,7 +87,7 @@ AI 채팅 상담의 채팅 세션과 메시지를 관리하는 API입니다. 전
     "status": "in_progress",
     "messageCount": 0,
     "creditsUsed": 0,
-    "category": "마케팅",
+    "category": "일반",
     "createdAt": "2024-01-15T14:30:00.000Z",
     "updatedAt": "2024-01-15T14:30:00.000Z"
   },
@@ -99,7 +99,7 @@ AI 채팅 상담의 채팅 세션과 메시지를 관리하는 API입니다. 전
 
 **GET** `/api/aichat-sessions/[id]`
 
-특정 채팅 세션의 정보를 조회합니다.
+특정 채팅 세션의 상세 정보를 조회합니다.
 
 #### 응답 예시
 
@@ -107,44 +107,43 @@ AI 채팅 상담의 채팅 세션과 메시지를 관리하는 API입니다. 전
 {
   "success": true,
   "data": {
-    "id": "1",
-    "title": "마케팅 전략 상담",
+    "id": "1705123456789",
+    "title": "새로운 상담",
     "userId": "user1",
-    "expertId": "expert1",
+    "expertId": null,
     "expert": {
-      "name": "이민수",
-      "title": "마케팅 전문가",
+      "name": "AI 상담 어시스턴트",
+      "title": "AI 상담사",
       "avatar": null
     },
-    "lastMessage": "네, 인스타그램 마케팅에 대해 더 자세히 알려드릴게요.",
+    "lastMessage": "",
     "timestamp": "2024-01-15T14:30:00.000Z",
-    "duration": 45,
-    "status": "completed",
-    "messageCount": 23,
-    "creditsUsed": 25,
-    "category": "마케팅",
-    "createdAt": "2024-01-15T14:00:00.000Z",
+    "duration": 0,
+    "status": "in_progress",
+    "messageCount": 0,
+    "creditsUsed": 0,
+    "category": "일반",
+    "createdAt": "2024-01-15T14:30:00.000Z",
     "updatedAt": "2024-01-15T14:30:00.000Z"
   }
 }
 ```
 
-### 4. 채팅 세션 정보 수정
+### 4. 채팅 세션 수정
 
 **PUT** `/api/aichat-sessions/[id]`
 
-채팅 세션의 정보를 수정합니다.
+채팅 세션 정보를 수정합니다.
 
 #### 요청 본문
 
 ```json
 {
-  "title": "수정된 제목",
+  "title": "수정된 상담 제목",
   "status": "completed",
-  "lastMessage": "상담이 완료되었습니다.",
-  "messageCount": 25,
-  "creditsUsed": 30,
-  "duration": 60
+  "duration": 30,
+  "messageCount": 10,
+  "creditsUsed": 15
 }
 ```
 
@@ -154,13 +153,23 @@ AI 채팅 상담의 채팅 세션과 메시지를 관리하는 API입니다. 전
 {
   "success": true,
   "data": {
-    "id": "1",
-    "title": "수정된 제목",
+    "id": "1705123456789",
+    "title": "수정된 상담 제목",
+    "userId": "user1",
+    "expertId": null,
+    "expert": {
+      "name": "AI 상담 어시스턴트",
+      "title": "AI 상담사",
+      "avatar": null
+    },
+    "lastMessage": "",
+    "timestamp": "2024-01-15T14:30:00.000Z",
+    "duration": 30,
     "status": "completed",
-    "lastMessage": "상담이 완료되었습니다.",
-    "messageCount": 25,
-    "creditsUsed": 30,
-    "duration": 60,
+    "messageCount": 10,
+    "creditsUsed": 15,
+    "category": "일반",
+    "createdAt": "2024-01-15T14:30:00.000Z",
     "updatedAt": "2024-01-15T15:00:00.000Z"
   },
   "message": "채팅 세션이 업데이트되었습니다."
@@ -169,7 +178,7 @@ AI 채팅 상담의 채팅 세션과 메시지를 관리하는 API입니다. 전
 
 ### 5. 채팅 세션 삭제
 
-**DELETE** `/api/aichat-sessions/[id]`
+**DELETE** `/api/aichat-sessions?id=[id]`
 
 채팅 세션을 삭제합니다.
 
@@ -182,7 +191,9 @@ AI 채팅 상담의 채팅 세션과 메시지를 관리하는 API입니다. 전
 }
 ```
 
-### 6. 채팅 메시지 목록 조회
+## 메시지 관리
+
+### 1. 메시지 목록 조회
 
 **GET** `/api/aichat-sessions/[id]/messages`
 
@@ -191,7 +202,7 @@ AI 채팅 상담의 채팅 세션과 메시지를 관리하는 API입니다. 전
 #### 쿼리 파라미터
 
 - `limit` (number): 조회할 메시지 수 제한
-- `before` (string): 페이지네이션용 타임스탬프
+- `before` (string): 특정 메시지 ID 이전의 메시지들 조회
 
 #### 응답 예시
 
@@ -200,32 +211,23 @@ AI 채팅 상담의 채팅 세션과 메시지를 관리하는 API입니다. 전
   "success": true,
   "data": [
     {
-      "id": "msg1_1",
-      "sessionId": "1",
+      "id": "1705123456789",
+      "sessionId": "1705123456789",
+      "content": "안녕하세요! 상담을 시작하겠습니다.",
       "type": "user",
-      "content": "안녕하세요! 마케팅 전략에 대해 상담받고 싶습니다.",
-      "timestamp": "2024-01-15T14:00:00.000Z",
       "senderId": "user1",
       "senderName": "사용자",
-      "senderAvatar": null
-    },
-    {
-      "id": "msg1_2",
-      "sessionId": "1",
-      "type": "ai",
-      "content": "안녕하세요! 마케팅 전략 상담을 도와드리겠습니다.",
-      "timestamp": "2024-01-15T14:00:30.000Z",
-      "senderId": "ai",
-      "senderName": "AI 상담사",
-      "senderAvatar": null
+      "senderAvatar": null,
+      "timestamp": "2024-01-15T14:30:00.000Z",
+      "attachments": []
     }
   ],
-  "total": 2,
+  "total": 1,
   "hasMore": false
 }
 ```
 
-### 7. 새로운 메시지 전송
+### 2. 새 메시지 전송
 
 **POST** `/api/aichat-sessions/[id]/messages`
 
@@ -235,7 +237,7 @@ AI 채팅 상담의 채팅 세션과 메시지를 관리하는 API입니다. 전
 
 ```json
 {
-  "content": "안녕하세요!",
+  "content": "안녕하세요! 상담을 시작하겠습니다.",
   "type": "user",
   "senderId": "user1",
   "senderName": "사용자",
@@ -249,71 +251,89 @@ AI 채팅 상담의 채팅 세션과 메시지를 관리하는 API입니다. 전
 {
   "success": true,
   "data": {
-    "id": "msg1_7",
-    "sessionId": "1",
+    "id": "1705123456789",
+    "sessionId": "1705123456789",
+    "content": "안녕하세요! 상담을 시작하겠습니다.",
     "type": "user",
-    "content": "안녕하세요!",
-    "timestamp": "2024-01-15T16:00:00.000Z",
     "senderId": "user1",
     "senderName": "사용자",
-    "senderAvatar": null
+    "senderAvatar": null,
+    "timestamp": "2024-01-15T14:30:00.000Z",
+    "attachments": []
   },
   "message": "메시지가 전송되었습니다."
 }
 ```
 
-## 사용 예시
+### 3. 메시지 삭제
 
-### 프론트엔드에서 API 사용하기
+**DELETE** `/api/aichat-sessions/[id]/messages?messageId=[messageId]`
 
-```typescript
-import { AIChatService } from '../../services/AIChatService';
+특정 메시지를 삭제합니다.
 
-const chatService = AIChatService.getInstance();
-
-// 채팅 세션 목록 조회
-const sessions = await chatService.getChatSessions({
-  userId: "user1",
-  limit: 20
-});
-
-// 새로운 채팅 세션 생성
-const newSession = await chatService.createChatSession({
-  title: "새로운 상담",
-  userId: "user1",
-  category: "마케팅"
-});
-
-// 메시지 전송
-const message = await chatService.sendMessage(sessionId, {
-  content: "안녕하세요!",
-  type: "user",
-  senderId: "user1"
-});
-```
-
-## 에러 처리
-
-모든 API는 에러 발생 시 다음과 같은 형식으로 응답합니다:
+#### 응답 예시
 
 ```json
 {
-  "success": false,
-  "error": "에러 메시지"
+  "success": true,
+  "message": "메시지가 삭제되었습니다."
+}
+```
+
+## 데이터 구조
+
+### ChatSession
+
+```typescript
+interface ChatSession {
+  id: string;
+  title: string;
+  userId: string;
+  expertId: string | null;
+  expert: {
+    name: string;
+    title: string;
+    avatar: string | null;
+  } | null;
+  lastMessage: string;
+  timestamp: string;
+  duration: number;
+  status: "in_progress" | "completed" | "pending" | "cancelled";
+  messageCount: number;
+  creditsUsed: number;
+  category: string;
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+### ChatMessage
+
+```typescript
+interface ChatMessage {
+  id: string;
+  sessionId: string;
+  content: string;
+  type: "user" | "ai" | "expert" | "system";
+  senderId: string;
+  senderName: string;
+  senderAvatar: string | null;
+  timestamp: string;
+  attachments: any[];
 }
 ```
 
 ## 상태 코드
 
 - `200`: 성공
-- `201`: 생성됨
+- `201`: 생성 성공
 - `400`: 잘못된 요청
 - `404`: 리소스를 찾을 수 없음
-- `500`: 서버 내부 오류
+- `500`: 서버 오류
 
 ## 주의사항
 
-1. 실제 운영 환경에서는 데이터베이스를 사용해야 합니다.
-2. 사용자 인증 및 권한 검증이 필요합니다.
-3. 메시지 내용의 보안 검증이 필요합니다.
-4. 크레딧 시스템과 연동하여 사용량을 추적해야 합니다.
+- 모든 API는 실제 데이터베이스 연동을 위해 설계되었습니다.
+- 현재는 localStorage 기반 메모리 저장소를 사용합니다.
+- 프로덕션 환경에서는 적절한 데이터베이스로 교체해야 합니다.
+- 더미 데이터는 포함되지 않으며, 실제 사용자 데이터만 처리합니다.

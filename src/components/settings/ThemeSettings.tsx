@@ -160,18 +160,25 @@ const ThemeSettings = () => {
   };
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">테마 설정</h2>
-        <p className="text-gray-600 mb-6">앱의 외관과 사용성을 개인화하세요.</p>
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div className="px-6 py-4 border-b border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+          <Palette className="h-5 w-5 mr-2 text-blue-600" />
+          테마 설정
+        </h3>
+        <p className="text-sm text-gray-600 mt-1">
+          앱의 외관과 사용성을 개인화하세요.
+        </p>
       </div>
 
-      {/* 테마 모드 */}
-      <div className="bg-gray-50 rounded-lg p-6">
-        <div className="flex items-center space-x-3 mb-4">
-          <Palette className="h-5 w-5 text-blue-600" />
-          <h3 className="text-lg font-medium text-gray-900">테마 모드</h3>
-        </div>
+      <div className="p-6">
+        <div className="space-y-8">
+          {/* 테마 모드 */}
+          <div className="bg-gray-50 rounded-lg p-6">
+            <div className="flex items-center space-x-3 mb-4">
+              <Palette className="h-5 w-5 text-blue-600" />
+              <h4 className="text-md font-medium text-gray-900">테마 모드</h4>
+            </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {themeOptions.map((option) => {
@@ -219,7 +226,7 @@ const ThemeSettings = () => {
 
       {/* 컬러 스킴 */}
       <div className="bg-gray-50 rounded-lg p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">컬러 스킴</h3>
+        <h4 className="text-md font-medium text-gray-900 mb-4">컬러 스킴</h4>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {colorSchemes.map((scheme) => {
@@ -413,6 +420,8 @@ const ThemeSettings = () => {
           </div>
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 };

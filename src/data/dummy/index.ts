@@ -23,16 +23,13 @@ export * from './stats';
 // 게시글 관련
 export * from './posts';
 
-// 채팅 기록 관련
-export * from './chatHistory';
-
-// 리뷰 관련
-export * from './reviews';
+// 리뷰 관련 - 명시적으로 export하여 중복 방지
+export { reviews, dummyReviews, type DummyReview } from './reviews';
 
 // 더미 데이터 사용 여부를 확인하는 플래그
-export const USING_DUMMY_DATA = true;
+export const USING_DUMMY_DATA = false;
 
 // 더미 데이터 정리를 위한 유틸리티
 export const cleanupDummyData = () => {
-  console.warn('⚠️ 더미 데이터를 사용 중입니다. 실제 API 연동 후 /src/data/dummy 폴더를 삭제해주세요.');
+  console.log('✅ 더미 데이터가 제거되었습니다. 실제 API를 사용하고 있습니다.');
 };

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { userDataService } from '@/services/UserDataService';
+import { dummyUserProfile } from '@/data/dummy/users';
 
 interface ChatHistoryItem {
   id: string;
@@ -19,10 +20,16 @@ interface AppState {
     id: string | null;
     email: string | null;
     name: string | null;
+    nickname?: string;
     credits: number;
     expertLevel: string | null;
     role?: 'expert' | 'client' | 'admin';
     expertProfile?: any;
+    phone?: string;
+    location?: string;
+    bio?: string;
+    interestedCategories?: string[];
+    profileVisibility?: string;
   } | null;
   chatHistory: ChatHistoryItem[];
 }
@@ -53,9 +60,15 @@ export async function GET() {
         id: kimCheolsu.id,
         email: kimCheolsu.email,
         name: kimCheolsu.name,
+        nickname: dummyUserProfile.nickname || kimCheolsu.name, // 닉네임 우선, 없으면 이름
         credits: kimCheolsu.credits, // 더미데이터에서 크레딧 가져오기
         expertLevel: null, // 하드코딩 제거
-        role: 'client' as const
+        role: 'client' as const,
+        phone: dummyUserProfile.phone,
+        location: dummyUserProfile.location,
+        bio: dummyUserProfile.bio,
+        interestedCategories: dummyUserProfile.interests,
+        profileVisibility: 'experts'
       } : null
     };
 

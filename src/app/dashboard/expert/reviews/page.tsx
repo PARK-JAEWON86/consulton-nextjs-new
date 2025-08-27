@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { Star, MessageCircle, Filter, Search, ChevronDown, Calendar, User, Video, Phone, Edit2, Save, X } from "lucide-react";
-import { dummyReviews, getReviewStats, updateReviewVerification } from "@/data/dummy/reviews";
+
 import { Review } from "@/types";
 
 interface User {
@@ -102,13 +102,12 @@ export default function ExpertReviewsPage() {
     if (user && user.role === 'expert') {
       const expertId = parseInt(user.id?.replace('expert_', '') || '0');
       if (expertId > 0) {
-        // 해당 전문가의 리뷰만 필터링
-        const expertReviews = dummyReviews.filter(review => review.expertId === expertId);
-        const updatedReviews = updateReviewVerification(expertReviews, consultations);
-        setReviews(updatedReviews);
+        // 실제 프로덕션에서는 API에서 리뷰를 조회해야 함
+        // 현재는 빈 배열로 설정
+        setReviews([]);
       }
     }
-  }, [user, consultations]);
+  }, [user]);
 
   // 하이라이트된 리뷰로 스크롤
   useEffect(() => {
@@ -133,8 +132,36 @@ export default function ExpertReviewsPage() {
     }
   }, [highlightReviewId]);
 
-  // 리뷰 통계
-  const stats = getReviewStats(reviews);
+  // 리뷰 통계 계산
+  const stats = useMemo(() => {
+    const totalReviews = reviews.length;
+    const averageRating = totalReviews > 0 
+      ? reviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews 
+      : 0;
+    
+    const ratingDistribution = {
+      5: reviews.filter(review => review.rating === 5).length,
+      4: reviews.filter(review => review.rating === 4).length,
+      3: reviews.filter(review => review.rating === 3).length,
+      2: reviews.filter(review => review.rating === 2).length,
+      1: reviews.filter(review => review.rating === 1).length
+    };
+    
+    const repliedReviews = reviews.filter(review => review.expertReply).length;
+    const replyRate = totalReviews > 0 ? (repliedReviews / totalReviews) * 100 : 0;
+    
+    const verifiedReviews = reviews.filter(review => review.isVerified).length;
+    const verificationRate = totalReviews > 0 ? (verifiedReviews / totalReviews) * 100 : 0;
+    
+    return {
+      totalReviews,
+      averageRating: Math.round(averageRating * 10) / 10,
+      ratingDistribution,
+      replyRate: Math.round(replyRate),
+      verifiedReviews,
+      verificationRate: Math.round(verificationRate)
+    };
+  }, [reviews]);
 
   // 필터링 및 정렬된 리뷰
   const filteredAndSortedReviews = useMemo(() => {

@@ -1,216 +1,217 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from "react";
 
 export default function TestAIChatPage() {
-  const [testResults, setTestResults] = useState<any[]>([]);
+  const [chatSessions, setChatSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [isClient, setIsClient] = useState(false);
 
-  const addTestResult = (action: string, result: any) => {
-    setTestResults(prev => [...prev, {
-      timestamp: new Date().toLocaleTimeString(),
-      action,
-      result
-    }]);
+  // 클라이언트 사이드에서만 실행
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // 채팅 세션 목록 로드
+  const loadChatSessions = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/aichat-sessions?userId=user1&limit=20');
+      const result = await response.json();
+      
+      if (result.success) {
+        setChatSessions(result.data);
+        console.log('채팅 세션 로드 완료:', result.data);
+      } else {
+        console.error('채팅 세션 로드 실패:', result);
+      }
+    } catch (error) {
+      console.error('채팅 세션 로드 오류:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const testCreateSession = async () => {
-    setLoading(true);
+  // 새 채팅 세션 생성
+  const createChatSession = async () => {
+    if (!message.trim()) return;
+    
     try {
+      setLoading(true);
       const response = await fetch('/api/aichat-sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: `테스트 상담 ${Date.now()}`,
-          userId: 'testuser',
-          category: '테스트'
+          title: message.length > 30 ? message.substring(0, 30) + "..." : message,
+          userId: "user1",
+          category: "테스트"
         })
       });
+
+      const result = await response.json();
       
-      const result = await response.json();
-      addTestResult('새 세션 생성', result);
+      if (result.success) {
+        console.log('새 채팅 세션 생성 완료:', result.data);
+        setMessage("");
+        // 세션 목록 새로고침
+        await loadChatSessions();
+      } else {
+        console.error('채팅 세션 생성 실패:', result);
+      }
     } catch (error) {
-      addTestResult('새 세션 생성 실패', { error: error.message });
+      console.error('채팅 세션 생성 오류:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const testGetSessions = async () => {
-    setLoading(true);
+  // 채팅 세션 삭제
+  const deleteChatSession = async (id: string) => {
     try {
-      const response = await fetch('/api/aichat-sessions?userId=testuser&limit=5');
-      const result = await response.json();
-      addTestResult('세션 목록 조회', result);
-    } catch (error) {
-      addTestResult('세션 목록 조회 실패', { error: error.message });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const testSendMessage = async () => {
-    setLoading(true);
-    try {
-      // 먼저 세션 생성
-      const sessionResponse = await fetch('/api/aichat-sessions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: `메시지 테스트 ${Date.now()}`,
-          userId: 'testuser',
-          category: '테스트'
-        })
+      const response = await fetch(`/api/aichat-sessions?id=${id}`, {
+        method: 'DELETE'
       });
+
+      const result = await response.json();
       
-      const sessionResult = await sessionResponse.json();
-      if (sessionResult.success) {
-        // 메시지 전송
-        const messageResponse = await fetch(`/api/aichat-sessions/${sessionResult.data.id}/messages`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            content: '안녕하세요! 테스트 메시지입니다.',
-            type: 'user',
-            senderId: 'testuser',
-            senderName: '테스트 사용자'
-          })
-        });
-        
-        const messageResult = await messageResponse.json();
-        addTestResult('메시지 전송', { session: sessionResult, message: messageResult });
+      if (result.success) {
+        console.log('채팅 세션 삭제 완료');
+        // 세션 목록 새로고침
+        await loadChatSessions();
+      } else {
+        console.error('채팅 세션 삭제 실패:', result);
       }
     } catch (error) {
-      addTestResult('메시지 전송 실패', { error: error.message });
-    } finally {
-      setLoading(false);
+      console.error('채팅 세션 삭제 오류:', error);
     }
   };
 
-  const testUpdateSession = async () => {
-    setLoading(true);
-    try {
-      // 먼저 세션 목록 조회
-      const sessionsResponse = await fetch('/api/aichat-sessions?userId=testuser&limit=1');
-      const sessionsResult = await sessionsResponse.json();
-      
-      if (sessionsResult.success && sessionsResult.data.length > 0) {
-        const sessionId = sessionsResult.data[0].id;
-        
-        // 세션 업데이트
-        const updateResponse = await fetch(`/api/aichat-sessions/${sessionId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: `업데이트된 제목 ${Date.now()}`,
-            status: 'completed'
-          })
-        });
-        
-        const updateResult = await updateResponse.json();
-        addTestResult('세션 업데이트', updateResult);
-      }
-    } catch (error) {
-      addTestResult('세션 업데이트 실패', { error: error.message });
-    } finally {
-      setLoading(false);
+  // localStorage 클리어 (테스트용)
+  const clearLocalStorage = () => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.clear();
+      alert('localStorage가 클리어되었습니다.');
+      // 세션 목록 새로고침
+      loadChatSessions();
     }
   };
 
-  const clearResults = () => {
-    setTestResults([]);
-  };
+  // 페이지 로드 시 채팅 세션 로드
+  useEffect(() => {
+    if (isClient) {
+      loadChatSessions();
+    }
+  }, [isClient]);
 
-  return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">AI 채팅 세션 API 테스트</h1>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-xl font-semibold mb-4">API 테스트</h2>
-            <div className="space-y-3">
-              <button
-                onClick={testCreateSession}
-                disabled={loading}
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-              >
-                {loading ? '처리 중...' : '새 세션 생성'}
-              </button>
-              
-              <button
-                onClick={testGetSessions}
-                disabled={loading}
-                className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
-              >
-                {loading ? '처리 중...' : '세션 목록 조회'}
-              </button>
-              
-              <button
-                onClick={testSendMessage}
-                disabled={loading}
-                className="w-full px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50"
-              >
-                {loading ? '처리 중...' : '메시지 전송'}
-              </button>
-              
-              <button
-                onClick={testUpdateSession}
-                disabled={loading}
-                className="w-full px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50"
-              >
-                {loading ? '처리 중...' : '세션 업데이트'}
-              </button>
-            </div>
-          </div>
-          
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-xl font-semibold mb-4">테스트 결과</h2>
-            <div className="flex justify-between items-center mb-4">
-              <span className="text-sm text-gray-600">
-                총 {testResults.length}개 테스트 실행
-              </span>
-              <button
-                onClick={clearResults}
-                className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
-              >
-                결과 지우기
-              </button>
-            </div>
-            
-            <div className="space-y-3 max-h-96 overflow-y-auto">
-              {testResults.map((result, index) => (
-                <div key={index} className="p-3 bg-gray-50 rounded text-sm">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium text-blue-600">{result.action}</span>
-                    <span className="text-xs text-gray-500">{result.timestamp}</span>
-                  </div>
-                  <pre className="text-xs text-gray-700 overflow-x-auto">
-                    {JSON.stringify(result.result, null, 2)}
-                  </pre>
-                </div>
-              ))}
-              
-              {testResults.length === 0 && (
-                <p className="text-gray-500 text-center py-8">
-                  테스트를 실행해보세요
-                </p>
-              )}
-            </div>
+  // 서버 사이드 렌더링 중에는 로딩 표시
+  if (!isClient) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">페이지를 로드하는 중...</p>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-8">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">AI 채팅 테스트 페이지</h1>
         
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">API 엔드포인트 정보</h2>
-          <div className="space-y-2 text-sm">
-            <div><strong>POST</strong> /api/aichat-sessions - 새 채팅 세션 생성</div>
-            <div><strong>GET</strong> /api/aichat-sessions - 채팅 세션 목록 조회</div>
-            <div><strong>GET</strong> /api/aichat-sessions/[id] - 특정 세션 조회</div>
-            <div><strong>PUT</strong> /api/aichat-sessions/[id] - 세션 정보 수정</div>
-            <div><strong>DELETE</strong> /api/aichat-sessions/[id] - 세션 삭제</div>
-            <div><strong>GET</strong> /api/aichat-sessions/[id]/messages - 메시지 목록 조회</div>
-            <div><strong>POST</strong> /api/aichat-sessions/[id]/messages - 새 메시지 전송</div>
+        {/* 새 채팅 세션 생성 */}
+        <div className="bg-white rounded-lg shadow p-6 mb-8">
+          <h2 className="text-xl font-semibold mb-4">새 채팅 세션 생성</h2>
+          <div className="flex gap-4">
+            <input
+              type="text"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="채팅 제목을 입력하세요..."
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              onKeyPress={(e) => e.key === 'Enter' && createChatSession()}
+            />
+            <button
+              onClick={createChatSession}
+              disabled={loading || !message.trim()}
+              className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? '생성 중...' : '생성'}
+            </button>
           </div>
+        </div>
+
+        {/* 채팅 세션 목록 */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">채팅 세션 목록</h2>
+            <button
+              onClick={loadChatSessions}
+              disabled={loading}
+              className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50"
+            >
+              {loading ? '로딩 중...' : '새로고침'}
+            </button>
+          </div>
+          
+          {chatSessions.length === 0 ? (
+            <p className="text-gray-500 text-center py-8">채팅 세션이 없습니다. 새로 생성해보세요.</p>
+          ) : (
+            <div className="space-y-4">
+              {chatSessions.map((session) => (
+                <div key={session.id} className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-medium text-gray-900">{session.title}</h3>
+                      <p className="text-sm text-gray-500 mt-1">
+                        상태: {session.status} | 
+                        메시지: {session.messageCount}개 | 
+                        크레딧: {session.creditsUsed} | 
+                        생성일: {new Date(session.createdAt).toLocaleString()}
+                      </p>
+                      {session.lastMessage && (
+                        <p className="text-sm text-gray-600 mt-2">
+                          마지막 메시지: {session.lastMessage}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => deleteChatSession(session.id)}
+                      className="ml-4 px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                    >
+                      삭제
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 로컬 스토리지 정보 */}
+        <div className="bg-white rounded-lg shadow p-6 mt-8">
+          <h2 className="text-xl font-semibold mb-4">로컬 스토리지 정보</h2>
+          <div className="space-y-2">
+            <div>
+              <strong>채팅 세션:</strong> {localStorage.getItem('consulton-aichat-sessions') ? '저장됨' : '없음'}
+            </div>
+            <div>
+              <strong>채팅 메시지:</strong> {localStorage.getItem('consulton-aichat-messages') ? '저장됨' : '없음'}
+            </div>
+            <div>
+              <strong>AI 사용량:</strong> {localStorage.getItem('consulton-ai-usage') ? '저장됨' : '없음'}
+            </div>
+          </div>
+          <button
+            onClick={clearLocalStorage}
+            className="mt-4 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+          >
+            로컬 스토리지 초기화
+          </button>
         </div>
       </div>
     </div>

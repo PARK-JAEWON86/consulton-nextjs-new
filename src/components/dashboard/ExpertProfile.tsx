@@ -93,7 +93,13 @@ interface ExpertProfileProps {
   onExpertDataUpdate?: (updated: Partial<ExpertProfileData> & { isProfileComplete?: boolean }) => void;
 }
 
-const ExpertProfile = ({ expertData, onSave, isEditing: externalIsEditing, onEditingChange }: ExpertProfileProps) => {
+const ExpertProfile = ({ 
+  expertData, 
+  onSave, 
+  isEditing: externalIsEditing, 
+  onEditingChange,
+  onExpertDataUpdate 
+}: ExpertProfileProps) => {
   const [internalIsEditing, setInternalIsEditing] = useState(!expertData?.isProfileComplete);
   const isEditing = externalIsEditing !== undefined ? externalIsEditing : internalIsEditing;
   const setIsEditing = onEditingChange || setInternalIsEditing;
@@ -430,8 +436,8 @@ const ExpertProfile = ({ expertData, onSave, isEditing: externalIsEditing, onEdi
       // 저장 실행
       onSave(updatedData);
       
-      // 부모 컴포넌트의 expertData 업데이트
-      if (onExpertDataUpdate) {
+      // 부모 컴포넌트의 expertData 업데이트 (선택적)
+      if (typeof onExpertDataUpdate === 'function') {
         onExpertDataUpdate(updatedData);
       }
       

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { expertDataService } from "@/services/ExpertDataService";
-import { getChatHistory, ChatHistoryItem } from "@/data/dummy";
+import PasswordChangeModal from "@/components/settings/PasswordChangeModal";
 
 import {
   Home,
@@ -26,6 +26,7 @@ import {
   Calendar,
   Phone,
   Video,
+  Key,
 } from "lucide-react";
 
 interface User {
@@ -79,6 +80,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const router = useRouter();
 
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [contextMenu, setContextMenu] = useState<ContextMenu>({
     show: false,
     x: 0,
@@ -86,7 +88,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     item: ""
   });
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null);
-  const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>([]);
+  const [chatHistory, setChatHistory] = useState<any[]>([]);
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
   
@@ -771,13 +773,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                   const chatItem = chatHistory.find(item => item.title === contextMenu.item);
                   if (chatItem) {
                     // API를 통해 채팅 히스토리 삭제
-                    await fetch('/api/app-state', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        action: 'deleteChatHistory',
-                        data: { id: chatItem.id }
-                      })
+                    await fetch(`/api/aichat-sessions?id=${chatItem.id}`, {
+                      method: 'DELETE'
                     });
                     
                     // 로컬 상태도 업데이트
@@ -906,21 +903,17 @@ const Sidebar: React.FC<SidebarProps> = ({
                           {editingItem?.id === chatItem.id ? (
                             <input
                               type="text"
-                              value={editingItem.title}
+                              value={editingItem?.title || ''}
                               onChange={(e) => setEditingItem(prev => prev ? { ...prev, title: e.target.value } : null)}
                               onKeyDown={async (e) => {
-                                if (e.key === 'Enter') {
+                                if (e.key === 'Enter' && editingItem) {
                                   // API를 통해 채팅 히스토리 업데이트
                                   try {
-                                    await fetch('/api/app-state', {
-                                      method: 'POST',
+                                    await fetch(`/api/aichat-sessions/${chatItem.id}`, {
+                                      method: 'PUT',
                                       headers: { 'Content-Type': 'application/json' },
                                       body: JSON.stringify({
-                                        action: 'updateChatHistory',
-                                        data: {
-                                          id: chatItem.id,
-                                          title: editingItem.title
-                                        }
+                                        title: editingItem.title
                                       })
                                     });
                                     
@@ -942,32 +935,30 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 }
                               }}
                               onBlur={async () => {
-                                // API를 통해 채팅 히스토리 업데이트
-                                try {
-                                  await fetch('/api/app-state', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({
-                                      action: 'updateChatHistory',
-                                      data: {
-                                        id: chatItem.id,
+                                if (editingItem) {
+                                  // API를 통해 채팅 히스토리 업데이트
+                                  try {
+                                    await fetch(`/api/aichat-sessions/${chatItem.id}`, {
+                                      method: 'PUT',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({
                                         title: editingItem.title
-                                      }
-                                    })
-                                  });
-                                  
-                                  // 로컬 상태도 업데이트
-                                  setChatHistory(prev => 
-                                    prev.map(item => 
-                                      item.id === chatItem.id 
-                                        ? { ...item, title: editingItem.title }
-                                        : item
-                                    )
-                                  );
-                                } catch (error) {
-                                  console.error('채팅 히스토리 업데이트 실패:', error);
+                                      })
+                                    });
+                                    
+                                    // 로컬 상태도 업데이트
+                                    setChatHistory(prev => 
+                                      prev.map(item => 
+                                        item.id === chatItem.id 
+                                          ? { ...item, title: editingItem.title }
+                                          : item
+                                      )
+                                    );
+                                  } catch (error) {
+                                    console.error('채팅 히스토리 업데이트 실패:', error);
+                                  }
+                                  setEditingItem(null);
                                 }
-                                setEditingItem(null);
                               }}
                               className="w-full bg-white border border-blue-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                               autoFocus
@@ -1135,6 +1126,17 @@ const Sidebar: React.FC<SidebarProps> = ({
 
                     <button
                       onClick={() => {
+                        setShowPasswordModal(true);
+                        setShowProfileMenu(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <Key className="h-4 w-4 text-gray-600" />
+                      <span>비밀번호 변경</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
                         router.push("/dashboard/settings");
                         setShowProfileMenu(false);
                       }}
@@ -1212,6 +1214,12 @@ const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
       </aside>
+
+      {/* 비밀번호 변경 모달 */}
+      <PasswordChangeModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+      />
     </>
   );
 };

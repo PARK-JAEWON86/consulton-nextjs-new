@@ -3,6 +3,7 @@
 
 export interface UserProfile {
   name: string;
+  nickname?: string;
   credits: number;
   email: string;
   phone: string;
@@ -52,6 +53,7 @@ export interface ExpertProfileData {
 // 사용자 프로필 더미 데이터
 export const dummyUserProfile: UserProfile = {
   name: "김철수",
+  nickname: "철수킹",
   credits: 8850, // credit-transactions API와 동일한 최신 잔액
   email: "kimcheolsu@example.com",
   phone: "010-1234-5678",

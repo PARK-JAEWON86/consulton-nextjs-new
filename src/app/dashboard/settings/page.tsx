@@ -2,12 +2,12 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import AccountSettings from "@/components/settings/AccountSettings";
 import ProfileSettings from "@/components/settings/ProfileSettings";
 import SecuritySettings from "@/components/settings/SecuritySettings";
 import PrivacySettings from "@/components/settings/PrivacySettings";
 import CalendarIntegration from "@/components/settings/CalendarIntegration";
 import PaymentSettings from "@/components/settings/PaymentSettings";
+import AccountDeletion from "@/components/settings/AccountDeletion";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { Monitor, Sun, Moon } from "lucide-react";
 
@@ -162,13 +162,13 @@ export default function SettingsPage() {
           </div>
 
           <div className="space-y-8">
-            <AccountSettings />
             {/* 전문가 모드에서는 프로필 설정 섹션 숨김 */}
             {effectiveVariant === "user" && <ProfileSettings />}
             <PaymentSettings />
             <SecuritySettings />
             <PrivacySettings />
             <CalendarIntegration />
+            <AccountDeletion />
           </div>
         </div>
       </div>

@@ -87,7 +87,7 @@ function createSummary(aiUsageState: AIUsageState) {
   };
 }
 
-// 메모리 기반 상태 저장 (실제 프로덕션에서는 데이터베이스 사용 권장)
+// 초기 AI 사용량 상태 (빈 상태로 시작)
 let aiUsageState: AIUsageState = {
   usedTokens: 0,
   purchasedTokens: 0,
@@ -340,29 +340,6 @@ export async function POST(request: NextRequest) {
               summary: createSummary(aiUsageState)
             },
             message: '모든 AI 사용량이 리셋되었습니다.'
-          }
-        });
-
-      case 'initializeUsage':
-        // 더미 데이터로 초기화
-        aiUsageState = {
-          usedTokens: 45000, // 50턴 × 900 토큰
-          purchasedTokens: 90000, // 추가 구매 토큰
-          remainingPercent: 70,
-          monthlyResetDate: new Date().toISOString(),
-          totalTurns: 50,
-          totalTokens: 45000,
-          averageTokensPerTurn: 900,
-        };
-
-        return NextResponse.json({
-          success: true,
-          data: {
-            newState: {
-              ...aiUsageState,
-              summary: createSummary(aiUsageState)
-            },
-            message: 'AI 사용량이 초기화되었습니다.'
           }
         });
 

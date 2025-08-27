@@ -186,8 +186,9 @@ export default function ExpertProfilePage() {
       setExpert(foundExpert);
       
       // 해당 전문가의 리뷰 로드
-      const expertReviews = dummyReviews.filter(review => review.expertId === foundExpert.id);
-      setReviews(expertReviews);
+      // 실제 프로덕션에서는 API에서 리뷰를 조회해야 함
+      // 현재는 빈 배열로 설정
+      setReviews([]);
       
       // 검색 컨텍스트 추출
       const searchContext = {

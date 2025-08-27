@@ -34,12 +34,9 @@ function formatCredits(amount: number) {
 
 // 고객이 리뷰를 남겼는지 확인하는 함수
 function hasCustomerLeftReview(customerName: string, expertId: number = 1): boolean {
-  // 더미 데이터에서는 고객 이름으로 매칭 (실제로는 userId로 매칭)
-  // 전문가 ID 1번에 대한 리뷰만 확인 (현재 더미 데이터 기준)
-  return dummyReviews.some(review => 
-    review.userName === customerName && 
-    review.expertId === expertId
-  );
+  // 실제 프로덕션에서는 API에서 리뷰를 조회해야 함
+  // 현재는 false 반환
+  return false;
 }
 
 export default function ExpertConsultationsPage() {
@@ -74,15 +71,8 @@ export default function ExpertConsultationsPage() {
         }
       } catch (error) {
         console.error('상담 기록 로드 실패:', error);
-        // API 실패 시 더미 데이터 사용
-        setConsultations(dummyConsultations.map((it) => ({
-          id: it.id,
-          date: it.date,
-          customer: it.customer,
-          topic: it.topic,
-          amount: it.amount,
-          status: it.status,
-        })));
+        // API 실패 시 빈 배열로 설정
+        setConsultations([]);
       }
     };
 

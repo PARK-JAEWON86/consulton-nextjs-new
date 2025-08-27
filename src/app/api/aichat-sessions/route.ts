@@ -1,68 +1,93 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// 더미 데이터 (실제로는 데이터베이스에서 가져와야 함)
-const mockChatSessions = [
-  {
-    id: "1",
-    title: "마케팅 전략 상담",
-    userId: "user1",
-    expertId: "expert1",
-    expert: {
-      name: "이민수",
-      title: "마케팅 전문가",
-      avatar: null,
-    },
-    lastMessage: "네, 인스타그램 마케팅에 대해 더 자세히 알려드릴게요.",
-    timestamp: new Date("2024-01-15T14:30:00"),
-    duration: 45,
-    status: "completed",
-    messageCount: 23,
-    creditsUsed: 25,
-    category: "마케팅",
-    createdAt: new Date("2024-01-15T14:00:00"),
-    updatedAt: new Date("2024-01-15T14:30:00"),
-  },
-  {
-    id: "2",
-    title: "비즈니스 모델 검토",
-    userId: "user1",
-    expertId: "expert2",
-    expert: {
-      name: "박비즈니스",
-      title: "사업 전략 컨설턴트",
-      avatar: null,
-    },
-    lastMessage: "다음 단계로 투자 유치 계획을 세워보시는 것을 추천드립니다.",
-    timestamp: new Date("2024-01-12T10:15:00"),
-    duration: 60,
-    status: "completed",
-    messageCount: 31,
-    creditsUsed: 30,
-    category: "비즈니스",
-    createdAt: new Date("2024-01-12T10:00:00"),
-    updatedAt: new Date("2024-01-12T10:15:00"),
-  },
-  {
-    id: "3",
-    title: "기술 아키텍처 상담",
-    userId: "user1",
-    expertId: "expert3",
-    expert: {
-      name: "이테크니컬",
-      title: "풀스택 개발자",
-      avatar: null,
-    },
-    lastMessage: "마이크로서비스 아키텍처 적용을 고려해보세요.",
-    timestamp: new Date("2024-01-10T16:45:00"),
-    duration: 35,
-    status: "completed",
-    messageCount: 18,
-    creditsUsed: 20,
-    category: "기술",
-    createdAt: new Date("2024-01-10T16:30:00"),
-    updatedAt: new Date("2024-01-10T16:45:00"),
-  },
-];
+// 채팅 세션 타입 정의
+interface ChatSession {
+  id: string;
+  title: string;
+  userId: string;
+  expertId: string | null;
+  expert: {
+    name: string;
+    title: string;
+    avatar: string | null;
+  } | null;
+  lastMessage: string;
+  timestamp: string;
+  duration: number;
+  status: "in_progress" | "completed" | "pending" | "cancelled";
+  messageCount: number;
+  creditsUsed: number;
+  category: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// localStorage를 시뮬레이션하는 메모리 기반 저장소 (실제 프로덕션에서는 데이터베이스 사용)
+class PersistentStorage {
+  private storage: Map<string, ChatSession> = new Map();
+  private readonly STORAGE_KEY = 'consulton-aichat-sessions';
+
+  constructor() {
+    this.loadFromStorage();
+  }
+
+  private loadFromStorage() {
+    try {
+      // 실제 브라우저 환경에서는 localStorage에서 로드
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem(this.STORAGE_KEY);
+        if (stored) {
+          const data = JSON.parse(stored);
+          this.storage = new Map(Object.entries(data));
+        }
+      }
+    } catch (error) {
+      console.error('저장소 로드 실패:', error);
+    }
+  }
+
+  private saveToStorage() {
+    try {
+      // 실제 브라우저 환경에서는 localStorage에 저장
+      if (typeof window !== 'undefined') {
+        const data = Object.fromEntries(this.storage);
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(data));
+      }
+    } catch (error) {
+      console.error('저장소 저장 실패:', error);
+    }
+  }
+
+  get(key: string): ChatSession | undefined {
+    return this.storage.get(key);
+  }
+
+  set(key: string, value: ChatSession): void {
+    this.storage.set(key, value);
+    this.saveToStorage();
+  }
+
+  delete(key: string): void {
+    this.storage.delete(key);
+    this.saveToStorage();
+  }
+
+  has(key: string): boolean {
+    return this.storage.has(key);
+  }
+
+  getAll(): ChatSession[] {
+    return Array.from(this.storage.values());
+  }
+
+  clear(): void {
+    this.storage.clear();
+    this.saveToStorage();
+  }
+}
+
+// 지속성 있는 저장소 인스턴스
+const storage = new PersistentStorage();
 
 // GET: 채팅 세션 목록 조회
 export async function GET(request: NextRequest) {
@@ -74,7 +99,7 @@ export async function GET(request: NextRequest) {
     const limit = searchParams.get('limit');
     const search = searchParams.get('search');
 
-    let filteredSessions = [...mockChatSessions];
+    let filteredSessions = storage.getAll();
 
     // 사용자 ID로 필터링
     if (userId) {
@@ -96,8 +121,8 @@ export async function GET(request: NextRequest) {
       const searchLower = search.toLowerCase();
       filteredSessions = filteredSessions.filter(session =>
         session.title.toLowerCase().includes(searchLower) ||
-        session.expert.name.toLowerCase().includes(searchLower) ||
-        session.lastMessage.toLowerCase().includes(searchLower)
+        (session.expert?.name && session.expert.name.toLowerCase().includes(searchLower)) ||
+        (session.lastMessage && session.lastMessage.toLowerCase().includes(searchLower))
       );
     }
 
@@ -137,7 +162,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 새로운 채팅 세션 생성
-    const newSession = {
+    const newSession: ChatSession = {
       id: Date.now().toString(),
       title,
       userId,
@@ -148,18 +173,18 @@ export async function POST(request: NextRequest) {
         avatar: null,
       } : null,
       lastMessage: "",
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
       duration: 0,
       status: "in_progress",
       messageCount: 0,
       creditsUsed: 0,
       category,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
-    // 실제로는 데이터베이스에 저장해야 함
-    mockChatSessions.unshift(newSession);
+    // 저장소에 저장
+    storage.set(newSession.id, newSession);
 
     return NextResponse.json({
       success: true,
@@ -170,6 +195,87 @@ export async function POST(request: NextRequest) {
     console.error('채팅 세션 생성 오류:', error);
     return NextResponse.json(
       { success: false, error: '채팅 세션을 생성하는 중 오류가 발생했습니다.' },
+      { status: 500 }
+    );
+  }
+}
+
+// PUT: 채팅 세션 수정
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { id, ...updates } = body;
+
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: '세션 ID가 필요합니다.' },
+        { status: 400 }
+      );
+    }
+
+    const existingSession = storage.get(id);
+    if (!existingSession) {
+      return NextResponse.json(
+        { success: false, error: '채팅 세션을 찾을 수 없습니다.' },
+        { status: 404 }
+      );
+    }
+
+    // 세션 업데이트
+    const updatedSession: ChatSession = {
+      ...existingSession,
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
+
+    storage.set(id, updatedSession);
+
+    return NextResponse.json({
+      success: true,
+      data: updatedSession,
+      message: '채팅 세션이 업데이트되었습니다.',
+    });
+  } catch (error) {
+    console.error('채팅 세션 수정 오류:', error);
+    return NextResponse.json(
+      { success: false, error: '채팅 세션을 수정하는 중 오류가 발생했습니다.' },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE: 채팅 세션 삭제
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: '세션 ID가 필요합니다.' },
+        { status: 400 }
+      );
+    }
+
+    const existingSession = storage.get(id);
+    if (!existingSession) {
+      return NextResponse.json(
+        { success: false, error: '채팅 세션을 찾을 수 없습니다.' },
+        { status: 404 }
+      );
+    }
+
+    // 세션 삭제
+    storage.delete(id);
+
+    return NextResponse.json({
+      success: true,
+      message: '채팅 세션이 삭제되었습니다.',
+    });
+  } catch (error) {
+    console.error('채팅 세션 삭제 오류:', error);
+    return NextResponse.json(
+      { success: false, error: '채팅 세션을 삭제하는 중 오류가 발생했습니다.' },
       { status: 500 }
     );
   }
