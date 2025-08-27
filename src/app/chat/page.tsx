@@ -306,6 +306,16 @@ export default function ChatPage() {
               action: 'newSession',
               sessionId: sessionResult.data.id
             });
+
+            // 사이드바 채팅 기록 업데이트를 위한 이벤트 발행
+            console.log('사이드바 업데이트 이벤트 발행 시작:', sessionResult.data);
+            window.dispatchEvent(new CustomEvent('chatHistoryUpdated', {
+              detail: {
+                action: 'newSession',
+                session: sessionResult.data
+              }
+            }));
+            console.log('사이드바 업데이트 이벤트 발행 완료');
           }
         }
       } catch (error) {

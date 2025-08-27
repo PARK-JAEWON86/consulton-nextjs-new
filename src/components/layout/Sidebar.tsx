@@ -333,32 +333,48 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   // 채팅 기록 초기화
   useEffect(() => {
-    if (isAuthenticated) {
+    console.log('사이드바: 채팅 기록 초기화 useEffect 실행', { isAuthenticated, pathname, isActivePath: isActivePath("/chat") });
+    
+    if (isAuthenticated && isActivePath("/chat")) {
+      console.log('사이드바: AI 채팅 메뉴 활성화, 채팅 기록 로드 시작');
+      
+      // 이미 채팅 기록이 로드되어 있고, 사용자 ID가 일치하는 경우에는 API를 다시 호출하지 않음
+      const storedUser = localStorage.getItem('consulton-user');
+      const currentUserId = storedUser ? JSON.parse(storedUser).id : null;
+      
+      if (chatHistory.length > 0 && currentUserId) {
+        console.log('사이드바: 이미 채팅 기록이 로드되어 있음, API 재호출 생략');
+        return;
+      }
+      
       // API에서 채팅 히스토리 로드
       const loadChatHistory = async () => {
         try {
           // 현재 로그인된 사용자 ID 가져오기
           const storedUser = localStorage.getItem('consulton-user');
           const userId = storedUser ? JSON.parse(storedUser).id : null;
+          console.log('사이드바: 초기 채팅 기록 로드 - 사용자 ID:', userId);
           
           if (userId) {
             // aichat-sessions API에서 사용자의 AI 채팅 세션 로드
+            console.log('사이드바: aichat-sessions API 호출 시작');
             const response = await fetch(`/api/aichat-sessions?userId=${userId}&limit=20`);
             const result = await response.json();
+            console.log('사이드바: 초기 API 응답:', result);
             
             if (result.success) {
               setChatHistory(result.data);
-              console.log('채팅 히스토리 설정 완료:', result.data.length, '개');
+              console.log('사이드바: 채팅 히스토리 설정 완료:', result.data.length, '개');
             } else {
-              console.error('API 응답 실패:', result);
+              console.error('사이드바: API 응답 실패:', result);
               setChatHistory([]);
             }
           } else {
-            console.log('사용자 ID 없음 - 빈 배열 설정');
+            console.log('사이드바: 사용자 ID 없음 - 빈 배열 설정');
             setChatHistory([]);
           }
         } catch (error) {
-          console.error('AI 채팅 히스토리 로드 실패:', error);
+          console.error('사이드바: AI 채팅 히스토리 로드 실패:', error);
           setChatHistory([]);
         }
       };
@@ -369,8 +385,62 @@ const Sidebar: React.FC<SidebarProps> = ({
       const interval = setInterval(loadChatHistory, 5000);
       
       return () => clearInterval(interval);
+    } else {
+      console.log('사이드바: AI 채팅 메뉴 비활성화 또는 인증되지 않음');
+      // 다른 메뉴로 이동할 때는 채팅 기록을 초기화하지 않음
+      // setChatHistory([]); // 이 줄을 제거
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, pathname, chatHistory.length]); // chatHistory.length도 의존성에 추가
+
+  // 채팅 기록 업데이트 이벤트 리스너
+  useEffect(() => {
+    console.log('사이드바: 채팅 기록 업데이트 이벤트 리스너 등록 시작');
+    
+    const handleChatHistoryUpdate = (event: CustomEvent) => {
+      console.log('사이드바: chatHistoryUpdated 이벤트 수신:', event.detail);
+      
+      if (event.detail.action === 'newSession') {
+        console.log('사이드바: 새 세션 감지, 채팅 기록 업데이트 시작');
+        // 새 세션이 생성되면 채팅 기록을 즉시 다시 로드
+        const loadChatHistory = async () => {
+          try {
+            const storedUser = localStorage.getItem('consulton-user');
+            const userId = storedUser ? JSON.parse(storedUser).id : null;
+            console.log('사이드바: 사용자 ID:', userId);
+            
+            if (userId) {
+              console.log('사이드바: aichat-sessions API 호출 시작');
+              const response = await fetch(`/api/aichat-sessions?userId=${userId}&limit=20`);
+              const result = await response.json();
+              console.log('사이드바: API 응답:', result);
+              
+              if (result.success) {
+                setChatHistory(result.data);
+                console.log('사이드바: 새 채팅 세션으로 인한 히스토리 업데이트 완료:', result.data.length, '개');
+              } else {
+                console.error('사이드바: API 응답 실패:', result);
+              }
+            } else {
+              console.log('사이드바: 사용자 ID가 없음');
+            }
+          } catch (error) {
+            console.error('사이드바: 채팅 히스토리 업데이트 실패:', error);
+          }
+        };
+        
+        loadChatHistory();
+      }
+    };
+
+    // 커스텀 이벤트 리스너 등록
+    console.log('사이드바: chatHistoryUpdated 이벤트 리스너 등록');
+    window.addEventListener('chatHistoryUpdated', handleChatHistoryUpdate as EventListener);
+    
+    return () => {
+      console.log('사이드바: chatHistoryUpdated 이벤트 리스너 제거');
+      window.removeEventListener('chatHistoryUpdated', handleChatHistoryUpdate as EventListener);
+    };
+  }, []);
 
   // 컨텍스트 메뉴 외부 클릭 시 닫기
   useEffect(() => {
@@ -821,6 +891,11 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <li
                       key={chatItem.id}
                       className="px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-gray-50 cursor-pointer relative group"
+                      onClick={() => {
+                        // 채팅 세션 ID를 로컬 스토리지에 저장하고 채팅 페이지로 이동
+                        localStorage.setItem('current-chat-session', chatItem.id);
+                        router.push('/chat');
+                      }}
                       onContextMenu={(e) => {
                         e.preventDefault();
                         setContextMenu({ show: true, x: e.clientX, y: e.clientY, item: chatItem.title });
