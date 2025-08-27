@@ -46,6 +46,13 @@ const CreditBalance = ({ credits }: CreditBalanceProps) => {
   const [error, setError] = useState<string | null>(null);
   const [currentCredits, setCurrentCredits] = useState(credits);
 
+  // credits prop이 변경될 때 currentCredits 상태 업데이트
+  useEffect(() => {
+    if (credits !== undefined && credits !== null) {
+      setCurrentCredits(credits);
+    }
+  }, [credits]);
+
   // 이벤트 기반 새로고침 훅 사용
   const { registerRefreshFunction } = useSpecificEventRefresh(CREDIT_EVENTS.AI_USAGE_UPDATED);
 
@@ -93,8 +100,8 @@ const CreditBalance = ({ credits }: CreditBalanceProps) => {
         const data = await response.json();
         
         if (data.success) {
-          // 크레딧 잔액 업데이트
-          setCurrentCredits(data.data.currentBalance);
+          // 크레딧 잔액은 props에서 받은 값 사용, API의 currentBalance는 무시
+          // setCurrentCredits(data.data.currentBalance); // 이 줄 제거
           
           const transactions = data.data.transactions.map((txn: any) => ({
             id: txn.id,
@@ -198,10 +205,10 @@ const CreditBalance = ({ credits }: CreditBalanceProps) => {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+      <div className="bg-white shadow rounded-lg p-6">
         <div className="flex justify-center items-center h-32">
           <RefreshCw className="h-8 w-8 text-blue-500 animate-spin" />
-          <span className="ml-2 text-gray-600">AI 사용량 데이터를 불러오는 중입니다...</span>
+          <span className="ml-2 text-gray-600">크레딧 잔액을 불러오는 중입니다...</span>
         </div>
       </div>
     );
@@ -209,7 +216,7 @@ const CreditBalance = ({ credits }: CreditBalanceProps) => {
 
   if (error) {
     return (
-      <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+      <div className="bg-white shadow rounded-lg p-6">
         <div className="flex justify-center items-center h-32 text-red-600">
           <Zap className="h-8 w-8" />
           <span className="ml-2">{error}</span>
@@ -220,7 +227,7 @@ const CreditBalance = ({ credits }: CreditBalanceProps) => {
 
   if (!aiUsageData) {
     return (
-      <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+      <div className="bg-white shadow rounded-lg p-6">
         <div className="flex justify-center items-center h-32 text-gray-600">
           <CreditCard className="h-8 w-8" />
           <span className="ml-2">AI 사용량 데이터를 불러올 수 없습니다.</span>
@@ -230,7 +237,7 @@ const CreditBalance = ({ credits }: CreditBalanceProps) => {
   }
 
   return (
-    <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+    <div className="bg-white shadow rounded-lg p-6">
       <div className="grid grid-cols-1 gap-8">
         {/* 크레딧 잔액 */}
         <div>
@@ -248,7 +255,10 @@ const CreditBalance = ({ credits }: CreditBalanceProps) => {
             </div>
 
             <button
-              onClick={() => setShowHistory(!showHistory)}
+              onClick={() => {
+                console.log('크레딧 히스토리 토글:', !showHistory);
+                setShowHistory(!showHistory);
+              }}
               className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
             >
               <History className="h-5 w-5" />
@@ -256,7 +266,7 @@ const CreditBalance = ({ credits }: CreditBalanceProps) => {
           </div>
 
           {/* 크레딧 잔액 표시 */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-8 pt-4">
             <div className="flex items-center space-x-3">
               <span className="text-2xl">{getBalanceIcon(currentCredits)}</span>
               <div>
@@ -279,14 +289,14 @@ const CreditBalance = ({ credits }: CreditBalanceProps) => {
           </div>
 
           {/* 사용가능한 상담 시간 */}
-          <div className="bg-gray-50 rounded-lg p-4 mb-4">
-            <div className="flex items-center justify-between mb-2">
+          <div className="bg-gray-50 rounded-lg p-4 mb-6">
+            <div className="flex items-center justify-between mb-4">
               <span className="text-sm font-medium text-gray-700">
                 사용가능한 상담 시간
               </span>
               <TrendingUp className="h-4 w-4 text-gray-400" />
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-4">
               <span className="text-lg font-semibold text-gray-900">
                 약 {getAvailableMinutes(currentCredits)}분
               </span>
@@ -294,19 +304,19 @@ const CreditBalance = ({ credits }: CreditBalanceProps) => {
                 평균 150크레딧/분 기준
               </span>
             </div>
-            <div className="mt-2 bg-gray-200 rounded-full h-2">
+            <div className="mb-2 bg-gray-200 rounded-full h-2">
               <div
                 className={`h-2 rounded-full transition-all duration-300 ${getGaugeColor(currentCredits)}`}
                 style={{ width: `${Math.min(((currentCredits || 0) / 150) / 10 * 100, 100)}%` }}
               ></div>
             </div>
-            <div className="mt-2 text-xs text-gray-500">
+            <div className="mb-2 text-xs text-gray-500">
               현재 {safeDisplayCredits(currentCredits)} 크레딧으로 상담 가능
             </div>
             
             {/* 크레딧 충전 권유 메시지 */}
             {shouldShowTopupRecommendation(currentCredits) && (
-              <div className="mt-3 p-3 bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg">
+              <div className="mt-2 p-3 bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg">
                 <div className="flex items-center space-x-2">
                   <div className="flex-shrink-0">
                     <svg
@@ -340,15 +350,15 @@ const CreditBalance = ({ credits }: CreditBalanceProps) => {
 
       {/* 크레딧 히스토리 */}
       {showHistory && (
-        <div className="border-t pt-4 mt-6">
+        <div className="border-t pt-3 mt-4">
           <h3 className="text-lg font-medium text-gray-900 mb-3">최근 내역</h3>
-          <div className="space-y-3 max-h-60 overflow-y-auto">
+          <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
             {creditHistory.map((item) => (
               <div
                 key={item.id}
                 className="flex items-center justify-between py-2"
               >
-                <div className="flex-1">
+                <div className="flex-1 pr-2">
                   <div className="flex items-center space-x-2">
                     <span
                       className={`text-sm font-medium ${
@@ -374,7 +384,7 @@ const CreditBalance = ({ credits }: CreditBalanceProps) => {
                     {item.expertName && ` • ${item.expertName}`}
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="text-right flex-shrink-0">
                   <div
                     className={`text-sm font-semibold ${
                       item.type === "used" ? "text-red-600" : "text-green-600"

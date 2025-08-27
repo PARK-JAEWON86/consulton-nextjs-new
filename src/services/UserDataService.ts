@@ -37,7 +37,7 @@ export class UserDataService {
     return UserDataService.instance;
   }
 
-  /**
+    /**
    * 더미 사용자 데이터 생성 (더미데이터 활용)
    */
   private generateDummyUsers(): ClientUser[] {
@@ -45,7 +45,7 @@ export class UserDataService {
       {
         id: "client_1",
         name: dummyUserProfile.name,
-        email: "user@example.com",
+        email: dummyUserProfile.email, // 김철수의 실제 이메일 사용
         password: "password123", // 고정된 비밀번호
         credits: dummyUserProfile.credits,
         role: 'client' as const,

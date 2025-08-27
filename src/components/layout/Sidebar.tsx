@@ -337,15 +337,29 @@ const Sidebar: React.FC<SidebarProps> = ({
       // API에서 채팅 히스토리 로드
       const loadChatHistory = async () => {
         try {
-          const response = await fetch('/api/app-state');
-          const result = await response.json();
-          if (result.success && result.data.chatHistory) {
-            setChatHistory(result.data.chatHistory);
+          // 현재 로그인된 사용자 ID 가져오기
+          const storedUser = localStorage.getItem('consulton-user');
+          const userId = storedUser ? JSON.parse(storedUser).id : null;
+          
+          if (userId) {
+            // aichat-sessions API에서 사용자의 AI 채팅 세션 로드
+            const response = await fetch(`/api/aichat-sessions?userId=${userId}&limit=20`);
+            const result = await response.json();
+            
+            if (result.success) {
+              setChatHistory(result.data);
+              console.log('채팅 히스토리 설정 완료:', result.data.length, '개');
+            } else {
+              console.error('API 응답 실패:', result);
+              setChatHistory([]);
+            }
+          } else {
+            console.log('사용자 ID 없음 - 빈 배열 설정');
+            setChatHistory([]);
           }
         } catch (error) {
-          console.error('채팅 히스토리 로드 실패:', error);
-          // API 실패 시 더미 데이터 사용
-          setChatHistory(getChatHistory(20));
+          console.error('AI 채팅 히스토리 로드 실패:', error);
+          setChatHistory([]);
         }
       };
       

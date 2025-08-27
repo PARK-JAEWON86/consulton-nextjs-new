@@ -69,6 +69,10 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
     isAuthenticated: false,
     user: null
   });
+  const [profileData, setProfileData] = useState<UserData>({});
+  const [availableInterests, setAvailableInterests] = useState<string[]>([]);
+  const [isLoadingInterests, setIsLoadingInterests] = useState(true);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
 
   // 앱 상태 로드
   useEffect(() => {
@@ -93,38 +97,61 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
   // 사용자 프로필 데이터 로드
   useEffect(() => {
     const loadUserProfile = async () => {
-      console.log('loadUserProfile 실행:', { 
-        isAuthenticated: appState.isAuthenticated, 
-        user: appState.user 
-      });
-      
       if (appState.isAuthenticated && appState.user) {
         try {
-          // 실제로는 사용자 프로필 API 호출
-          // const response = await fetch(`/api/users/${appState.user.id}/profile`);
-          // const profileResult = await response.json();
-          // if (profileResult.success) {
-          //   setProfileData(prev => ({ ...prev, ...profileResult.data }));
-          // }
+          setIsLoadingProfile(true);
           
-          // 임시로 더미 데이터 사용 (실제 구현 시 제거)
-          const dummyProfileData = {
-            name: appState.user.name || "테스트 사용자",
-            email: appState.user.email || "test@example.com",
-            phone: "010-1234-5678",
-            location: "서울특별시 강남구",
-            birthDate: "1990-05-15",
-            interests: ["심리상담", "진로상담", "창업상담"],
-            bio: "전문가들과의 상담을 통해 개인적 성장을 추구합니다.",
-            totalConsultations: 12,
-            favoriteExperts: 5,
-            joinDate: "2024-01-15"
-          };
-          
-          console.log('설정할 프로필 데이터:', dummyProfileData);
-          setProfileData(dummyProfileData);
+          // 더미데이터에서 김철수의 프로필 정보 가져오기
+          if (appState.user.name === "김철수") {
+            const dummyProfileData = {
+              name: "김철수",
+              email: "kimcheolsu@example.com",
+              phone: "010-1234-5678",
+              location: "서울특별시 강남구",
+              birthDate: "1990-05-15",
+              interests: ["진로상담", "심리상담", "재무상담"],
+              bio: "다양한 분야의 전문가들과 상담을 통해 성장하고 있습니다. 특히 진로와 심리 분야에 관심이 많습니다.",
+              profileImage: null,
+              totalConsultations: 12,
+              favoriteExperts: 5,
+              joinDate: "2024-01-15"
+            };
+            
+            setProfileData(dummyProfileData);
+          } else {
+            // 기본 사용자 정보만 설정
+            setProfileData({
+              name: appState.user.name,
+              email: appState.user.email,
+              phone: "",
+              location: "",
+              birthDate: "",
+              interests: [],
+              bio: "",
+              profileImage: null,
+              totalConsultations: 0,
+              favoriteExperts: 0,
+              joinDate: new Date().toISOString().split('T')[0],
+            });
+          }
         } catch (error) {
           console.error('사용자 프로필 로드 실패:', error);
+          // 에러 시 기본 사용자 정보만 설정
+          setProfileData({
+            name: appState.user.name,
+            email: appState.user.email,
+            phone: "",
+            location: "",
+            birthDate: "",
+            interests: [],
+            bio: "",
+            profileImage: null,
+            totalConsultations: 0,
+            favoriteExperts: 0,
+            joinDate: new Date().toISOString().split('T')[0],
+          });
+        } finally {
+          setIsLoadingProfile(false);
         }
       }
     };
@@ -145,25 +172,11 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
           setAvailableInterests(categoryNames);
         } else {
           console.error('카테고리 로드 실패:', result.message);
-          // API 실패 시 기본 분야들로 fallback
-          setAvailableInterests([
-            "진로상담", "심리상담", "재무상담", "법률상담", "건강상담", 
-            "교육상담", "관계상담", "사업상담", "기술상담", "디자인상담",
-            "언어상담", "예술상담", "스포츠상담", "여행상담", "요리상담",
-            "패션상담", "반려동물상담", "정원상담", "투자상담", "세무상담",
-            "보험상담", "진학상담", "부동산상담", "창업상담", "IT상담", "기타"
-          ]);
+          setAvailableInterests([]);
         }
       } catch (error) {
         console.error('카테고리 로드 실패:', error);
-        // 네트워크 오류 시 기본 분야들로 fallback
-        setAvailableInterests([
-          "진로상담", "심리상담", "재무상담", "법률상담", "건강상담", 
-          "교육상담", "관계상담", "사업상담", "기술상담", "디자인상담",
-          "언어상담", "예술상담", "스포츠상담", "여행상담", "요리상담",
-          "패션상담", "반려동물상담", "정원상담", "투자상담", "세무상담",
-          "보험상담", "진학상담", "부동산상담", "창업상담", "IT상담", "기타"
-        ]);
+        setAvailableInterests([]);
       } finally {
         setIsLoadingInterests(false);
       }
@@ -171,20 +184,6 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
 
     loadCategories();
   }, []);
-  
-  const [profileData, setProfileData] = useState<UserData>({
-    name: "사용자", // 기본값
-    email: "user@example.com", // 기본값
-    phone: "010-0000-0000", // 기본값
-    location: "서울특별시", // 기본값
-    birthDate: "1990-01-01", // 기본값
-    interests: ["심리상담", "진로상담"], // 기본값
-    bio: "전문가들과의 상담을 통해 성장하고 있습니다.",
-    profileImage: null,
-    totalConsultations: 0,
-    favoriteExperts: 0,
-    joinDate: new Date().toISOString().split('T')[0],
-  });
 
   const handleInputChange = (field: keyof UserData, value: string) => {
     setProfileData((prev) => ({
@@ -254,34 +253,34 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
   const handleCancel = () => {
     setIsEditing(false);
     setSaveStatus("idle");
-    // 원래 데이터로 복원 - 실제 사용자 데이터 사용
-    if (appState.user) {
-      setProfileData({
-        name: appState.user.name || "테스트 사용자",
-        email: appState.user.email || "test@example.com",
+    // 원래 데이터로 복원 - 더미데이터 사용
+    if (appState.user && appState.user.name === "김철수") {
+      const dummyProfileData = {
+        name: "김철수",
+        email: "kimcheolsu@example.com",
         phone: "010-1234-5678",
         location: "서울특별시 강남구",
         birthDate: "1990-05-15",
-        interests: ["심리상담", "진로상담", "창업상담"],
-        bio: "전문가들과의 상담을 통해 개인적 성장을 추구합니다.",
+        interests: ["진로상담", "심리상담", "재무상담"],
+        bio: "다양한 분야의 전문가들과 상담을 통해 개인적 성장을 추구합니다.",
         profileImage: null,
         totalConsultations: 12,
         favoriteExperts: 5,
         joinDate: "2024-01-15"
-      });
+      };
+      setProfileData(dummyProfileData);
     }
   };
 
-  const [availableInterests, setAvailableInterests] = useState<string[]>([]);
-  const [isLoadingInterests, setIsLoadingInterests] = useState(true);
-
   const formatDate = (dateString: string) => {
+    if (!dateString) return "-";
     const date = new Date(dateString);
     return date.toLocaleDateString("ko-KR");
   };
 
   const calculateMembershipDuration = () => {
-    const joinDate = new Date(profileData.joinDate || "");
+    if (!profileData.joinDate) return "-";
+    const joinDate = new Date(profileData.joinDate);
     const now = new Date();
     const diffTime = Math.abs(now.getTime() - joinDate.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -297,6 +296,29 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
       return months > 0 ? `${years}년 ${months}개월` : `${years}년`;
     }
   };
+
+  // 로딩 중이거나 인증되지 않은 경우
+  if (isLoadingProfile) {
+    return (
+      <div className="bg-white shadow rounded-lg p-6">
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-2 text-gray-500">프로필을 불러오는 중...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!appState.isAuthenticated || !appState.user) {
+    return (
+      <div className="bg-white shadow rounded-lg p-6">
+        <div className="text-center py-12">
+          <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-500">로그인이 필요합니다.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white shadow rounded-lg">
@@ -393,7 +415,7 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
                       </label>
                       <input
                         type="text"
-                        value={profileData.name}
+                        value={profileData.name || ""}
                         onChange={(e) =>
                           handleInputChange("name", e.target.value)
                         }
@@ -405,7 +427,7 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
                         자기소개
                       </label>
                       <textarea
-                        value={profileData.bio}
+                        value={profileData.bio || ""}
                         onChange={(e) =>
                           handleInputChange("bio", e.target.value)
                         }
@@ -417,9 +439,9 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
                 ) : (
                   <div>
                     <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                      {profileData.name}
+                      {profileData.name || "이름 없음"}
                     </h2>
-                    <p className="text-gray-600 mb-4">{profileData.bio}</p>
+                    <p className="text-gray-600 mb-4">{profileData.bio || "자기소개가 없습니다."}</p>
                     <div className="flex items-center text-sm text-gray-500">
                       <Calendar className="h-4 w-4 mr-1" />
                       <span>
@@ -442,12 +464,12 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
                 {isEditing ? (
                   <input
                     type="email"
-                    value={profileData.email}
+                    value={profileData.email || ""}
                     onChange={(e) => handleInputChange("email", e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 ) : (
-                  <p className="text-gray-900">{profileData.email}</p>
+                  <p className="text-gray-900">{profileData.email || "-"}</p>
                 )}
               </div>
 
@@ -459,12 +481,12 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
                 {isEditing ? (
                   <input
                     type="tel"
-                    value={profileData.phone}
+                    value={profileData.phone || ""}
                     onChange={(e) => handleInputChange("phone", e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 ) : (
-                  <p className="text-gray-900">{profileData.phone}</p>
+                  <p className="text-gray-900">{profileData.phone || "-"}</p>
                 )}
               </div>
 
@@ -476,14 +498,14 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
                 {isEditing ? (
                   <input
                     type="text"
-                    value={profileData.location}
+                    value={profileData.location || ""}
                     onChange={(e) =>
                       handleInputChange("location", e.target.value)
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 ) : (
-                  <p className="text-gray-900">{profileData.location}</p>
+                  <p className="text-gray-900">{profileData.location || "-"}</p>
                 )}
               </div>
 
@@ -495,7 +517,7 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
                 {isEditing ? (
                   <input
                     type="date"
-                    value={profileData.birthDate}
+                    value={profileData.birthDate || ""}
                     onChange={(e) =>
                       handleInputChange("birthDate", e.target.value)
                     }
@@ -509,7 +531,7 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
               </div>
             </div>
 
-                        {/* 관심 분야 */}
+            {/* 관심 분야 */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-3">
                 <label className="block text-sm font-medium text-gray-700">
@@ -560,14 +582,18 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
                   </div>
                 ) : (
                   <div className="flex flex-wrap gap-2">
-                    {profileData.interests?.map((interest, index) => (
-                      <span
-                        key={index}
-                        className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800"
-                      >
-                        {interest}
-                      </span>
-                    ))}
+                    {profileData.interests && profileData.interests.length > 0 ? (
+                      profileData.interests.map((interest, index) => (
+                        <span
+                          key={index}
+                          className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800"
+                        >
+                          {interest}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-gray-500">관심 분야가 설정되지 않았습니다.</span>
+                    )}
                   </div>
                 )
               )}
@@ -591,7 +617,7 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
                     </span>
                   </div>
                   <span className="text-lg font-bold text-gray-900">
-                    {profileData.totalConsultations}회
+                    {profileData.totalConsultations || 0}회
                   </span>
                 </div>
 
@@ -603,7 +629,7 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
                     </span>
                   </div>
                   <span className="text-lg font-bold text-gray-900">
-                    {profileData.favoriteExperts}명
+                    {profileData.favoriteExperts || 0}명
                   </span>
                 </div>
 
@@ -619,8 +645,6 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
                   </span>
                 </div>
               </div>
-
-              {/* 레벨 시스템 제거 - 일반 사용자에게는 불필요 */}
             </div>
           </div>
         </div>

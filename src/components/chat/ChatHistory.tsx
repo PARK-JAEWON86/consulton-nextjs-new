@@ -2,117 +2,72 @@
 
 import { useState, useEffect } from "react";
 import { Clock, User, Search, Filter } from "lucide-react";
-
-interface Expert {
-  name: string;
-  title: string;
-  avatar: string | null;
-}
-
-interface ChatSession {
-  id: number;
-  title: string;
-  expert: Expert;
-  lastMessage: string;
-  timestamp: Date;
-  duration: number;
-  status: string;
-  messageCount: number;
-  creditsUsed: number;
-}
+import { ChatSession } from "../../types";
+import { AIChatService } from "../../services/AIChatService";
 
 const ChatHistory = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("all"); // all, today, week, month
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // 더미 채팅 세션 데이터
-  const mockChatSessions = [
-    {
-      id: 1,
-      title: "마케팅 전략 상담",
-      expert: {
-        name: "이민수",
-        title: "마케팅 전문가",
-        avatar: null,
-      },
-      lastMessage: "네, 인스타그램 마케팅에 대해 더 자세히 알려드릴게요.",
-      timestamp: new Date("2024-01-15T14:30:00"),
-      duration: 45,
-      status: "completed",
-      messageCount: 23,
-      creditsUsed: 25,
-    },
-    {
-      id: 2,
-      title: "비즈니스 모델 검토",
-      expert: {
-        name: "박비즈니스",
-        title: "사업 전략 컨설턴트",
-        avatar: null,
-      },
-      lastMessage: "다음 단계로 투자 유치 계획을 세워보시는 것을 추천드립니다.",
-      timestamp: new Date("2024-01-12T10:15:00"),
-      duration: 60,
-      status: "completed",
-      messageCount: 31,
-      creditsUsed: 30,
-    },
-    {
-      id: 3,
-      title: "기술 아키텍처 상담",
-      expert: {
-        name: "이테크니컬",
-        title: "풀스택 개발자",
-        avatar: null,
-      },
-      lastMessage: "마이크로서비스 아키텍처 적용을 고려해보세요.",
-      timestamp: new Date("2024-01-10T16:45:00"),
-      duration: 35,
-      status: "completed",
-      messageCount: 18,
-      creditsUsed: 20,
-    },
-    {
-      id: 4,
-      title: "사용자 경험 개선",
-      expert: {
-        name: "최디자인",
-        title: "UX/UI 디자이너",
-        avatar: null,
-      },
-      lastMessage: "사용자 테스트 결과를 보고 개선점을 찾아보겠습니다.",
-      timestamp: new Date("2024-01-08T13:20:00"),
-      duration: 40,
-      status: "completed",
-      messageCount: 26,
-      creditsUsed: 22,
-    },
-  ];
+  const chatService = AIChatService.getInstance();
 
   useEffect(() => {
-    // 실제로는 API에서 채팅 히스토리 가져오기
-    setTimeout(() => {
-      setChatSessions(mockChatSessions);
-      setLoading(false);
-    }, 1000);
+    loadChatSessions();
   }, []);
+
+  const loadChatSessions = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // 실제 사용자 ID는 인증 시스템에서 가져와야 함
+      const userId = "user1"; // 임시 사용자 ID
+      
+      const result = await chatService.getChatSessions({
+        userId,
+        limit: 20,
+      });
+      
+      setChatSessions(result.data);
+    } catch (err) {
+      console.error('채팅 세션 로드 오류:', err);
+      setError('채팅 세션을 불러오는 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = async () => {
+    if (!searchTerm.trim()) {
+      await loadChatSessions();
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const userId = "user1";
+      const result = await chatService.getChatSessions({
+        userId,
+        search: searchTerm,
+        limit: 20,
+      });
+      
+      setChatSessions(result.data);
+    } catch (err) {
+      console.error('채팅 세션 검색 오류:', err);
+      setError('검색 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filterSessions = (sessions: ChatSession[]) => {
     let filtered = sessions;
-
-    // 검색어 필터링
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (session) =>
-          session.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          session.expert.name
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
-          session.lastMessage.toLowerCase().includes(searchTerm.toLowerCase()),
-      );
-    }
 
     // 날짜 필터링
     const now = new Date();
@@ -141,9 +96,26 @@ const ChatHistory = () => {
     );
   };
 
-  const handleSessionClick = (sessionId: number) => {
+  const handleSessionClick = (sessionId: string) => {
     // 해당 세션으로 이동
     console.log("Navigate to session:", sessionId);
+    // 실제로는 라우터를 사용하여 채팅 페이지로 이동해야 함
+    // router.push(`/chat/${sessionId}`);
+  };
+
+  const handleDeleteSession = async (sessionId: string) => {
+    if (!confirm('정말로 이 채팅 세션을 삭제하시겠습니까?')) {
+      return;
+    }
+
+    try {
+      await chatService.deleteChatSession(sessionId);
+      // 삭제 후 목록 새로고침
+      await loadChatSessions();
+    } catch (err) {
+      console.error('세션 삭제 오류:', err);
+      alert('세션 삭제에 실패했습니다.');
+    }
   };
 
   const getRelativeTime = (date: Date) => {
@@ -167,6 +139,8 @@ const ChatHistory = () => {
         return "bg-blue-100 text-blue-800";
       case "pending":
         return "bg-yellow-100 text-yellow-800";
+      case "cancelled":
+        return "bg-red-100 text-red-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -180,6 +154,8 @@ const ChatHistory = () => {
         return "진행 중";
       case "pending":
         return "대기 중";
+      case "cancelled":
+        return "취소됨";
       default:
         return "알 수 없음";
     }
@@ -203,6 +179,22 @@ const ChatHistory = () => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="text-center py-8">
+        <div className="text-red-500 mb-2">
+          <p className="text-sm">{error}</p>
+        </div>
+        <button
+          onClick={loadChatSessions}
+          className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+        >
+          다시 시도
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {/* 검색 및 필터 */}
@@ -214,8 +206,15 @@ const ChatHistory = () => {
             placeholder="상담 내역 검색..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
             className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
+          <button
+            onClick={handleSearch}
+            className="absolute right-2 top-1/2 transform -translate-y-1/2 text-blue-600 hover:text-blue-700 text-sm font-medium"
+          >
+            검색
+          </button>
         </div>
 
         <div className="flex items-center space-x-2">
@@ -239,33 +238,44 @@ const ChatHistory = () => {
           filteredSessions.map((session) => (
             <div
               key={session.id}
-              onClick={() => handleSessionClick(session.id)}
-              className="bg-white border border-gray-200 rounded-lg p-3 hover:bg-gray-50 cursor-pointer transition-colors"
+              className="bg-white border border-gray-200 rounded-lg p-3 hover:bg-gray-50 transition-colors"
             >
               <div className="flex items-start justify-between mb-2">
-                <div className="flex-1">
+                <div 
+                  className="flex-1 cursor-pointer"
+                  onClick={() => handleSessionClick(session.id)}
+                >
                   <h4 className="text-sm font-medium text-gray-900 mb-1">
                     {session.title}
                   </h4>
                   <div className="flex items-center space-x-2 text-xs text-gray-500">
                     <User className="h-3 w-3" />
-                    <span>{session.expert.name}</span>
+                    <span>{session.expert?.name || "AI 상담사"}</span>
                     <span>•</span>
                     <Clock className="h-3 w-3" />
                     <span>{session.duration}분</span>
                   </div>
                 </div>
-                <span
-                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                    session.status,
-                  )}`}
-                >
-                  {getStatusText(session.status)}
-                </span>
+                <div className="flex items-center space-x-2">
+                  <span
+                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                      session.status,
+                    )}`}
+                  >
+                    {getStatusText(session.status)}
+                  </span>
+                  <button
+                    onClick={() => handleDeleteSession(session.id)}
+                    className="text-red-500 hover:text-red-700 text-xs"
+                    title="삭제"
+                  >
+                    ×
+                  </button>
+                </div>
               </div>
 
               <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-                {session.lastMessage}
+                {session.lastMessage || "메시지가 없습니다"}
               </p>
 
               <div className="flex items-center justify-between text-xs text-gray-500">

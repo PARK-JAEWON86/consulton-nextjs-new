@@ -25,7 +25,7 @@ export default function ChatPage() {
   const router = useRouter();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  // const [isLoading, setIsLoading] = useState(false); // 로딩 상태 제거
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthChecked, setIsAuthChecked] = useState(false); // 인증 상태 확인 완료 여부
   const [showFileUpload, setShowFileUpload] = useState(false);
@@ -202,7 +202,7 @@ export default function ChatPage() {
   const handleSendMessage = async () => {
     const trimmedValue = inputValue.trim();
     
-    if (!trimmedValue || isLoading) return;
+    if (!trimmedValue) return;
     
     // 토큰 한도 체크
     if (aiUsageData && aiUsageData.remainingPercent <= 0) {
@@ -212,7 +212,6 @@ export default function ChatPage() {
 
     // 즉시 입력 필드 초기화
     setInputValue("");
-    setIsLoading(true);
     
     // 텍스트 영역 높이 초기화
     if (textareaRef.current) {
@@ -248,7 +247,7 @@ export default function ChatPage() {
       console.error('토큰 사용량 업데이트 실패:', error);
     }
 
-    // 새로운 채팅 시작 시 사이드바에 추가
+    // 새로운 채팅 시작 시 aichat-sessions API에 저장
     if (messages.length === 0) {
       try {
         const chatTitle = trimmedValue.length > 30 
@@ -268,23 +267,49 @@ export default function ChatPage() {
           category = "웰빙";
         }
 
-        // API를 통해 채팅 히스토리에 추가
-        await fetch('/api/app-state', {
+        // 현재 로그인된 사용자 ID 가져오기
+        const storedUser = localStorage.getItem('consulton-user');
+        const userId = storedUser ? JSON.parse(storedUser).id : 'anonymous';
+
+        // aichat-sessions API를 통해 새로운 채팅 세션 생성
+        const sessionResponse = await fetch('/api/aichat-sessions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            action: 'addChatHistory',
-            data: {
-              id: Date.now().toString(),
-              title: chatTitle,
-              timestamp: new Date().toISOString(),
-              category: category,
-              summary: `${trimmedValue}에 대한 AI채팅 상담`
-            }
+            title: chatTitle,
+            userId: userId,
+            category: category
           })
         });
+
+        if (sessionResponse.ok) {
+          const sessionResult = await sessionResponse.json();
+          if (sessionResult.success) {
+            // 세션 ID를 로컬 스토리지에 저장하여 현재 채팅 세션 추적
+            localStorage.setItem('current-chat-session', sessionResult.data.id);
+            localStorage.setItem('chat-start-time', new Date().toISOString());
+            
+            // 첫 번째 사용자 메시지를 aichat-sessions API에 저장
+            await fetch(`/api/aichat-sessions/${sessionResult.data.id}/messages`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                content: trimmedValue,
+                type: "user",
+                senderId: userId,
+                senderName: storedUser ? JSON.parse(storedUser).name : "사용자"
+              })
+            });
+
+            // 채팅 히스토리 업데이트 이벤트 발행
+            eventBus.publish(CHAT_EVENTS.CHAT_HISTORY_UPDATED, {
+              action: 'newSession',
+              sessionId: sessionResult.data.id
+            });
+          }
+        }
       } catch (error) {
-        console.error('채팅 히스토리 추가 실패:', error);
+        console.error('AI 채팅 세션 생성 실패:', error);
       }
     }
 
@@ -297,6 +322,38 @@ export default function ChatPage() {
     };
     
     setMessages(prev => [...prev, aiMessage]);
+
+    // AI 응답 메시지를 aichat-sessions API에 저장
+    try {
+      const currentSessionId = localStorage.getItem('current-chat-session');
+      if (currentSessionId) {
+        const storedUser = localStorage.getItem('consulton-user');
+        const userId = storedUser ? JSON.parse(storedUser).id : 'anonymous';
+        
+        await fetch(`/api/aichat-sessions/${currentSessionId}/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content: aiMessage.content,
+            type: "ai",
+            senderId: "ai",
+            senderName: "AI 상담사"
+          })
+        });
+
+        // 세션의 마지막 메시지와 메시지 수 업데이트
+        await fetch(`/api/aichat-sessions/${currentSessionId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lastMessage: aiMessage.content,
+            messageCount: messages.length + 2 // 사용자 메시지 + AI 응답
+          })
+        });
+      }
+    } catch (error) {
+      console.error('AI 응답 메시지 저장 실패:', error);
+    }
     
     // AI 응답에 대한 토큰 사용량도 업데이트
     try {
@@ -318,7 +375,7 @@ export default function ChatPage() {
       console.error('AI 응답 토큰 사용량 업데이트 실패:', error);
     }
     
-    setIsLoading(false);
+    // setIsLoading(false); // 로딩 상태 제거
   };
 
   // 키보드 이벤트 핸들러
@@ -396,7 +453,28 @@ export default function ChatPage() {
             <div className="flex items-center justify-between h-full">
               {/* 새채팅 버튼 */}
               <button 
-                onClick={() => {
+                onClick={async () => {
+                  // 현재 채팅 세션을 완료 상태로 변경
+                  try {
+                    const currentSessionId = localStorage.getItem('current-chat-session');
+                    if (currentSessionId) {
+                      await fetch(`/api/aichat-sessions/${currentSessionId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          status: "completed",
+                          duration: Math.floor((Date.now() - new Date(localStorage.getItem('chat-start-time') || Date.now()).getTime()) / 60000) // 분 단위
+                        })
+                      });
+                      
+                      // 로컬 스토리지에서 현재 세션 정보 제거
+                      localStorage.removeItem('current-chat-session');
+                      localStorage.removeItem('chat-start-time');
+                    }
+                  } catch (error) {
+                    console.error('채팅 세션 완료 처리 실패:', error);
+                  }
+
                   // 모든 상태 초기화
                   setMessages([]);
                   setInputValue("");
@@ -650,21 +728,7 @@ export default function ChatPage() {
               </div>
             )}
 
-            {/* 로딩 인디케이터 */}
-            {isLoading && (
-              <div className="flex justify-center">
-                <div className="flex items-start space-x-3 max-w-[80%]">
-                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
-                    <Bot className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="bg-gray-100 rounded-2xl px-4 py-3">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm text-gray-500 animate-pulse">...</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* 로딩 인디케이터 제거 */}
 
             <div ref={messagesEndRef} />
           </div>
@@ -750,13 +814,13 @@ export default function ChatPage() {
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    if (inputValue.trim() && !isLoading && !isComposing) {
+                    if (inputValue.trim() && !isComposing) {
                       handleSendMessage();
                     }
                   }}
-                  disabled={!inputValue.trim() || isLoading}
+                  disabled={!inputValue.trim()}
                   className={`p-2 rounded-lg transition-colors flex-shrink-0 ${
-                    inputValue.trim() && !isLoading
+                    inputValue.trim()
                       ? 'bg-blue-500 text-white hover:bg-blue-600'
                       : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                   }`}

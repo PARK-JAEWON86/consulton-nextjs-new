@@ -18,6 +18,7 @@ import {
   CheckCircle,
   RefreshCw,
   Plus,
+  History,
 } from "lucide-react";
 import CreditBalance from "./CreditBalance";
 import UserProfile from "./UserProfile";
@@ -52,6 +53,7 @@ export default function DashboardContent() {
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [showTokenHistory, setShowTokenHistory] = useState(false);
 
   // 이벤트 기반 새로고침 훅 사용
   const { registerRefreshFunction } = useEventBasedRefresh();
@@ -110,6 +112,8 @@ export default function DashboardContent() {
   };
 
   const loggedInUser = appState.user;
+
+
 
   // AI 토큰 구매 모달 표시
   const handleShowPurchaseModal = () => {
@@ -441,12 +445,16 @@ export default function DashboardContent() {
         <div className="mb-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* 크레딧 잔액 */}
-            <div>
-              <CreditBalance credits={user.credits} userId={user.id} />
+            <div className="flex flex-col">
+              <CreditBalance 
+                credits={user.credits} 
+                userId={user.id} 
+              />
             </div>
             
             {/* AI상담 토큰 */}
-            <div className="bg-white shadow rounded-lg p-6">
+            <div className="flex flex-col">
+              <div className="bg-white shadow rounded-lg p-6">
               {isLoading ? (
                 <div className="flex justify-center items-center h-32">
                   <RefreshCw className="h-8 w-8 text-blue-500 animate-spin" />
@@ -459,25 +467,37 @@ export default function DashboardContent() {
                       <MessageCircle className="h-6 w-6 text-blue-600 mr-3" />
                       <h3 className="text-lg font-medium text-gray-900">AI상담 토큰</h3>
                     </div>
-                    <div className="flex items-center space-x-2 text-xs text-gray-500">
-                      <RefreshCw className="w-4 h-4" />
-                      <span>
-                        다음 리셋까지 {aiTokenData ? (() => {
-                          const now = new Date();
-                          const nextReset = new Date(aiTokenData.summary?.nextResetDate || '');
-                          const diff = nextReset.getTime() - now.getTime();
-                          const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-                          const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                          return `${days}일 ${hours}시간`;
-                        })() : '...일 ...시간'}
-                      </span>
+                    <div className="flex items-center space-x-3">
+                      <div className="flex items-center space-x-2 text-xs text-gray-500">
+                        <RefreshCw className="w-4 h-4" />
+                        <span>
+                          다음 리셋까지 {aiTokenData ? (() => {
+                            const now = new Date();
+                            const nextReset = new Date(aiTokenData.summary?.nextResetDate || '');
+                            const diff = nextReset.getTime() - now.getTime();
+                            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                            return `${days}일 ${hours}시간`;
+                          })() : '...일 ...시간'}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          console.log('AI상담 토큰 히스토리 토글:', !showTokenHistory);
+                          setShowTokenHistory(!showTokenHistory);
+                        }}
+                        className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+                        title="AI상담 토큰 사용내역"
+                      >
+                        <History className="h-5 w-5" />
+                      </button>
                     </div>
                   </div>
                   
                   <div className="space-y-4">
                     {/* 이번 달 무료 토큰 */}
                     <div className="text-center">
-                      <h4 className="text-sm font-semibold text-gray-800 mb-2">
+                      <h4 className="text-sm font-semibold text-gray-800 mb-4">
                         이번 달 무료 토큰
                         <span className="text-xs font-normal text-gray-500 ml-2">
                           (사용기한: {aiTokenData ? (() => {
@@ -486,16 +506,18 @@ export default function DashboardContent() {
                           })() : '...월 ...일'})
                         </span>
                       </h4>
-                      <div className="text-3xl font-bold text-blue-600 mb-2">
+                      <div className="text-3xl font-bold text-blue-600 mb-4">
                         {aiTokenData && aiTokenData.summary?.remainingFreeTokens ? (
                           aiTokenData.summary.remainingFreeTokens.toLocaleString()
                         ) : (
                           '로딩 중...'
                         )}
                       </div>
-                      <p className="text-gray-600">
-                        {/* 턴 대화가능 텍스트 제거됨 */}
-                      </p>
+                      <div className="mb-4">
+                        <p className="text-gray-600">
+                          {/* 턴 대화가능 텍스트 제거됨 */}
+                        </p>
+                      </div>
                     </div>
 
                     {/* 진행률 표시 */}
@@ -562,25 +584,81 @@ export default function DashboardContent() {
 
                     {/* 크레딧 충전 안내 */}
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <Plus className="w-5 h-5 text-blue-600" />
-                        <span className="font-semibold text-blue-800 text-sm">더 많은 대화가 필요하다면</span>
-                      </div>
-                      <p className="text-blue-700 text-center text-sm">
-                        100크레딧으로 더 많은 대화를 즐기세요
-                      </p>
-                      <div className="mt-3 text-center">
-                        <button 
-                          onClick={handleShowPurchaseModal}
-                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
-                        >
-                          AI상담 토큰 구매하기
-                        </button>
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <Plus className="w-5 h-5 text-blue-600" />
+                            <span className="font-semibold text-blue-800 text-sm">더 많은 대화가 필요하다면</span>
+                          </div>
+                          <p className="text-blue-700 text-sm">
+                            100크레딧으로 더 많은 대화를 즐기세요
+                          </p>
+                        </div>
+                        <div className="ml-4">
+                          <button 
+                            onClick={handleShowPurchaseModal}
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                          >
+                            AI상담 토큰 구매하기
+                          </button>
+                        </div>
                       </div>
                     </div>
+
+                    {/* AI상담 토큰 사용내역 */}
+                    {showTokenHistory && (
+                      <div className="border-t pt-4 mt-4">
+                        <h3 className="text-lg font-medium text-gray-900 mb-3">AI상담 토큰 사용내역</h3>
+                        <div className="space-y-3 max-h-60 overflow-y-auto">
+                          {aiTokenData && aiTokenData.usageHistory ? (
+                            aiTokenData.usageHistory.map((item: any, index: number) => (
+                              <div
+                                key={index}
+                                className="flex items-center justify-between py-2"
+                              >
+                                <div className="flex-1">
+                                  <div className="flex items-center space-x-2">
+                                    <span
+                                      className={`text-sm font-medium ${
+                                        item.type === 'free' ? 'text-blue-600' : 'text-green-600'
+                                      }`}
+                                    >
+                                      {item.type === 'free' ? '무료 토큰' : '구매 토큰'}
+                                    </span>
+                                    <span className="text-sm text-gray-600">
+                                      {item.description || 'AI상담 대화'}
+                                    </span>
+                                  </div>
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    {new Date(item.date).toLocaleDateString("ko-KR")}
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-sm font-semibold text-red-600">
+                                    -{item.tokensUsed?.toLocaleString() || '0'}
+                                  </div>
+                                  <div className="text-xs text-gray-500">토큰</div>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="text-center py-8">
+                              <MessageCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                              <p className="text-gray-500">
+                                아직 AI상담 토큰 사용내역이 없습니다.
+                              </p>
+                              <p className="text-sm text-gray-400 mt-1">
+                                AI상담을 시작해보세요!
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </>
               )}
+              </div>
             </div>
           </div>
         </div>

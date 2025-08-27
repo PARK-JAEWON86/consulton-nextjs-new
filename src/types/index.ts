@@ -176,15 +176,6 @@ export interface Consultation {
   updatedAt: Date;
 }
 
-export interface ChatMessage {
-  id: string;
-  consultationId: string;
-  senderId: string;
-  content: string;
-  timestamp: Date;
-  type: "text" | "image" | "file";
-}
-
 // AI 채팅 메시지 타입 (AI 상담 어시스턴트용)
 export interface AIChatMessage {
   id: string;
@@ -204,6 +195,40 @@ export interface ExtendedChatMessage {
     avatar?: string;
     title?: string;
   };
+}
+
+// 채팅 세션 타입
+export interface ChatSession {
+  id: string;
+  title: string;
+  userId: string;
+  expertId?: string | null;
+  expert?: {
+    name: string;
+    title: string;
+    avatar: string | null;
+  };
+  lastMessage: string;
+  timestamp: Date;
+  duration: number;
+  status: "pending" | "in_progress" | "completed" | "cancelled";
+  messageCount: number;
+  creditsUsed: number;
+  category: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// 채팅 메시지 타입
+export interface ChatMessage {
+  id: string;
+  sessionId: string;
+  type: "user" | "ai" | "expert" | "system";
+  content: string;
+  timestamp: Date;
+  senderId: string;
+  senderName: string;
+  senderAvatar?: string | null;
 }
 
 export interface Post {

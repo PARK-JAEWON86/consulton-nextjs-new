@@ -461,7 +461,7 @@ export default function SearchFields(props: SearchFieldsProps) {
         </div>
 
         {/* 검색 버튼 */}
-        <div className="relative md:flex-none md:self-stretch md:flex md:items-stretch">
+        <div className="relative md:flex-none md:self-stretch md:flex md:items-stretch flex justify-center md:justify-start">
           <button
             aria-label="전문가 검색"
             onClick={onSearch}
