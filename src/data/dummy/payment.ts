@@ -45,33 +45,12 @@ export const dummyPaymentMethods: PaymentMethod[] = [
     id: 'pm_001',
     userId: 'client_1',
     type: 'card',
-    name: '신한카드',
-    last4: '1234',
+    name: 'VISA 카드',
+    last4: '3456',
     isDefault: true,
-    expiryDate: '12/25',
+    expiryDate: '12/28',
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z'
-  },
-  {
-    id: 'pm_002',
-    userId: 'client_1',
-    type: 'bank',
-    name: '신한은행',
-    bankName: '신한은행',
-    isDefault: false,
-    createdAt: '2024-01-15T00:00:00Z',
-    updatedAt: '2024-01-15T00:00:00Z'
-  },
-  {
-    id: 'pm_003',
-    userId: 'client_1',
-    type: 'card',
-    name: 'KB국민카드',
-    last4: '5678',
-    isDefault: false,
-    expiryDate: '06/26',
-    createdAt: '2024-02-01T00:00:00Z',
-    updatedAt: '2024-02-01T00:00:00Z'
   }
 ];
 

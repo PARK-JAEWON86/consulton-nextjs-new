@@ -100,14 +100,78 @@ export default function ExpertReviewsPage() {
   // 로그인한 전문가의 리뷰만 로드
   useEffect(() => {
     if (user && user.role === 'expert') {
-      const expertId = parseInt(user.id?.replace('expert_', '') || '0');
-      if (expertId > 0) {
-        // 실제 프로덕션에서는 API에서 리뷰를 조회해야 함
-        // 현재는 빈 배열로 설정
-        setReviews([]);
-      }
+      loadExpertReviews();
     }
   }, [user]);
+
+  // 전문가 리뷰 로드
+  const loadExpertReviews = async () => {
+    try {
+      // 현재 로그인한 전문가의 리뷰를 API에서 조회
+      const response = await fetch(`/api/reviews?expertId=${user?.id}&isPublic=true`);
+      const result = await response.json();
+      
+      if (result.success) {
+        // API 응답을 Review 타입에 맞게 변환
+        const transformedReviews = result.data.reviews.map((apiReview: any) => ({
+          id: parseInt(apiReview.id),
+          userId: apiReview.userId,
+          userName: apiReview.userName,
+          userAvatar: apiReview.userAvatar,
+          rating: apiReview.rating,
+          comment: apiReview.content,
+          consultationTopic: apiReview.category,
+          consultationType: 'video', // 기본값, 실제로는 상담 세션에서 가져와야 함
+          createdAt: apiReview.date,
+          isVerified: apiReview.isVerified,
+          expertReply: apiReview.expertReply || null // API 응답에서 전문가 답글 가져오기
+        }));
+        
+        setReviews(transformedReviews);
+      } else {
+        // API 실패 시 더미 데이터에서 해당 전문가의 리뷰만 필터링
+        const { dummyReviews } = await import('@/data/dummy/reviews');
+        const expertReviews = dummyReviews.filter(review => review.expertId === user?.id);
+        
+        const transformedReviews = expertReviews.map((dummyReview) => ({
+          id: parseInt(dummyReview.id),
+          userId: dummyReview.userId,
+          userName: dummyReview.userName,
+          userAvatar: dummyReview.userAvatar,
+          rating: dummyReview.rating,
+          comment: dummyReview.content,
+          consultationTopic: dummyReview.category,
+          consultationType: 'video',
+          createdAt: dummyReview.date,
+          isVerified: dummyReview.isVerified,
+          expertReply: dummyReview.expertReply || null
+        }));
+        
+        setReviews(transformedReviews);
+      }
+    } catch (error) {
+      console.error('전문가 리뷰 로드 실패:', error);
+      // 에러 시 더미 데이터 사용
+      const { dummyReviews } = await import('@/data/dummy/reviews');
+      const expertReviews = dummyReviews.filter(review => review.expertId === user?.id);
+      
+      const transformedReviews = expertReviews.map((dummyReview) => ({
+        id: parseInt(dummyReview.id),
+        userId: dummyReview.userId,
+        userName: dummyReview.userName,
+        userAvatar: dummyReview.userAvatar,
+        rating: dummyReview.rating,
+        comment: dummyReview.content,
+        consultationTopic: dummyReview.category,
+        consultationType: 'video',
+        createdAt: dummyReview.date,
+        isVerified: dummyReview.isVerified,
+        expertReply: dummyReview.expertReply || null
+      }));
+      
+      setReviews(transformedReviews);
+    }
+  };
 
   // 하이라이트된 리뷰로 스크롤
   useEffect(() => {
@@ -212,30 +276,55 @@ export default function ExpertReviewsPage() {
   };
 
   // 리뷰에 답글 작성
-  const handleReply = (reviewId: number) => {
+  const handleReply = async (reviewId: number) => {
     const reply = replyText[reviewId]?.trim();
     if (!reply) {
       showNotification("답글 내용을 입력해주세요.", "error");
       return;
     }
 
-    setReviews(prev =>
-      prev.map(review =>
-        review.id === reviewId
-          ? {
-              ...review,
-              expertReply: {
-                message: reply,
-                createdAt: new Date().toISOString()
-              }
-            }
-          : review
-      )
-    );
+    try {
+      // API를 통해 답글 저장
+      const response = await fetch('/api/reviews', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: reviewId.toString(),
+          expertReply: {
+            message: reply,
+            createdAt: new Date().toISOString()
+          }
+        })
+      });
 
-    setReplyText(prev => ({ ...prev, [reviewId]: "" }));
-    setShowReplyForm(null);
-    showNotification("답글이 성공적으로 작성되었습니다!");
+      const result = await response.json();
+      
+      if (result.success) {
+        // 로컬 상태 업데이트
+        setReviews(prev =>
+          prev.map(review =>
+            review.id === reviewId
+              ? {
+                  ...review,
+                  expertReply: {
+                    message: reply,
+                    createdAt: new Date().toISOString()
+                  }
+                }
+              : review
+          )
+        );
+
+        setReplyText(prev => ({ ...prev, [reviewId]: "" }));
+        setShowReplyForm(null);
+        showNotification("답글이 성공적으로 작성되었습니다!");
+      } else {
+        showNotification(result.message || "답글 작성에 실패했습니다.", "error");
+      }
+    } catch (error) {
+      console.error('답글 작성 실패:', error);
+      showNotification("답글 작성에 실패했습니다.", "error");
+    }
   };
 
   // 답글 수정 시작
@@ -245,31 +334,56 @@ export default function ExpertReviewsPage() {
   };
 
   // 답글 수정 완료
-  const handleEditReply = (reviewId: number) => {
+  const handleEditReply = async (reviewId: number) => {
     const editedReply = editReplyText[reviewId]?.trim();
     if (!editedReply) {
       showNotification("답글 내용을 입력해주세요.", "error");
       return;
     }
 
-    setReviews(prev =>
-      prev.map(review =>
-        review.id === reviewId && review.expertReply
-          ? {
-              ...review,
-              expertReply: {
-                ...review.expertReply,
-                message: editedReply,
-                createdAt: review.expertReply.createdAt // 원래 작성일은 유지
-              }
-            }
-          : review
-      )
-    );
+    try {
+      // API를 통해 답글 수정
+      const response = await fetch('/api/reviews', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: reviewId.toString(),
+          expertReply: {
+            message: editedReply,
+            createdAt: new Date().toISOString()
+          }
+        })
+      });
 
-    setEditReplyText(prev => ({ ...prev, [reviewId]: "" }));
-    setEditingReply(null);
-    showNotification("답글이 성공적으로 수정되었습니다!");
+      const result = await response.json();
+      
+      if (result.success) {
+        // 로컬 상태 업데이트
+        setReviews(prev =>
+          prev.map(review =>
+            review.id === reviewId && review.expertReply
+              ? {
+                  ...review,
+                  expertReply: {
+                    ...review.expertReply,
+                    message: editedReply,
+                    createdAt: review.expertReply.createdAt // 원래 작성일은 유지
+                  }
+                }
+              : review
+          )
+        );
+
+        setEditReplyText(prev => ({ ...prev, [reviewId]: "" }));
+        setEditingReply(null);
+        showNotification("답글이 성공적으로 수정되었습니다!");
+      } else {
+        showNotification(result.message || "답글 수정에 실패했습니다.", "error");
+      }
+    } catch (error) {
+      console.error('답글 수정 실패:', error);
+      showNotification("답글 수정에 실패했습니다.", "error");
+    }
   };
 
   // 답글 수정 취소
@@ -348,10 +462,20 @@ export default function ExpertReviewsPage() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 헤더 */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">리뷰 관리</h1>
-          <p className="text-gray-600 mt-1">
-            고객들이 남긴 리뷰를 확인하고 답글을 작성하세요.
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">리뷰 관리</h1>
+              <p className="text-gray-600 mt-1">
+                고객들이 남긴 리뷰를 확인하고 답글을 작성하세요.
+              </p>
+            </div>
+            <button
+              onClick={loadExpertReviews}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+            >
+              새로고침
+            </button>
+          </div>
         </div>
 
         {/* 통계 카드 */}

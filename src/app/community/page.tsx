@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import CategorySidebar from "@/components/community/CategorySidebar";
 import PostCard from "@/components/community/PostCard";
 import SearchAndFilter from "@/components/community/SearchAndFilter";
 import CreatePostModal from "@/components/community/CreatePostModal";
-import { communityPosts, CommunityPost, getPostsByType, getPostsByCategory, sortPosts, getCategoriesWithCount } from "@/data/dummy";
+import { communityPosts, CommunityPost, getPostsByType, getPostsByCategory, sortPosts, getCategoriesWithCount, dummyReviews } from "@/data/dummy";
 import { HelpCircle, Star, Award, Bot, MessageSquare, Grid3X3, ChevronLeft, ChevronRight, Menu, X } from "lucide-react";
 
 export default function CommunityPage() {
@@ -58,6 +58,18 @@ export default function CommunityPage() {
     };
 
     checkAuth();
+  }, []);
+
+  // URL 쿼리 파라미터에서 탭 설정 확인
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const tabParam = urlParams.get('tab');
+      
+      if (tabParam === 'consultation_review') {
+        setPostTypeFilter('consultation_review');
+      }
+    }
   }, []);
 
   // localStorage 변경 감지하여 인증 상태 업데이트
@@ -194,11 +206,41 @@ export default function CommunityPage() {
   ];
 
   // 모든 게시글 데이터 (더미 데이터에서 가져옴)
-  const allPosts = communityPosts;
+  const allPosts = useMemo(() => {
+    // 기존 게시글에서 상담후기 제거
+    const nonReviewPosts = communityPosts.filter(post => post.postType !== 'consultation_review');
+    
+    // 상담후기 게시글을 더미 리뷰 데이터로 변환
+    const consultationReviewPosts = dummyReviews.map((review, index) => ({
+      id: `review-${review.id}`,
+      title: `${review.category} 상담후기`,
+      content: review.content,
+      author: review.userName,
+      authorAvatar: review.userAvatar,
+      createdAt: review.date,
+      updatedAt: review.date,
+      likes: Math.floor(Math.random() * 20) + 5,
+      comments: Math.floor(Math.random() * 10) + 2,
+      views: Math.floor(Math.random() * 100) + 50,
+      category: review.category,
+      tags: [review.category, '상담후기', '전문가추천'],
+      postType: 'consultation_review' as const,
+      consultationTopic: review.category,
+      rating: review.rating,
+      expertName: review.expertName,
+      isVerified: review.isVerified,
+      hasExpertReply: !!review.expertReply
+    }));
+
+    // 기존 게시글(상담후기 제외)과 새로운 상담후기 게시글을 합침
+    return [...nonReviewPosts, ...consultationReviewPosts];
+  }, []);
 
   // 필터링 및 정렬된 게시글
-  // 1단계: 카테고리별 필터링
-  const categoryFilteredPosts = getPostsByCategory(activeTab);
+  // 1단계: 카테고리별 필터링 (allPosts 사용)
+  const categoryFilteredPosts = activeTab === "all" 
+    ? allPosts 
+    : allPosts.filter(post => post.category === activeTab);
   // 2단계: 게시글 타입별 필터링
   const typeFilteredPosts = postTypeFilter === "all" 
     ? categoryFilteredPosts 
@@ -214,7 +256,9 @@ export default function CommunityPage() {
 
   // 각 필터별 게시글 개수 계산 (현재 카테고리 고려)
   const getPostCount = (filterId: string) => {
-    const categoryPosts = getPostsByCategory(activeTab);
+    const categoryPosts = activeTab === "all" 
+      ? allPosts 
+      : allPosts.filter(post => post.category === activeTab);
     if (filterId === "all") return categoryPosts.length;
     return categoryPosts.filter(post => post.postType === filterId).length;
   };
@@ -273,6 +317,7 @@ export default function CommunityPage() {
                 💼 상담요청 목록입니다. 상담 제안 버튼을 클릭하여 고객과 연결되세요.
               </span>
             )}
+
           </p>
         </div>
 
@@ -371,6 +416,8 @@ export default function CommunityPage() {
                       </button>
                     );
                   })}
+                  
+
                 </div>
 
                 {/* 오른쪽: 페이징 버튼 */}
@@ -552,6 +599,8 @@ export default function CommunityPage() {
           onClose={handleCloseCreateModal}
           onSubmit={handleSubmitPost}
         />
+
+
       </div>
     </div>
   );

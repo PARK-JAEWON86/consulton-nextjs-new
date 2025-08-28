@@ -2,10 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import AccountSettings from "@/components/settings/AccountSettings";
 import ProfileSettings from "@/components/settings/ProfileSettings";
-import SecuritySettings from "@/components/settings/SecuritySettings";
-import PrivacySettings from "@/components/settings/PrivacySettings";
 import CalendarIntegration from "@/components/settings/CalendarIntegration";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { Monitor, Sun, Moon, User, Star, CreditCard, FileText } from "lucide-react";
@@ -211,10 +208,7 @@ export default function ExpertSettingsPage() {
           </div>
 
           <div className="space-y-8">
-            <AccountSettings />
             <ProfileSettings />
-            <SecuritySettings />
-            <PrivacySettings />
             <CalendarIntegration />
           </div>
         </div>

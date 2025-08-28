@@ -1,5 +1,6 @@
 import { Star, Quote } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { dummyReviews } from '../../data/dummy/reviews';
 
 // 리뷰 타입 정의
 interface Review {
@@ -23,17 +24,75 @@ export default function UserReviewsSection() {
   useEffect(() => {
     const loadReviews = async () => {
       try {
-        // 실제 프로덕션에서는 API에서 리뷰를 가져와야 함
-        // 현재는 빈 배열로 설정
-        setReviews([]);
+        // API에서 공개된 리뷰 데이터 가져오기
+        const response = await fetch('/api/reviews?isPublic=true&limit=12');
+        const result = await response.json();
+        
+        if (result.success && result.data.reviews.length > 0) {
+          // API에서 가져온 리뷰 데이터 사용
+          const loadedReviews = result.data.reviews.map((review: any) => ({
+            id: review.id,
+            userName: review.userName,
+            userAvatar: review.userAvatar || '',
+            rating: review.rating,
+            content: review.content,
+            category: review.category,
+            date: review.date
+          }));
+          
+          setReviews(loadedReviews);
+        } else {
+          // API에 데이터가 없으면 더미 데이터 사용
+          const loadedReviews = dummyReviews.map(review => ({
+            id: review.id,
+            userName: review.userName,
+            userAvatar: review.userAvatar || '',
+            rating: review.rating,
+            content: review.content,
+            category: review.category,
+            date: review.date
+          }));
+          
+          setReviews(loadedReviews);
+        }
       } catch (error) {
         console.error('리뷰 로드 실패:', error);
+        // 에러 발생 시 더미 데이터 사용
+        const loadedReviews = dummyReviews.map(review => ({
+          id: review.id,
+          userName: review.userName,
+          userAvatar: review.userAvatar || '',
+          rating: review.rating,
+          content: review.content,
+          category: review.category,
+          date: review.date
+        }));
+        
+        setReviews(loadedReviews);
       } finally {
         setIsLoading(false);
       }
     };
 
     loadReviews();
+  }, []);
+
+  // 애니메이션 효과
+  useEffect(() => {
+    // 자동으로 애니메이션 시작
+    const timer = setTimeout(() => {
+      setIsReversed(true);
+    }, 1000);
+
+    // 60초마다 방향 전환 (첫 번째 줄 기준)
+    const interval = setInterval(() => {
+      setIsReversed(prev => !prev);
+    }, 60000);
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
   }, []);
 
   const renderStars = (rating: number) => {
@@ -47,7 +106,7 @@ export default function UserReviewsSection() {
     ));
   };
 
-  // 로딩 중이거나 리뷰가 없으면 기본 메시지 표시
+  // 로딩 중일 때
   if (isLoading) {
     return (
       <section className="py-32 bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -68,6 +127,7 @@ export default function UserReviewsSection() {
     );
   }
 
+  // 리뷰가 없을 때
   if (reviews.length === 0) {
     return (
       <section className="py-32 bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -90,23 +150,6 @@ export default function UserReviewsSection() {
 
   const topRowReviews = reviews.slice(0, 6);
   const bottomRowReviews = reviews.slice(6, 12);
-
-  useEffect(() => {
-    // 자동으로 애니메이션 시작
-    const timer = setTimeout(() => {
-      setIsReversed(true);
-    }, 1000);
-
-    // 60초마다 방향 전환 (첫 번째 줄 기준)
-    const interval = setInterval(() => {
-      setIsReversed(prev => !prev);
-    }, 60000);
-
-    return () => {
-      clearTimeout(timer);
-      clearInterval(interval);
-    };
-  }, []);
 
   return (
     <section className="py-32 bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -272,7 +315,7 @@ export default function UserReviewsSection() {
                         }
                       </h4>
                       <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full"></div>
-                      <span className="text-sm text-gray-400 font-medium text-right">
+                      <span className="text-sm font-medium text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
                         {review.category}
                       </span>
                     </div>
@@ -295,8 +338,6 @@ export default function UserReviewsSection() {
             ))}
           </div>
         </div>
-
-        {/* 통계 정보 섹션 제거됨 */}
       </div>
     </section>
   );

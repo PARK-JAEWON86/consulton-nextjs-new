@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   X,
   CreditCard,
@@ -30,10 +30,34 @@ interface PaymentModalProps {
 
 const PaymentModal = ({ expert, onClose }: PaymentModalProps) => {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("card");
+  const [selectedCardId, setSelectedCardId] = useState<string>("");
   const [consultationType, setConsultationType] = useState("chat"); // 'chat', 'video', 'call'
   const [estimatedDuration, setEstimatedDuration] = useState(30);
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentStep, setCurrentStep] = useState(1); // 1: 상담 선택, 2: 결제 정보, 3: 확인
+  const [savedCards, setSavedCards] = useState<any[]>([]);
+
+  // 저장된 카드 정보 로드
+  useEffect(() => {
+    const loadSavedCards = async () => {
+      try {
+        const response = await fetch('/api/app-state');
+        const result = await response.json();
+        if (result.success && result.data.user?.paymentMethods?.cards) {
+          setSavedCards(result.data.user.paymentMethods.cards);
+          // 기본 카드가 있으면 선택
+          const defaultCard = result.data.user.paymentMethods.cards.find((card: any) => card.isDefault);
+          if (defaultCard) {
+            setSelectedCardId(defaultCard.id);
+          }
+        }
+      } catch (error) {
+        console.error('저장된 카드 정보 로드 실패:', error);
+      }
+    };
+
+    loadSavedCards();
+  }, []);
 
   const consultationTypes = [
     {
@@ -67,19 +91,7 @@ const PaymentModal = ({ expert, onClose }: PaymentModalProps) => {
       id: "card",
       name: "신용/체크카드",
       icon: <CreditCard className="h-5 w-5" />,
-      description: "안전한 카드 결제",
-    },
-    {
-      id: "phone",
-      name: "휴대폰 결제",
-      icon: <Smartphone className="h-5 w-5" />,
-      description: "휴대폰으로 간편 결제",
-    },
-    {
-      id: "bank",
-      name: "계좌이체",
-      icon: <Building className="h-5 w-5" />,
-      description: "은행 계좌 이체",
+      description: "토스페이먼츠를 통한 안전한 카드 결제",
     },
   ];
 
@@ -344,6 +356,47 @@ const PaymentModal = ({ expert, onClose }: PaymentModalProps) => {
                 </div>
               </div>
 
+              {/* 저장된 카드 선택 */}
+              {selectedPaymentMethod === "card" && savedCards.length > 0 && (
+                <div>
+                  <h5 className="font-medium text-gray-900 mb-3">
+                    저장된 카드 선택
+                  </h5>
+                  <div className="space-y-2">
+                    {savedCards.map((card) => (
+                      <div
+                        key={card.id}
+                        onClick={() => setSelectedCardId(card.id)}
+                        className={`border-2 rounded-lg p-3 cursor-pointer transition-all ${
+                          selectedCardId === card.id
+                            ? "border-blue-600 bg-blue-50"
+                            : "border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <CreditCard className="h-5 w-5 text-gray-600" />
+                            <div>
+                              <div className="font-medium text-gray-900">
+                                {card.cardBrand} •••• {card.cardNumber.slice(-4)}
+                              </div>
+                              <div className="text-sm text-gray-600">
+                                {card.cardholderName} • {card.expiryMonth}/{card.expiryYear}
+                              </div>
+                            </div>
+                          </div>
+                          {card.isDefault && (
+                            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                              기본
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                 <div className="flex items-center">
                   <Shield className="h-5 w-5 text-yellow-600 mr-2" />
@@ -396,6 +449,34 @@ const PaymentModal = ({ expert, onClose }: PaymentModalProps) => {
                     {finalCredits} 크레딧
                   </span>
                 </div>
+              </div>
+
+              {/* 선택된 결제 수단 정보 */}
+              <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                <h5 className="font-medium text-gray-900">결제 수단</h5>
+                {selectedPaymentMethod === "card" && selectedCardId && (
+                  <div className="flex items-center space-x-3">
+                    <CreditCard className="h-5 w-5 text-gray-600" />
+                    <div>
+                      {(() => {
+                        const selectedCard = savedCards.find(card => card.id === selectedCardId);
+                        if (selectedCard) {
+                          return (
+                            <>
+                              <div className="font-medium text-gray-900">
+                                {selectedCard.cardBrand} •••• {selectedCard.cardNumber.slice(-4)}
+                              </div>
+                              <div className="text-sm text-gray-600">
+                                {selectedCard.cardholderName} • {selectedCard.expiryMonth}/{selectedCard.expiryYear}
+                              </div>
+                            </>
+                          );
+                        }
+                        return <span className="text-gray-600">카드를 선택해주세요</span>;
+                      })()}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="text-sm text-gray-600 space-y-2">

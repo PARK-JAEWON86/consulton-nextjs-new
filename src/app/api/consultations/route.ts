@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { dummyExperts } from '@/data/dummy/experts';
+import { generateConsultationNumber, getNextSequenceNumber } from '@/utils/consultationNumber';
 
-export type ConsultationStatus = "completed" | "scheduled" | "canceled";
+export type ConsultationStatus = "completed" | "scheduled" | "canceled" | "in_progress";
 
 export interface ConsultationItem {
   id: number;
+  consultationNumber?: string; // 상담번호 추가
   date: string; // ISO string
   customer: string;
   topic: string;
@@ -14,6 +16,8 @@ export interface ConsultationItem {
   duration?: number; // minutes
   summary?: string;
   notes?: string;
+  startDate?: string; // 상담 시작 시간
+  endDate?: string; // 상담 종료 시간
   issue?: {
     type: "refund" | "quality" | "other";
     reason: string;
@@ -33,12 +37,31 @@ let consultationsState: ConsultationsState = {
   currentConsultationId: null,
 };
 
+// 상담번호 생성 함수
+function createConsultationNumber(scheduledDate: Date, existingItems: ConsultationItem[]): string {
+  // 해당 날짜의 기존 상담번호들 수집
+  const existingNumbers = existingItems
+    .filter(item => {
+      if (!item.consultationNumber) return false;
+      const itemDate = new Date(item.date);
+      return itemDate.toDateString() === scheduledDate.toDateString();
+    })
+    .map(item => item.consultationNumber!);
+
+  // 다음 일련번호 계산
+  const nextSequence = getNextSequenceNumber(scheduledDate, existingNumbers);
+
+  // 상담번호 생성
+  return generateConsultationNumber(scheduledDate, nextSequence);
+}
+
 // GET: 상담 내역 조회
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const expertId = searchParams.get('expertId');
     const status = searchParams.get('status');
+    const consultationNumber = searchParams.get('consultationNumber');
     
     let filteredItems = consultationsState.items;
     
@@ -53,7 +76,14 @@ export async function GET(request: NextRequest) {
     
     // 상태로 필터링
     if (status && status !== 'all') {
-      filteredItems = filteredItems.filter(item => item.status === status);
+      filteredItems = consultationsState.items.filter(item => item.status === status);
+    }
+
+    // 상담번호로 검색
+    if (consultationNumber) {
+      filteredItems = filteredItems.filter(item => 
+        item.consultationNumber?.includes(consultationNumber)
+      );
     }
     
     return NextResponse.json({
@@ -81,8 +111,14 @@ export async function POST(request: NextRequest) {
     switch (action) {
       case 'addScheduled':
         const id = Date.now();
+        const scheduledDate = new Date(data.date ?? new Date());
+        
+        // 상담번호 자동 생성
+        const consultationNumber = createConsultationNumber(scheduledDate, consultationsState.items);
+        
         const newItem: ConsultationItem = {
           id,
+          consultationNumber,
           date: data.date ?? new Date().toISOString(),
           customer: data.customer,
           topic: data.topic,
@@ -101,7 +137,53 @@ export async function POST(request: NextRequest) {
           data: {
             consultation: newItem,
             currentConsultationId: id,
-            message: '상담이 예약되었습니다.'
+            message: '상담이 예약되었습니다.',
+            consultationNumber: consultationNumber
+          }
+        });
+
+      case 'startConsultation':
+        const consultationId = data.consultationId || consultationsState.currentConsultationId;
+        if (!consultationId) {
+          return NextResponse.json(
+            { success: false, error: '상담 ID가 필요합니다.' },
+            { status: 400 }
+          );
+        }
+
+        const consultationToStart = consultationsState.items.find(item => item.id === consultationId);
+        if (!consultationToStart) {
+          return NextResponse.json(
+            { success: false, error: '상담을 찾을 수 없습니다.' },
+            { status: 404 }
+          );
+        }
+
+        if (consultationToStart.status !== 'scheduled') {
+          return NextResponse.json(
+            { success: false, error: '예약된 상담만 시작할 수 있습니다.' },
+            { status: 400 }
+          );
+        }
+
+        // 상담 시작 처리
+        consultationsState.items = consultationsState.items.map(item =>
+          item.id === consultationId ? {
+            ...item,
+            status: 'in_progress',
+            startDate: new Date().toISOString()
+          } : item
+        );
+
+        consultationsState.currentConsultationId = consultationId;
+
+        return NextResponse.json({
+          success: true,
+          data: {
+            consultation: consultationsState.items.find(item => item.id === consultationId),
+            currentConsultationId: consultationId,
+            message: '상담이 시작되었습니다.',
+            consultationNumber: consultationToStart.consultationNumber
           }
         });
 
@@ -150,7 +232,11 @@ export async function POST(request: NextRequest) {
         }
         
         consultationsState.items = consultationsState.items.map(item =>
-          item.id === currentConsultationId ? { ...item, status: "completed" } : item
+          item.id === currentConsultationId ? { 
+            ...item, 
+            status: "completed",
+            endDate: new Date().toISOString()
+          } : item
         );
         consultationsState.currentConsultationId = null;
         
@@ -164,15 +250,19 @@ export async function POST(request: NextRequest) {
         });
 
       case 'markCompleted':
-        const consultationId = data.id;
+        const consultationIdToComplete = data.id;
         consultationsState.items = consultationsState.items.map(item =>
-          item.id === consultationId ? { ...item, status: "completed" } : item
+          item.id === consultationIdToComplete ? { 
+            ...item, 
+            status: "completed",
+            endDate: new Date().toISOString()
+          } : item
         );
         
         return NextResponse.json({
           success: true,
           data: {
-            updatedConsultation: consultationsState.items.find(item => item.id === consultationId),
+            updatedConsultation: consultationsState.items.find(item => item.id === consultationIdToComplete),
             message: '상담이 완료 상태로 변경되었습니다.'
           }
         });
@@ -198,7 +288,6 @@ export async function POST(request: NextRequest) {
           success: true,
           data: {
             items: [],
-            currentConsultationId: null,
             message: '모든 상담 내역이 초기화되었습니다.'
           }
         });
@@ -213,6 +302,7 @@ export async function POST(request: NextRequest) {
           const dummyConsultations: ConsultationItem[] = [
             {
               id: 1,
+              consultationNumber: createConsultationNumber(new Date(), []),
               date: new Date().toISOString(),
               customer: `${expert.name} 고객`,
               topic: `${expert.specialty} 상담`,
@@ -220,10 +310,12 @@ export async function POST(request: NextRequest) {
               status: "completed",
               method: expert.consultationTypes[0] as "chat" | "video" | "voice",
               duration: 30,
-              summary: `${expert.specialty} 30분 상담 완료 - ${expert.name} 전문가`
+              summary: `${expert.specialty} 30분 상담 완료 - ${expert.name} 전문가`,
+              endDate: new Date().toISOString()
             },
             {
               id: 2,
+              consultationNumber: createConsultationNumber(new Date(Date.now() - 24 * 60 * 60 * 1000), []),
               date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 어제
               customer: `${expert.name} 고객2`,
               topic: `${expert.specialty} 후속 상담`,
@@ -231,7 +323,8 @@ export async function POST(request: NextRequest) {
               status: "completed",
               method: expert.consultationTypes[0] as "chat" | "video" | "voice",
               duration: 45,
-              summary: `${expert.specialty} 45분 후속 상담 완료 - ${expert.name} 전문가`
+              summary: `${expert.specialty} 45분 후속 상담 완료 - ${expert.name} 전문가`,
+              endDate: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
             }
           ];
           
@@ -251,6 +344,7 @@ export async function POST(request: NextRequest) {
           const defaultConsultations: ConsultationItem[] = [
             {
               id: 1,
+              consultationNumber: createConsultationNumber(new Date(), []),
               date: new Date().toISOString(),
               customer: `고객 ${expertId}`,
               topic: "상담 주제",
@@ -258,7 +352,8 @@ export async function POST(request: NextRequest) {
               status: "completed",
               method: "chat",
               duration: 30,
-              summary: "30분 채팅 상담 완료"
+              summary: "30분 채팅 상담 완료",
+              endDate: new Date().toISOString()
             }
           ];
           

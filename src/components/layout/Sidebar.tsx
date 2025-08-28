@@ -90,6 +90,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null);
   const [chatHistory, setChatHistory] = useState<any[]>([]);
   const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [summaryNotificationCount, setSummaryNotificationCount] = useState(0);
 
   
   // 하이드레이션 완료 후 테마 설정
@@ -293,6 +294,44 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   // 유저 역할/저장된 뷰 모드 기반으로 variant 결정
   const { user, viewMode, isAuthenticated } = appState;
+  
+  // 상담 요약 알림 개수 가져오기
+  useEffect(() => {
+    const fetchSummaryNotificationCount = async () => {
+      if (isAuthenticated && user) {
+        try {
+          const response = await fetch('/api/consultation-summaries?status=expert_reviewed');
+          const result = await response.json();
+          if (result.success) {
+            // 방문한 상담 요약은 제외
+            const visitedSummaries = JSON.parse(localStorage.getItem('visited-consultation-summaries') || '[]');
+            const unvisitedCount = result.data.filter((summary: any) => !visitedSummaries.includes(summary.id)).length;
+            setSummaryNotificationCount(unvisitedCount);
+          }
+        } catch (error) {
+          console.error('상담 요약 알림 개수 조회 실패:', error);
+        }
+      }
+    };
+
+    fetchSummaryNotificationCount();
+  }, [isAuthenticated, user]);
+
+  // 상담 요약 방문 이벤트 감지하여 알림 개수 업데이트
+  useEffect(() => {
+    const handleSummaryVisited = (event: CustomEvent) => {
+      if (event.detail.action === 'markVisited') {
+        // 방문한 상담 요약이 추가되었으므로 알림 개수 감소
+        setSummaryNotificationCount(prev => Math.max(0, prev - 1));
+      }
+    };
+
+    window.addEventListener('summaryVisited', handleSummaryVisited as EventListener);
+    
+    return () => {
+      window.removeEventListener('summaryVisited', handleSummaryVisited as EventListener);
+    };
+  }, []);
   
   // 하이드레이션 완료 상태 체크
   const [isHydrated, setIsHydrated] = useState(false);
@@ -868,6 +907,12 @@ const Sidebar: React.FC<SidebarProps> = ({
                         }`}
                       />
                       <span>{item.name}</span>
+                      {/* 상담 요약 알림 표시 */}
+                      {item.id === "summary" && summaryNotificationCount > 0 && (
+                        <span className="ml-2 bg-blue-600 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[16px] text-center">
+                          {summaryNotificationCount}
+                        </span>
+                      )}
                       {isDisabled && (
                         <span className="ml-auto text-xs text-gray-400">로그인 필요</span>
                       )}

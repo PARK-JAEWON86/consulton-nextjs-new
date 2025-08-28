@@ -15,6 +15,18 @@ export interface UserProfile {
   favoriteExperts: number;
   completedGoals?: number;
   joinDate: string;
+  paymentMethods?: {
+    cards: Array<{
+      id: string;
+      cardNumber: string;
+      cardType: "credit" | "debit";
+      cardBrand: string;
+      expiryMonth: string;
+      expiryYear: string;
+      cardholderName: string;
+      isDefault: boolean;
+    }>;
+  };
 }
 
 export interface ExpertProfileData {
@@ -65,6 +77,20 @@ export const dummyUserProfile: UserProfile = {
   favoriteExperts: 5,
   completedGoals: 3,
   joinDate: "2024-01-15",
+  paymentMethods: {
+    cards: [
+      {
+        id: "card_001",
+        cardNumber: "1234-5678-9012-3456",
+        cardType: "credit",
+        cardBrand: "VISA",
+        expiryMonth: "12",
+        expiryYear: "2028",
+        cardholderName: "KIM CHEOL SU",
+        isDefault: true,
+      }
+    ]
+  },
 };
 
 // 전문가 프로필 더미 데이터

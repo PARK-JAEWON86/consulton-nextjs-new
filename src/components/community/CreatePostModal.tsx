@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Image, Link, Hash } from "lucide-react";
 
 interface PostData {
@@ -29,6 +29,32 @@ const CreatePostModal = ({
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [profileVisibility, setProfileVisibility] = useState<"public" | "experts" | "private">("experts");
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+
+  // 프로필 정보 로드
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (!isOpen) return;
+      
+      try {
+        setIsLoadingProfile(true);
+        const response = await fetch('/api/profile');
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data) {
+            setProfileVisibility(result.data.profileVisibility || "experts");
+          }
+        }
+      } catch (error) {
+        console.error('프로필 로드 실패:', error);
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    };
+
+    loadProfile();
+  }, [isOpen]);
 
   const categories = [
     { value: "consultation", label: "상담요청" },
@@ -119,6 +145,22 @@ const CreatePostModal = ({
           onSubmit={handleSubmit}
           className="p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-140px)]"
         >
+          {/* 프로필 공개설정 안내 */}
+          {profileVisibility !== "public" && (
+            <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+              <div className="flex items-center gap-2 text-orange-700">
+                <span className="text-sm font-medium">
+                  {profileVisibility === "experts" 
+                    ? "전문가만 설정: 일반 사용자에게는 이름이 마스킹 처리됩니다."
+                    : "비공개 설정: 모든 사용자에게 이름이 마스킹 처리됩니다."
+                  }
+                </span>
+              </div>
+              <p className="text-xs text-orange-600 mt-1">
+                예시: 김* (김철수 → 김*)
+              </p>
+            </div>
+          )}
           {/* 제목 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">

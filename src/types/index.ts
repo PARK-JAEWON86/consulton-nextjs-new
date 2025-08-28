@@ -13,8 +13,8 @@ export interface Review {
   id: number;
   userId: string;
   userName: string;
-  userAvatar?: string;
-  expertId: number;
+  userAvatar?: string | null;
+  expertId: string | number;
   rating: number; // 1-5 별점
   comment: string;
   consultationType: ConsultationType;
@@ -43,6 +43,7 @@ export type Availability = Record<WeekDay, { available: boolean; hours: string }
 // 상담 요약 타입
 export interface ConsultationSummary {
   id: string;
+  consultationNumber?: string; // 상담번호 추가
   title: string;
   date: Date;
   duration: number;
@@ -55,11 +56,74 @@ export interface ConsultationSummary {
     name: string;
     company?: string;
   };
-  status: 'completed' | 'processing' | 'failed' | 'pending';
+  status: 'ai_generated' | 'expert_reviewed' | 'user_confirmed' | 'processing' | 'completed' | 'failed';
   summary: string;
   tags: string[];
   creditsUsed: number;
   rating?: number;
+
+  // New workflow fields
+  aiSummary?: {
+    keyPoints: string[];
+    recommendations: string[];
+    actionItems: string[];
+    generatedAt: Date;
+    aiModel: string;
+  };
+
+  expertReview?: {
+    reviewedAt: Date;
+    expertNotes: string;
+    additionalRecommendations: string[];
+    suggestedNextSession?: {
+      date: Date;
+      duration: number;
+      topic: string;
+    };
+    priority: 'high' | 'medium' | 'low';
+  };
+
+  userActions?: {
+    confirmedAt: Date;
+    userNotes: string;
+    todoList: TodoItem[];
+    nextSessionBooked?: {
+      sessionId: string;
+      date: Date;
+      duration: number;
+      status: 'pending' | 'confirmed' | 'cancelled';
+    };
+    isCompleted: boolean;
+  };
+}
+
+// Todo 아이템 타입
+export interface TodoItem {
+  id: string;
+  task: string;
+  description?: string;
+  assignee: 'client' | 'expert' | 'both';
+  dueDate?: Date;
+  status: 'pending' | 'in_progress' | 'completed';
+  priority: 'high' | 'medium' | 'low';
+  category: string;
+  createdAt: Date;
+  completedAt?: Date;
+  notes?: string;
+}
+
+// 다음 상담 세션 타입
+export interface NextSession {
+  id: string;
+  consultationId: string;
+  expertId: string;
+  proposedDate: Date;
+  duration: number;
+  topic: string;
+  status: 'proposed' | 'confirmed' | 'cancelled' | 'completed';
+  notes?: string;
+  createdAt: Date;
+  confirmedAt?: Date;
 }
 
 // 포트폴리오 파일 타입
@@ -123,7 +187,7 @@ export interface ExpertProfile {
   isProfileComplete: boolean;
   createdAt?: Date;
   updatedAt?: Date;
-  
+
   // 기존 ExpertItem과의 호환성을 위한 추가 필드들
   price?: string; // 크레딧 표시용
   image?: string | null; // profileImage와 동일
@@ -275,6 +339,42 @@ export interface MatchingRecord {
   expertId: string;
   matchingTimeMinutes: number;
   createdAt: Date;
+}
+
+// 상담 세션 타입
+export interface ConsultationSession {
+  id: string;
+  consultationNumber: string; // 상담 시작 시 부여되는 상담번호
+  expertId: string;
+  clientId: string;
+  title: string;
+  scheduledDate: Date;
+  startDate?: Date; // 실제 상담 시작 시간
+  endDate?: Date; // 실제 상담 종료 시간
+  duration: number; // 예약된 상담 시간 (분)
+  status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
+  category: string;
+  tags: string[];
+  notes?: string;
+  creditsUsed: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// 상담번호 생성 요청 타입
+export interface CreateConsultationNumberRequest {
+  expertId: string;
+  clientId: string;
+  scheduledDate: Date;
+  category: string;
+}
+
+// 상담번호 생성 응답 타입
+export interface CreateConsultationNumberResponse {
+  consultationNumber: string;
+  sessionId: string;
+  success: boolean;
+  message?: string;
 }
 
 // 정산 시스템 타입 re-export

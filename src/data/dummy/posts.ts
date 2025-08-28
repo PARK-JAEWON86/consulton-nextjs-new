@@ -5,17 +5,26 @@ export interface CommunityPost {
   title: string;
   content: string;
   author: string;
-  authorAvatar: string;
+  authorAvatar: string | null;
   createdAt: string;
+  updatedAt?: string;
   category: string;
   tags: string[];
   likes: number;
   comments: number;
+  views?: number;
   postType: "consultation_request" | "consultation_review" | "expert_intro" | "general";
   isAISummary?: boolean;
   isExpert?: boolean;
   urgency?: "낮음" | "보통" | "높음";
   preferredMethod?: "화상상담" | "채팅상담" | "전화상담";
+  profileVisibility?: "public" | "experts" | "private";
+  // 상담후기 관련 추가 필드
+  consultationTopic?: string;
+  rating?: number;
+  expertName?: string;
+  isVerified?: boolean;
+  hasExpertReply?: boolean;
 }
 
 export const communityPosts: CommunityPost[] = [
@@ -34,6 +43,7 @@ export const communityPosts: CommunityPost[] = [
     isAISummary: true,
     urgency: "보통",
     preferredMethod: "화상상담",
+    profileVisibility: "private"
   },
   {
     id: "1",
@@ -47,6 +57,7 @@ export const communityPosts: CommunityPost[] = [
     likes: 12,
     comments: 5,
     postType: "consultation_review",
+    profileVisibility: "experts"
   },
   {
     id: "req-1",
@@ -62,6 +73,7 @@ export const communityPosts: CommunityPost[] = [
     postType: "consultation_request",
     urgency: "보통",
     preferredMethod: "화상상담",
+    profileVisibility: "private"
   },
   {
     id: "expert-1",
@@ -76,6 +88,7 @@ export const communityPosts: CommunityPost[] = [
     comments: 18,
     postType: "expert_intro",
     isExpert: true,
+    profileVisibility: "public"
   },
   {
     id: "2",

@@ -15,42 +15,155 @@ export default function PaymentSettings() {
   const [paymentHistory, setPaymentHistory] = useState<PaymentHistory[]>([]);
   const [creditTransactions, setCreditTransactions] = useState<any[]>([]);
   const [showAddMethod, setShowAddMethod] = useState(false);
-  const [editingMethod, setEditingMethod] = useState<PaymentMethod | null>(null);
+
   const [showTopupHistory, setShowTopupHistory] = useState(true);
   const [showUsageHistory, setShowUsageHistory] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // 새로운 카드 추가 폼 상태
+  const [newCardForm, setNewCardForm] = useState({
+    cardNumber: '',
+    expiryMonth: '',
+    expiryYear: '',
+    cardholderName: '',
+    cardBrand: 'VISA'
+  });
+  
+  // 폼 에러 상태
+  const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
 
   // 더미 데이터 로드
   useEffect(() => {
-    // 실제로는 API에서 데이터를 가져와야 합니다
-    // 현재는 더미 데이터를 사용
-    const userId = 'user_001'; // 실제로는 인증된 사용자 ID를 사용해야 함
-    
-    setPaymentMethods(getUserPaymentMethods(userId));
-    setPaymentHistory(getUserPaymentHistory(userId));
-    setCreditTransactions(getUserCreditTransactions(userId));
+    const loadUserData = async () => {
+      try {
+        setIsLoading(true);
+        // app-state API에서 사용자 정보 가져오기
+        const response = await fetch('/api/app-state');
+        const result = await response.json();
+        
+        if (result.success && result.data.user) {
+          const user = result.data.user;
+          console.log('사용자 정보:', user); // 디버깅용
+          // 김철수의 경우 client_1 ID 사용
+          const userId = user.name === "김철수" ? 'client_1' : 'user_001';
+          console.log('사용할 userId:', userId); // 디버깅용
+          
+          try {
+            const methods = getUserPaymentMethods(userId);
+            const history = getUserPaymentHistory(userId);
+            const transactions = getUserCreditTransactions(userId);
+            
+            console.log('로드된 결제 수단:', methods); // 디버깅용
+            console.log('로드된 결제 내역:', history); // 디버깅용
+            console.log('로드된 크레딧 거래:', transactions); // 디버깅용
+            
+            setPaymentMethods(methods);
+            setPaymentHistory(history);
+            setCreditTransactions(transactions);
+          } catch (dataError) {
+            console.error('더미 데이터 로드 실패:', dataError);
+            // 기본 데이터로 폴백
+            setPaymentMethods([]);
+            setPaymentHistory([]);
+            setCreditTransactions([]);
+          }
+        }
+      } catch (error) {
+        console.error('사용자 정보 로드 실패:', error);
+        // 에러 시 빈 배열로 초기화
+        setPaymentMethods([]);
+        setPaymentHistory([]);
+        setCreditTransactions([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadUserData();
   }, []);
 
-  const handleAddMethod = () => {
-    setShowAddMethod(true);
-  };
 
-  const handleEditMethod = (method: PaymentMethod) => {
-    setEditingMethod(method);
-  };
+
+
 
   const handleDeleteMethod = (id: string) => {
-    if (confirm('정말로 이 결제 수단을 삭제하시겠습니까?')) {
-      setPaymentMethods(methods => methods.filter(m => m.id !== id));
+    // confirm 대신 더 사용자 친화적인 확인 방식 사용
+    if (window.confirm('정말로 이 카드를 삭제하시겠습니까?\n\n삭제 후에는 새로운 카드를 추가할 수 있습니다.')) {
+      setPaymentMethods([]);
+      // alert 대신 상태 업데이트로 처리
+      console.log('카드가 삭제되었습니다.');
     }
   };
 
-  const handleSetDefault = (id: string) => {
-    setPaymentMethods(methods =>
-      methods.map(m => ({
-        ...m,
-        isDefault: m.id === id
-      }))
-    );
+
+
+  // 새로운 카드 추가
+  const handleAddNewCard = () => {
+    if (paymentMethods.length >= 1) {
+      // alert 대신 콘솔 로그로 처리
+      console.log('카드는 1개만 등록할 수 있습니다.');
+      return;
+    }
+    setShowAddMethod(true);
+  };
+
+  // 카드 추가 폼 제출
+  const handleSubmitNewCard = () => {
+    const { cardNumber, expiryMonth, expiryYear, cardholderName, cardBrand } = newCardForm;
+    
+    // 에러 초기화
+    setFormErrors({});
+    
+    // 폼 검증
+    const errors: {[key: string]: string} = {};
+    
+    if (!cardNumber) errors.cardNumber = '카드번호를 입력해주세요.';
+    else if (cardNumber.length !== 16) errors.cardNumber = '카드번호는 16자리여야 합니다.';
+    
+    if (!expiryMonth) errors.expiryMonth = '만료 월을 선택해주세요.';
+    if (!expiryYear) errors.expiryYear = '만료 년을 선택해주세요.';
+    if (!cardholderName) errors.cardholderName = '카드 소유자명을 입력해주세요.';
+    
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+
+    const newCard: PaymentMethod = {
+      id: `pm_${Date.now()}`,
+      userId: 'client_1',
+      type: 'card',
+      name: `${cardBrand} 카드`,
+      last4: cardNumber.slice(-4),
+      isDefault: true,
+      expiryDate: `${expiryMonth}/${expiryYear}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    setPaymentMethods([newCard]);
+    setFormErrors({});
+    setNewCardForm({
+      cardNumber: '',
+      expiryMonth: '',
+      expiryYear: '',
+      cardholderName: '',
+      cardBrand: 'VISA'
+    });
+    setShowAddMethod(false);
+  };
+
+  // 카드 추가 폼 닫기
+  const handleCloseAddForm = () => {
+    setShowAddMethod(false);
+    setFormErrors({});
+    setNewCardForm({
+      cardNumber: '',
+      expiryMonth: '',
+      expiryYear: '',
+      cardholderName: '',
+      cardBrand: 'VISA'
+    });
   };
 
   const formatAmount = (amount: number) => {
@@ -105,14 +218,148 @@ export default function PaymentSettings() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-md font-medium text-gray-900">결제 수단</h4>
-            <button
-              onClick={handleAddMethod}
-              className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              추가
-            </button>
+            {paymentMethods.length === 0 ? (
+              <button
+                onClick={handleAddNewCard}
+                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                카드 추가
+              </button>
+            ) : (
+              <button
+                onClick={() => handleDeleteMethod(paymentMethods[0].id)}
+                className="inline-flex items-center px-3 py-2 border border-red-300 text-red-700 text-sm leading-4 font-medium rounded-md bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                카드 교체
+              </button>
+            )}
           </div>
+
+          {/* 카드 추가 폼 */}
+          {showAddMethod && (
+            <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 bg-blue-50">
+              <h5 className="text-lg font-medium text-blue-900 mb-4">새로운 카드 추가</h5>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    카드 브랜드
+                  </label>
+                  <select
+                    value={newCardForm.cardBrand}
+                    onChange={(e) => setNewCardForm(prev => ({ ...prev, cardBrand: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="VISA">VISA</option>
+                    <option value="MASTERCARD">MASTERCARD</option>
+                    <option value="AMEX">AMEX</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    카드번호
+                  </label>
+                  <input
+                    type="text"
+                    value={newCardForm.cardNumber}
+                    onChange={(e) => setNewCardForm(prev => ({ ...prev, cardNumber: e.target.value.replace(/\D/g, '').slice(0, 16) }))}
+                    placeholder="1234 5678 9012 3456"
+                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      formErrors.cardNumber ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  />
+                  {formErrors.cardNumber && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.cardNumber}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    만료 월
+                  </label>
+                  <select
+                    value={newCardForm.expiryMonth}
+                    onChange={(e) => setNewCardForm(prev => ({ ...prev, expiryMonth: e.target.value }))}
+                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      formErrors.expiryMonth ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  >
+                    <option value="">월 선택</option>
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
+                      <option key={month} value={month.toString().padStart(2, '0')}>
+                        {month.toString().padStart(2, '0')}
+                      </option>
+                    ))}
+                  </select>
+                  {formErrors.expiryMonth && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.expiryMonth}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    만료 년
+                  </label>
+                  <select
+                    value={newCardForm.expiryYear}
+                    onChange={(e) => setNewCardForm(prev => ({ ...prev, expiryYear: e.target.value }))}
+                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      formErrors.expiryYear ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  >
+                    <option value="">년 선택</option>
+                    {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() + i).map(year => (
+                      <option key={year} value={year.toString().slice(-2)}>
+                        {year}
+                      </option>
+                    ))}
+                  </select>
+                  {formErrors.expiryYear && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.expiryYear}</p>
+                  )}
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    카드 소유자명
+                  </label>
+                  <input
+                    type="text"
+                    value={newCardForm.cardholderName}
+                    onChange={(e) => setNewCardForm(prev => ({ ...prev, cardholderName: e.target.value }))}
+                    placeholder="KIM CHEOL SU"
+                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      formErrors.cardholderName ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  />
+                  {formErrors.cardholderName && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.cardholderName}</p>
+                  )}
+                </div>
+              </div>
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  onClick={handleCloseAddForm}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleSubmitNewCard}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  카드 추가
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 디버깅 정보 */}
+          {paymentMethods.length === 0 && !showAddMethod && (
+            <div className="text-center py-8 text-gray-500">
+              <CreditCard className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+              <p>등록된 결제 수단이 없습니다.</p>
+              <p className="text-sm">새로운 결제 수단을 추가해보세요.</p>
+            </div>
+          )}
 
           <div className="space-y-3">
             {paymentMethods.map((method) => (
@@ -139,7 +386,7 @@ export default function PaymentSettings() {
                     </div>
                     <div className="text-sm text-gray-500">
                       {method.type === 'card' 
-                        ? `**** **** **** ${method.last4} • ${method.expiryDate}`
+                        ? `**** **** **** ${method.last4} • 만료: ${method.expiryDate}`
                         : method.bankName
                       }
                     </div>
@@ -147,28 +394,13 @@ export default function PaymentSettings() {
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  {!method.isDefault && (
-                    <button
-                      onClick={() => handleSetDefault(method.id)}
-                      className="text-sm text-blue-600 hover:text-blue-800"
-                    >
-                      기본으로 설정
-                    </button>
-                  )}
                   <button
-                    onClick={() => handleEditMethod(method)}
-                    className="p-2 text-gray-400 hover:text-gray-600"
+                    onClick={() => handleDeleteMethod(method.id)}
+                    className="p-2 text-gray-400 hover:text-red-600"
+                    title="카드 삭제"
                   >
-                    <Edit className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4" />
                   </button>
-                  {!method.isDefault && (
-                    <button
-                      onClick={() => handleDeleteMethod(method.id)}
-                      className="p-2 text-gray-400 hover:text-red-600"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  )}
                 </div>
               </div>
             ))}

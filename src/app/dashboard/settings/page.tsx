@@ -3,8 +3,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import ProfileSettings from "@/components/settings/ProfileSettings";
-import SecuritySettings from "@/components/settings/SecuritySettings";
-import PrivacySettings from "@/components/settings/PrivacySettings";
 import CalendarIntegration from "@/components/settings/CalendarIntegration";
 import PaymentSettings from "@/components/settings/PaymentSettings";
 import AccountDeletion from "@/components/settings/AccountDeletion";
@@ -165,8 +163,6 @@ export default function SettingsPage() {
             {/* 전문가 모드에서는 프로필 설정 섹션 숨김 */}
             {effectiveVariant === "user" && <ProfileSettings />}
             <PaymentSettings />
-            <SecuritySettings />
-            <PrivacySettings />
             <CalendarIntegration />
             <AccountDeletion />
           </div>

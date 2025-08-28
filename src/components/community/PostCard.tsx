@@ -15,11 +15,12 @@ import {
   Award,
   MessageSquare,
 } from "lucide-react";
+import { maskPostAuthor, ProfileVisibility } from "@/utils/nameMasking";
 
 interface Post {
   id: string;
   author: string;
-  authorAvatar: string;
+  authorAvatar: string | null;
   title: string;
   content: string;
   category: string;
@@ -32,6 +33,13 @@ interface Post {
   preferredMethod?: string;
   likes: number;
   comments: number;
+  profileVisibility?: ProfileVisibility;
+  // 상담후기 관련 추가 필드
+  consultationTopic?: string;
+  rating?: number;
+  expertName?: string;
+  isVerified?: boolean;
+  hasExpertReply?: boolean;
 }
 
 interface PostCardProps {
@@ -132,14 +140,20 @@ const PostCard = ({
             <Bot className="h-5 w-5 text-white" />
           ) : (
             <span className="text-white text-sm font-medium">
-              {post.authorAvatar}
+              {post.authorAvatar || post.author.charAt(0)}
             </span>
           )}
         </div>
 
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
-            <span className="font-medium text-gray-900">{post.author}</span>
+            <span className="font-medium text-gray-900">
+              {maskPostAuthor(
+                post.author, 
+                post.profileVisibility || "experts",
+                false // TODO: 현재 사용자가 전문가인지 확인하는 로직 필요
+              )}
+            </span>
             {post.isExpert && (
               <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">
                 전문가
@@ -233,6 +247,37 @@ const PostCard = ({
                   <UserCheck className="h-4 w-4 text-blue-600" />
                   <span className="text-blue-700">인증된 전문가</span>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {post.postType === "consultation_review" && (
+            <div className={`${postTypeInfo.cardBg} border ${postTypeInfo.borderColor} rounded-lg p-3 mb-4`}>
+              <div className="flex items-center gap-4 text-sm">
+                {post.rating && (
+                  <div className="flex items-center gap-1">
+                    <Star className="h-4 w-4 text-yellow-600 fill-current" />
+                    <span className="text-green-700 font-medium">{post.rating}.0점</span>
+                  </div>
+                )}
+                {post.expertName && (
+                  <div className="flex items-center gap-1">
+                    <UserCheck className="h-4 w-4 text-green-600" />
+                    <span className="text-green-700">전문가: {post.expertName}</span>
+                  </div>
+                )}
+                {post.isVerified && (
+                  <div className="flex items-center gap-1">
+                    <AlertCircle className="h-4 w-4 text-blue-600" />
+                    <span className="text-blue-700">검증된 리뷰</span>
+                  </div>
+                )}
+                {post.hasExpertReply && (
+                  <div className="flex items-center gap-1">
+                    <MessageSquare className="h-4 w-4 text-purple-600" />
+                    <span className="text-purple-700">전문가 답글</span>
+                  </div>
+                )}
               </div>
             </div>
           )}
