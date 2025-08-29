@@ -119,6 +119,16 @@ export default function ConsultationSession({
           sessionTimerRef.current = null;
         }
         
+        // 상담 완료 시 전문가 데이터 업데이트 이벤트 발생
+        window.dispatchEvent(new CustomEvent('expertDataUpdated', {
+          detail: { 
+            expertId: consultation.id, // id를 expertId로 사용
+            action: 'sessionCompleted',
+            duration: sessionTime,
+            sessionType: consultation.consultationType
+          }
+        }));
+        
         // 상담 요약 표시
         setShowSummary(true);
       }
@@ -135,9 +145,10 @@ export default function ConsultationSession({
         sessionTimerRef.current = null;
       }
       
+      // 상담 요약 표시
       setShowSummary(true);
     }
-  }, []);
+  }, [consultation.id, consultation.consultationType, sessionTime]);
 
   // 상담 요약 닫기
   const handleCloseSummary = () => {

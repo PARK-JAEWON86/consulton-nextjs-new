@@ -3,7 +3,17 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import type React from "react";
 import { Grid, List, Users, Star, Award, Clock, MessageCircle, Video, Heart } from "lucide-react";
-import { calculateCreditsByLevel } from "@/utils/expertLevels";
+// API를 통해 레벨별 크레딧을 계산하는 함수
+const calculateCreditsByLevel = async (level: number = 1): Promise<number> => {
+  try {
+    const response = await fetch(`/api/expert-levels?action=calculateCreditsByLevel&level=${level}`);
+    const data = await response.json();
+    return data.creditsPerMinute || 100;
+  } catch (error) {
+    console.error('크레딧 계산 실패:', error);
+    return 100; // 기본값
+  }
+};
 
 /**
  * 전문가 데이터 유효성 검사 함수

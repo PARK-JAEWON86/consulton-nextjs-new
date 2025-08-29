@@ -36,16 +36,35 @@ import {
   Smartphone,
   Globe,
   ShoppingBag,
+  Briefcase,
+  Code,
+  Languages,
+  Music,
+  Plane,
+  Scissors,
+  Trophy,
+  Sprout,
+  PawPrint,
+  Building2,
+  GraduationCap,
+  ChefHat,
+  RefreshCw,
 } from "lucide-react";
 import ConsultationRecommendation from "@/components/recommendation/ConsultationRecommendation";
-import { 
-  calculateCreditsByLevel, 
-  calculateExpertLevel as calcExpertLevel,
-  getLevelBadgeStyles as getBadgeStyles,
-  getKoreanLevelName as getKoreanLevel 
-} from "@/utils/expertLevels";
+// API를 통해 레벨별 크레딧을 계산하는 함수
+const calculateCreditsByLevel = async (level: number = 1): Promise<number> => {
+  try {
+    const response = await fetch(`/api/expert-levels?action=calculateCreditsByLevel&level=${level}`);
+    const data = await response.json();
+    return data.creditsPerMinute || 100;
+  } catch (error) {
+    console.error('크레딧 계산 실패:', error);
+    return 100; // 기본값
+  }
+};
 import { ExpertProfile } from "@/types";
 import { dummyExperts, convertExpertItemToProfile } from "@/data/dummy/experts";
+import ExpertLevelBadge from "@/components/expert/ExpertLevelBadge";
 
 type ConsultationType = "video" | "chat";
 
@@ -62,11 +81,7 @@ type SelectedFilters = {
   experience: number;
 };
 
-// 전문가 레벨 및 크레딧 계산 함수들
-const calculateCreditsPerMinute = (expert: ExpertItem): number => {
-  const level = calcExpertLevel(expert.totalSessions, expert.avgRating);
-  return level.creditsPerMinute;
-};
+
 
 const ExpertSearch = () => {
   const router = useRouter();
@@ -93,6 +108,61 @@ const ExpertSearch = () => {
   const [allExperts, setAllExperts] = useState<ExpertItem[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
+  const [popularCategoryStats, setPopularCategoryStats] = useState<any[]>([]);
+  const [isLoadingPopularStats, setIsLoadingPopularStats] = useState(true);
+
+  // 로컬 스토리지에서 좋아요 상태 로드
+  const loadFavoritesFromStorage = () => {
+    try {
+      const stored = localStorage.getItem('likedExperts');
+      const favorites = stored ? JSON.parse(stored) : [];
+      setFavorites(favorites);
+      console.log('로컬 스토리지에서 좋아요 상태 로드:', favorites);
+      return favorites;
+    } catch (error) {
+      console.error('좋아요 상태 로드 실패:', error);
+      return [];
+    }
+  };
+
+  // 로컬 스토리지에 좋아요 상태 저장
+  const saveFavoritesToStorage = (favorites: number[]) => {
+    try {
+      localStorage.setItem('likedExperts', JSON.stringify(favorites));
+      console.log('로컬 스토리지에 좋아요 상태 저장:', favorites);
+    } catch (error) {
+      console.error('좋아요 상태 저장 실패:', error);
+    }
+  };
+
+  // 페이지 로드 시 좋아요 상태 로드
+  useEffect(() => {
+    loadFavoritesFromStorage();
+  }, []);
+
+  // 좋아요 상태 변경 이벤트 리스너
+  useEffect(() => {
+    const handleFavoritesUpdate = () => {
+      console.log('좋아요 상태 업데이트 이벤트 수신');
+      loadFavoritesFromStorage();
+    };
+
+    // 커스텀 이벤트 리스너 등록
+    window.addEventListener('favoritesUpdated', handleFavoritesUpdate);
+    
+    // 페이지 포커스 시 좋아요 상태 새로고침
+    const handleFocus = () => {
+      console.log('페이지 포커스, 좋아요 상태 새로고침');
+      loadFavoritesFromStorage();
+    };
+    
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      window.removeEventListener('favoritesUpdated', handleFavoritesUpdate);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
 
   // 카테고리 데이터 로드
   useEffect(() => {
@@ -117,35 +187,37 @@ const ExpertSearch = () => {
     loadCategories();
   }, []);
 
+  // 인기 카테고리 통계 데이터 로드
+  useEffect(() => {
+    const loadPopularCategoryStats = async () => {
+      try {
+        setIsLoadingPopularStats(true);
+        const response = await fetch('/api/categories/popular?limit=10&sortBy=totalScore');
+        const result = await response.json();
+        
+        if (result.success) {
+          console.log('인기 카테고리 통계 로드 성공:', result.data);
+          setPopularCategoryStats(result.data);
+        } else {
+          console.error('인기 카테고리 통계 로드 실패:', result.message);
+        }
+      } catch (error) {
+        console.error('인기 카테고리 통계 로드 실패:', error);
+      } finally {
+        setIsLoadingPopularStats(false);
+      }
+    };
+
+    loadPopularCategoryStats();
+  }, []);
+
   // 전문가 프로필 데이터 로드
   useEffect(() => {
     const loadExpertProfiles = async () => {
       try {
         console.log('전문가 프로필 로드 시작...');
         
-        // 더미 데이터를 직접 사용 (API 호출 없이)
-        const fallbackExperts = dummyExperts.map(expert => convertExpertItemToProfile(expert));
-        console.log('더미 데이터 사용:', fallbackExperts.length, '명');
-        setAllExperts(fallbackExperts);
-        
-        // API 호출은 나중에 구현
-        /*
-        // 먼저 API 초기화 호출
-        console.log('API 초기화 호출 중...');
-        const initResponse = await fetch('/api/expert-profiles', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            action: 'initializeProfiles'
-          })
-        });
-        
-        const initResult = await initResponse.json();
-        console.log('초기화 결과:', initResult);
-
-        // 그 다음 전문가 프로필 조회
+        // API 호출을 통한 전문가 프로필 조회
         console.log('전문가 프로필 조회 중...');
         const response = await fetch('/api/expert-profiles');
         const result = await response.json();
@@ -166,16 +238,16 @@ const ExpertSearch = () => {
             specialties: apiExpert.keywords || [],
             specialtyAreas: apiExpert.keywords || [],
             consultationTypes: apiExpert.consultationTypes || [],
-            languages: ['한국어'],
+            languages: apiExpert.languages || ['한국어'],
             hourlyRate: 0,
             pricePerMinute: 0,
-            totalSessions: 0,
-            avgRating: 4.5,
-            rating: 4.5,
-            reviewCount: 0,
+            totalSessions: apiExpert.totalSessions || 0,
+            avgRating: apiExpert.rating || 4.5,
+            rating: apiExpert.rating || 4.5,
+            reviewCount: apiExpert.reviewCount || 0,
             completionRate: 95,
-            repeatClients: 0,
-            responseTime: '1시간 이내',
+            repeatClients: apiExpert.repeatClients || 0,
+            responseTime: apiExpert.responseTime || '1시간 이내',
             averageSessionDuration: 60,
             cancellationPolicy: '24시간 전 취소 가능',
             availability: apiExpert.availability || {},
@@ -184,11 +256,11 @@ const ExpertSearch = () => {
             contactInfo: {
               phone: '',
               email: apiExpert.email || '',
-              location: '서울특별시',
+              location: apiExpert.location || '서울특별시',
               website: ''
             },
-            location: '서울특별시',
-            timeZone: 'Asia/Seoul',
+            location: apiExpert.location || '서울특별시',
+            timeZone: apiExpert.timeZone || 'Asia/Seoul',
             profileImage: apiExpert.profileImage || null,
             portfolioFiles: [],
             portfolioItems: [],
@@ -227,7 +299,6 @@ const ExpertSearch = () => {
           const fallbackExperts = dummyExperts.map(expert => convertExpertItemToProfile(expert));
           setAllExperts(fallbackExperts);
         }
-        */
       } catch (error) {
         console.error('전문가 프로필 로드 실패:', error);
         // API 호출 실패 시 더미 데이터를 fallback으로 사용
@@ -237,6 +308,87 @@ const ExpertSearch = () => {
     };
 
     loadExpertProfiles();
+  }, []);
+
+  // 전문가 통계 데이터 로드 및 업데이트
+  useEffect(() => {
+    const loadExpertStats = async () => {
+      if (allExperts.length === 0) return;
+      
+      try {
+        console.log('전문가 통계 로드 시작...');
+        
+        // 모든 전문가의 통계를 병렬로 로드
+        const statsPromises = allExperts.map(async (expert) => {
+          try {
+            const response = await fetch(`/api/expert-stats?expertId=${expert.id}`);
+            const result = await response.json();
+            
+            if (result.success) {
+              return {
+                expertId: expert.id,
+                stats: result.data
+              };
+            }
+            return null;
+          } catch (error) {
+            console.error(`전문가 ${expert.id} 통계 로드 실패:`, error);
+            return null;
+          }
+        });
+        
+        const statsResults = await Promise.all(statsPromises);
+        const validStats = statsResults.filter(result => result !== null);
+        
+        // 통계 데이터로 전문가 정보 업데이트
+        setAllExperts(prevExperts => 
+          prevExperts.map(expert => {
+            const stats = validStats.find(s => s?.expertId === expert.id)?.stats;
+            if (stats) {
+              return {
+                ...expert,
+                totalSessions: stats.totalSessions || expert.totalSessions,
+                avgRating: stats.avgRating || expert.avgRating,
+                rating: stats.avgRating || expert.rating,
+                reviewCount: stats.reviewCount || expert.reviewCount,
+                repeatClients: stats.repeatClients || expert.repeatClients
+              };
+            }
+            return expert;
+          })
+        );
+        
+        console.log('전문가 통계 업데이트 완료:', validStats.length, '명');
+      } catch (error) {
+        console.error('전문가 통계 로드 실패:', error);
+      }
+    };
+
+    loadExpertStats();
+  }, [allExperts.length]);
+
+  // 실시간 데이터 업데이트를 위한 이벤트 리스너
+  useEffect(() => {
+    const handleExpertDataUpdate = () => {
+      console.log('전문가 데이터 업데이트 이벤트 수신');
+      refreshExpertData();
+    };
+
+    // 커스텀 이벤트 리스너 등록
+    window.addEventListener('expertDataUpdated', handleExpertDataUpdate);
+    
+    // 페이지 포커스 시 데이터 새로고침
+    const handleFocus = () => {
+      console.log('페이지 포커스, 데이터 새로고침');
+      refreshExpertData();
+    };
+    
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      window.removeEventListener('expertDataUpdated', handleExpertDataUpdate);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   const specialtyOptions: string[] = categories.length > 0 
@@ -333,11 +485,16 @@ const ExpertSearch = () => {
   };
 
   const toggleFavorite = (expertId: number) => {
-    setFavorites((prev) =>
-      prev.includes(expertId)
+    setFavorites((prev) => {
+      const newFavorites = prev.includes(expertId)
         ? prev.filter((id) => id !== expertId)
-        : [...prev, expertId]
-    );
+        : [...prev, expertId];
+      
+      // 로컬 스토리지에 저장
+      saveFavoritesToStorage(newFavorites);
+      
+      return newFavorites;
+    });
   };
 
   const clearAllFilters = () => {
@@ -349,6 +506,88 @@ const ExpertSearch = () => {
       experience: 0,
     });
     setSearchQuery("");
+  };
+
+  // 전문가 데이터 새로고침
+  const refreshExpertData = async () => {
+    try {
+      console.log('전문가 데이터 새로고침 시작...');
+      
+      // 전문가 프로필 다시 로드
+      const response = await fetch('/api/expert-profiles');
+      const result = await response.json();
+      
+      if (result.success) {
+        const convertedExperts = result.data.profiles.map((apiExpert: any) => ({
+          id: parseInt(apiExpert.id),
+          name: apiExpert.fullName,
+          specialty: apiExpert.specialty,
+          experience: apiExpert.experienceYears,
+          description: apiExpert.bio,
+          education: [],
+          certifications: apiExpert.certifications?.map((cert: any) => cert.name) || [],
+          specialties: apiExpert.keywords || [],
+          specialtyAreas: apiExpert.keywords || [],
+          consultationTypes: apiExpert.consultationTypes || [],
+          languages: apiExpert.languages || ['한국어'],
+          hourlyRate: 0,
+          pricePerMinute: 0,
+          totalSessions: apiExpert.totalSessions || 0,
+          avgRating: apiExpert.rating || 4.5,
+          rating: apiExpert.rating || 4.5,
+          reviewCount: apiExpert.reviewCount || 0,
+          completionRate: 95,
+          repeatClients: apiExpert.repeatClients || 0,
+          responseTime: apiExpert.responseTime || '1시간 이내',
+          averageSessionDuration: 60,
+          cancellationPolicy: '24시간 전 취소 가능',
+          availability: apiExpert.availability || {},
+          weeklyAvailability: {},
+          holidayPolicy: undefined,
+          contactInfo: {
+            phone: '',
+            email: apiExpert.email || '',
+            location: apiExpert.location || '서울특별시',
+            website: ''
+          },
+          location: apiExpert.location || '서울특별시',
+          timeZone: apiExpert.timeZone || 'Asia/Seoul',
+          profileImage: apiExpert.profileImage || null,
+          portfolioFiles: [],
+          portfolioItems: [],
+          tags: apiExpert.keywords || [],
+          targetAudience: ['성인'],
+          isOnline: true,
+          isProfileComplete: true,
+          createdAt: new Date(apiExpert.createdAt),
+          updatedAt: new Date(apiExpert.updatedAt),
+          price: '₩50,000',
+          image: apiExpert.profileImage || null,
+          consultationStyle: '체계적이고 전문적인 접근',
+          successStories: 50,
+          nextAvailableSlot: '2024-01-22T10:00:00',
+          profileViews: 500,
+          lastActiveAt: new Date(apiExpert.updatedAt),
+          joinedAt: new Date(apiExpert.createdAt),
+          socialProof: {
+            linkedIn: undefined,
+            website: undefined,
+            publications: []
+          },
+          pricingTiers: [
+            { duration: 30, price: 25000, description: '기본 상담' },
+            { duration: 60, price: 45000, description: '상세 상담' },
+            { duration: 90, price: 65000, description: '종합 상담' }
+          ],
+          reschedulePolicy: '12시간 전 일정 변경 가능'
+        }));
+        
+        setAllExperts(convertedExperts);
+        console.log('전문가 데이터 새로고침 완료');
+      }
+    } catch (error) {
+      console.error('전문가 데이터 새로고침 실패:', error);
+    }
   };
 
   const getConsultationTypeIcon = (
@@ -498,6 +737,16 @@ const ExpertSearch = () => {
               <option value="experience">경력 많은 순</option>
               <option value="reviews">리뷰 많은 순</option>
             </select>
+            
+            {/* 새로고침 버튼 */}
+            <button
+              onClick={refreshExpertData}
+              className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+              title="전문가 데이터 새로고침"
+            >
+              <RefreshCw className="h-5 w-5" />
+              <span>새로고침</span>
+            </button>
           </div>
 
           {/* 인기 카테고리 */}
@@ -513,69 +762,152 @@ const ExpertSearch = () => {
                 {showAllCategories ? "접기" : "더보기"}
               </button>
             </div>
+            
+
+            
             <div className="flex flex-wrap gap-3">
-              {[
-                {
-                  name: "심리상담",
-                  icon: Brain,
-                  color: "bg-purple-100 text-purple-700 hover:bg-purple-200",
-                },
-                {
-                  name: "법률상담",
-                  icon: Scale,
-                  color: "bg-blue-100 text-blue-700 hover:bg-blue-200",
-                },
-                {
-                  name: "재무상담",
-                  icon: DollarSign,
-                  color: "bg-green-100 text-green-700 hover:bg-green-200",
-                },
-                {
-                  name: "건강상담",
-                  icon: HeartIcon,
-                  color: "bg-red-100 text-red-700 hover:bg-red-200",
-                },
-                {
-                  name: "진로상담",
-                  icon: Target,
-                  color: "bg-orange-100 text-orange-700 hover:bg-orange-200",
-                },
-                {
-                  name: "부동산상담",
-                  icon: Home,
-                  color: "bg-indigo-100 text-indigo-700 hover:bg-indigo-200",
-                },
-                {
-                  name: "IT상담",
-                  icon: Monitor,
-                  color: "bg-gray-100 text-gray-700 hover:bg-gray-200",
-                },
-                {
-                  name: "교육상담",
-                  icon: BookOpen,
-                  color: "bg-yellow-100 text-yellow-700 hover:bg-yellow-200",
-                },
-              ]
-                .slice(0, showAllCategories ? undefined : 7)
-                .map((category) => {
-                  const IconComponent = category.icon;
-                  return (
-                    <button
-                      key={category.name}
-                      onClick={() => {
-                        setSelectedFilters((prev) => ({
-                          ...prev,
-                          specialty: category.name,
-                        }));
-                        setSearchQuery("");
-                      }}
-                      className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium transition-colors ${category.color}`}
-                    >
-                      <IconComponent className="h-4 w-4" />
-                      <span>{category.name}</span>
-                    </button>
-                  );
-                })}
+              {isLoadingCategories || isLoadingPopularStats ? (
+                // 로딩 상태일 때 스켈레톤 UI 표시
+                Array.from({ length: showAllCategories ? 12 : 7 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="h-10 w-24 bg-gray-200 rounded-full animate-pulse"
+                  />
+                ))
+              ) : categories.length > 0 ? (
+                // API에서 가져온 카테고리를 인기도 순위에 따라 정렬하여 표시
+                categories
+                  .map((category) => {
+                    // 인기도 순위 찾기
+                    const popularStat = popularCategoryStats.find(stat => stat.categoryId === category.id);
+                    return {
+                      ...category,
+                      popularRank: popularStat ? popularStat.rank : 999 // 순위가 없으면 맨 뒤로
+                    };
+                  })
+                  .sort((a, b) => (a.popularRank || 999) - (b.popularRank || 999)) // 인기도 순위로 정렬
+                  .slice(0, showAllCategories ? undefined : 7)
+                  .map((category) => {
+                    // 아이콘 매핑
+                    const getIconComponent = (iconName: string) => {
+                      const iconMap: { [key: string]: any } = {
+                        Target,
+                        Brain,
+                        DollarSign,
+                        Scale,
+                        BookOpen,
+                        Heart,
+                        Users,
+                        Briefcase,
+                        Code,
+                        Palette,
+                        Languages,
+                        Music,
+                        Plane,
+                        Scissors,
+                        Trophy,
+                        Sprout,
+                        TrendingUp,
+                        Video,
+                        Star,
+                        ShoppingBag,
+                        ChefHat,
+                        PawPrint,
+                        Building2,
+                        GraduationCap,
+                        Home,
+                        Monitor,
+                        HeartIcon
+                      };
+                      return iconMap[iconName] || Target;
+                    };
+
+                    // 인기 카테고리인지 확인 (상위 3위 이내)
+                    const isPopular = popularCategoryStats.some(
+                      (stat, index) => stat.categoryId === category.id && index < 3
+                    );
+                    
+                    // 디버깅 로그 추가
+                    console.log('카테고리 매칭 확인:', {
+                      categoryId: category.id,
+                      categoryName: category.name,
+                      popularStats: popularCategoryStats.map(s => ({ id: s.categoryId, name: s.categoryName, rank: s.rank })),
+                      isPopular,
+                      popularStat: popularCategoryStats.find(stat => stat.categoryId === category.id)
+                    });
+                    
+                    // 인기 카테고리면 특별한 색상, 아니면 그레이
+                    const getCategoryColor = (isPopular: boolean, rank: number) => {
+                      if (!isPopular) {
+                        return "bg-gray-100 text-gray-700 hover:bg-gray-200";
+                      }
+                      
+                      // 상위 3위별로 다른 색상
+                      const popularColors = [
+                        "bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border-2 border-yellow-300", // 1위: 골드
+                        "bg-gray-100 text-gray-800 hover:bg-gray-200 border-2 border-gray-300", // 2위: 실버
+                        "bg-orange-100 text-orange-800 hover:bg-orange-200 border-2 border-orange-300" // 3위: 브론즈
+                      ];
+                      
+                      return popularColors[rank] || "bg-gray-100 text-gray-700 hover:bg-gray-200";
+                    };
+
+                    const IconComponent = getIconComponent(category.icon);
+                    const popularStat = popularCategoryStats.find(stat => stat.categoryId === category.id);
+                    const isPopularCategory = popularStat && popularStat.rank <= 3;
+                    const colorClass = getCategoryColor(isPopularCategory, (popularStat?.rank || 0) - 1);
+
+                    return (
+                      <button
+                        key={category.id}
+                        onClick={() => {
+                          setSelectedFilters((prev) => ({
+                            ...prev,
+                            specialty: category.name,
+                          }));
+                          setSearchQuery("");
+                        }}
+                        className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium transition-colors ${colorClass}`}
+                      >
+                        <IconComponent className="h-4 w-4" />
+                        <span>{category.name}</span>
+                      </button>
+                    );
+                  })
+              ) : (
+                // API에서 카테고리를 가져올 수 없을 때 fallback 카테고리 표시 (인기도 순위대로)
+                [
+                  { name: "심리상담", icon: Brain, color: "bg-gray-100 text-gray-700 hover:bg-gray-200", rank: 1 },
+                  { name: "법률상담", icon: Scale, color: "bg-gray-100 text-gray-700 hover:bg-gray-200", rank: 2 },
+                  { name: "재무상담", icon: DollarSign, color: "bg-gray-100 text-gray-700 hover:bg-gray-200", rank: 3 },
+                  { name: "건강상담", icon: HeartIcon, color: "bg-gray-100 text-gray-700 hover:bg-gray-200", rank: 4 },
+                  { name: "진로상담", icon: Target, color: "bg-gray-100 text-gray-700 hover:bg-gray-200", rank: 5 },
+                  { name: "부동산상담", icon: Home, color: "bg-gray-100 text-gray-700 hover:bg-gray-200", rank: 6 },
+                  { name: "IT상담", icon: Monitor, color: "bg-gray-100 text-gray-700 hover:bg-gray-200", rank: 7 },
+                  { name: "교육상담", icon: BookOpen, color: "bg-gray-100 text-gray-700 hover:bg-gray-200", rank: 8 },
+                ]
+                  .sort((a, b) => a.rank - b.rank) // 인기도 순위로 정렬
+                  .slice(0, showAllCategories ? undefined : 7)
+                  .map((category) => {
+                    const IconComponent = category.icon;
+                    return (
+                      <button
+                        key={category.name}
+                        onClick={() => {
+                          setSelectedFilters((prev) => ({
+                            ...prev,
+                            specialty: category.name,
+                          }));
+                          setSearchQuery("");
+                        }}
+                        className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium transition-colors ${category.color}`}
+                      >
+                        <IconComponent className="h-4 w-4" />
+                        <span>{category.name}</span>
+                      </button>
+                    );
+                  })
+              )}
             </div>
           </div>
 
@@ -706,7 +1038,6 @@ const ExpertSearch = () => {
         {/* 전문가 목록 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           {currentExperts.map((expert: ExpertItem) => {
-            const creditsPerMinute = calculateCreditsPerMinute(expert);
 
             return (
               <div
@@ -730,31 +1061,11 @@ const ExpertSearch = () => {
                           )}
                         </div>
                         {/* 전문가 레벨 표시 */}
-                        {(() => {
-                          // 실제 레벨 숫자 계산
-                          const actualLevel = Math.min(
-                            999,
-                            Math.max(1, Math.floor(expert.totalSessions / 10) + Math.floor(expert.avgRating * 10))
-                          );
-                          
-                          // 색상 결정
-                          let bgColor = "bg-blue-500";
-                          if (actualLevel >= 800) bgColor = "bg-purple-500";
-                          else if (actualLevel >= 600) bgColor = "bg-red-500";
-                          else if (actualLevel >= 400) bgColor = "bg-orange-500";
-                          else if (actualLevel >= 200) bgColor = "bg-yellow-500";
-                          else if (actualLevel >= 100) bgColor = "bg-green-500";
-                          
-                          return (
-                            <div className={`absolute -bottom-1 -right-1 border-2 border-white rounded-full shadow-sm flex items-center justify-center ${
-                              actualLevel >= 100 ? "w-12 h-6 px-2" : "w-10 h-6 px-1"
-                            } ${bgColor}`}>
-                              <span className="text-[10px] font-bold text-white">
-                                Lv.{actualLevel}
-                              </span>
-                            </div>
-                          );
-                        })()}
+                        <ExpertLevelBadge
+                          expertId={expert.id.toString()}
+                          size="md"
+                          className="absolute -bottom-1 -right-1"
+                        />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center space-x-2 mb-2">
@@ -855,7 +1166,7 @@ const ExpertSearch = () => {
                   {/* 가격 및 버튼 */}
                   <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                     <div className="text-xl font-bold text-gray-900">
-                      {creditsPerMinute} 크레딧
+                      1 크레딧
                       <span className="text-sm font-normal text-gray-500">
                         /분
                       </span>

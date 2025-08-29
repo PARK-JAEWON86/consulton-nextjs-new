@@ -5,7 +5,18 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, Users, Target, Brain, DollarSign, Scale, BookOpen, Heart, Briefcase, Code, Palette, Languages, Music, Trophy, Plane, ChefHat, Scissors, PawPrint, Sprout, TrendingUp, Receipt, Building2, GraduationCap, Baby, School, User, UserCheck, X, Star, Award, Clock, MessageCircle, Video } from "lucide-react";
 import SearchFields from "./SearchFields";
 import { ExpertProfile } from "@/types";
-import { calculateCreditsByLevel } from "@/utils/expertLevels";
+// API를 통해 레벨별 크레딧을 계산하는 함수
+const calculateCreditsByLevel = async (level: number = 1): Promise<number> => {
+  try {
+    const response = await fetch(`/api/expert-levels?action=calculateCreditsByLevel&level=${level}`);
+    const data = await response.json();
+    return data.creditsPerMinute || 100;
+  } catch (error) {
+    console.error('크레딧 계산 실패:', error);
+    return 100; // 기본값
+  }
+};
+import ExpertLevelBadge from "@/components/expert/ExpertLevelBadge";
 
 type IconType = any;
 
@@ -197,19 +208,6 @@ export default function HeroSection(props: HeroSectionProps) {
               <div className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {searchResults.slice(0, 6).map((expert: ExpertProfile) => {
-                    // 전문가 레벨 계산 (전문가 찾기 페이지와 동일한 로직)
-                    const actualLevel = Math.min(
-                      999,
-                      Math.max(1, Math.floor((expert.totalSessions || 0) / 10) + Math.floor((expert.rating || 0) * 10))
-                    );
-                    
-                    // 색상 결정
-                    let bgColor = "bg-blue-500";
-                    if (actualLevel >= 800) bgColor = "bg-purple-500";
-                    else if (actualLevel >= 600) bgColor = "bg-red-500";
-                    else if (actualLevel >= 400) bgColor = "bg-orange-500";
-                    else if (actualLevel >= 200) bgColor = "bg-yellow-500";
-                    else if (actualLevel >= 100) bgColor = "bg-green-500";
 
                     return (
                       <div
@@ -233,15 +231,11 @@ export default function HeroSection(props: HeroSectionProps) {
                                   )}
                                 </div>
                                 {/* 전문가 레벨 표시 */}
-                                <div
-                                  className={`absolute -bottom-1 -right-1 border-2 border-white rounded-full shadow-sm flex items-center justify-center ${
-                                    actualLevel >= 100 ? "w-12 h-6 px-2" : "w-10 h-6 px-1"
-                                  } ${bgColor}`}
-                                >
-                                  <span className="text-[10px] font-bold text-white">
-                                    Lv.{actualLevel}
-                                  </span>
-                                </div>
+                                <ExpertLevelBadge
+                                  expertId={expert.id.toString()}
+                                  size="md"
+                                  className="absolute -bottom-1 -right-1"
+                                />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center space-x-2 mb-2">
@@ -333,7 +327,7 @@ export default function HeroSection(props: HeroSectionProps) {
                           {/* 가격 및 버튼 */}
                           <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                             <div className="text-xl font-bold text-gray-900">
-                              {calculateCreditsByLevel(actualLevel)} 크레딧
+                              {calculateCreditsByLevel(1)} 크레딧
                               <span className="text-sm font-normal text-gray-500">
                                 /분
                               </span>

@@ -5,7 +5,7 @@ import CategorySidebar from "@/components/community/CategorySidebar";
 import PostCard from "@/components/community/PostCard";
 import SearchAndFilter from "@/components/community/SearchAndFilter";
 import CreatePostModal from "@/components/community/CreatePostModal";
-import { communityPosts, CommunityPost, getPostsByType, getPostsByCategory, sortPosts, getCategoriesWithCount, dummyReviews } from "@/data/dummy";
+import { communityPosts, CommunityPost, getPostsByType, getPostsByCategory, sortPosts, getCategoriesWithCount, dummyReviews } from "@/data/dummy/reviews";
 import { HelpCircle, Star, Award, Bot, MessageSquare, Grid3X3, ChevronLeft, ChevronRight, Menu, X } from "lucide-react";
 
 export default function CommunityPage() {

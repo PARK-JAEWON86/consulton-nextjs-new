@@ -71,6 +71,9 @@ export async function POST(request: NextRequest) {
       ratePerMinKrw
     });
 
+    // 상담 세션 완료로 인한 전문가 통계 업데이트 로그
+    console.log(`전문가 ${expertId}의 상담 세션 완료: ${durationMin}분, 세션 ID: ${sessionId}`);
+
     return NextResponse.json({
       success: true,
       data: result

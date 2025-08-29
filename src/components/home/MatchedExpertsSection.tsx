@@ -2,8 +2,19 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { calculateCreditsByLevel } from "@/utils/expertLevels";
+// API를 통해 레벨별 크레딧을 계산하는 함수
+const calculateCreditsByLevel = async (level: number = 1): Promise<number> => {
+  try {
+    const response = await fetch(`/api/expert-levels?action=calculateCreditsByLevel&level=${level}`);
+    const data = await response.json();
+    return data.creditsPerMinute || 100;
+  } catch (error) {
+    console.error('크레딧 계산 실패:', error);
+    return 100; // 기본값
+  }
+};
 import { ExpertProfile } from "@/types";
+import ExpertLevelBadge from "@/components/expert/ExpertLevelBadge";
 import {
   Users,
   Star,
@@ -179,29 +190,11 @@ export default function MatchedExpertsSection({
                           )}
                         </div>
                         {/* 전문가 레벨 표시 */}
-                        <div
-                          className={`absolute -bottom-1 -right-1 border-2 border-white rounded-full shadow-sm flex items-center justify-center ${
-                            expert.level >= 100
-                              ? "w-12 h-6 px-2"
-                              : "w-10 h-6 px-1"
-                          } ${
-                            expert.level >= 800
-                              ? "bg-purple-500"
-                              : expert.level >= 600
-                                ? "bg-red-500"
-                                : expert.level >= 400
-                                  ? "bg-orange-500"
-                                  : expert.level >= 200
-                                    ? "bg-yellow-500"
-                                    : expert.level >= 100
-                                      ? "bg-green-500"
-                                      : "bg-blue-500"
-                          }`}
-                        >
-                          <span className="text-[10px] font-bold text-white">
-                            Lv.{expert.level}
-                          </span>
-                        </div>
+                        <ExpertLevelBadge
+                          expertId={expert.id.toString()}
+                          size="md"
+                          className="absolute -bottom-1 -right-1"
+                        />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center space-x-2 mb-2">

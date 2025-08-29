@@ -311,7 +311,7 @@ export default function ReviewSection({
                         }
                       </span>
                       {review.isVerified && (
-                        <CheckCircle className="w-4 h-4 text-green-500" title="검증된 리뷰" />
+                        <CheckCircle className="w-4 h-4 text-green-500" />
                       )}
                     </div>
                     <div className="flex items-center space-x-2 mt-1">

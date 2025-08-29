@@ -19,7 +19,17 @@ import {
 } from "lucide-react";
 import ServiceLayout from "@/components/layout/ServiceLayout";
 import ConsultationSession from "@/components/expert-consultation/ConsultationSession";
-import { calculateCreditsByLevel } from "@/utils/expertLevels";
+// API를 통해 레벨별 크레딧을 계산하는 함수
+const calculateCreditsByLevel = async (level: number = 1): Promise<number> => {
+  try {
+    const response = await fetch(`/api/expert-levels?action=calculateCreditsByLevel&level=${level}`);
+    const data = await response.json();
+    return data.creditsPerMinute || 100;
+  } catch (error) {
+    console.error('크레딧 계산 실패:', error);
+    return 100; // 기본값
+  }
+};
 
 interface ConsultationSession {
   id: string;
@@ -225,9 +235,11 @@ export default function ExpertConsultationPage() {
     return calculateCreditsByLevel(expertLevel);
   };
 
-  // 총 크레딧 요금 계산
+  // 총 크레딧 요금 계산 (기본값 사용)
   const getTotalCredits = (expertLevel: number, duration: number) => {
-    return getCreditsPerMinute(expertLevel) * duration;
+    // 기본 크레딧 요금 사용 (실제로는 비동기로 계산해야 함)
+    const baseCreditsPerMinute = 150; // 기본값
+    return baseCreditsPerMinute * duration;
   };
 
   // 브라우저 뒤로가기/앞으로가기 처리

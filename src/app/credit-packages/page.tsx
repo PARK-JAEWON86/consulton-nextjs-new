@@ -4,9 +4,30 @@ import { useState, useEffect } from "react";
 import { CreditCard, LogIn } from "lucide-react";
 import ServiceLayout from "@/components/layout/ServiceLayout";
 import PackCard from "@/components/dashboard/PackCard";
-import { LEVELS, getKoreanTierName } from "@/utils/expertLevels";
-
 import React from "react"; // Added missing import for React
+
+// API를 통해 레벨 정보를 가져오는 함수들
+const fetchAllLevels = async () => {
+  try {
+    const response = await fetch('/api/expert-levels?action=getAllLevels');
+    const data = await response.json();
+    return data.levels || [];
+  } catch (error) {
+    console.error('레벨 정보 로드 실패:', error);
+    return [];
+  }
+};
+
+const fetchKoreanTierName = async (tierName: string) => {
+  try {
+    const response = await fetch(`/api/expert-levels?action=getKoreanTierName&tierName=${encodeURIComponent(tierName)}`);
+    const data = await response.json();
+    return data.koreanName || tierName;
+  } catch (error) {
+    console.error('한국어 티어명 로드 실패:', error);
+    return tierName;
+  }
+};
 
 interface User {
   id: string;
@@ -62,22 +83,47 @@ export default function CreditPackagesPage() {
   const averageCreditsPerMinute = 150; // 실제 평균 크레딧 요금
 
   // 레벨별 요금 정보 계산
-  const getLevelPricingInfo = () => {
-    const minLevel = LEVELS[LEVELS.length - 1]; // Tier 1 (최저 요금)
-    const maxLevel = LEVELS[0]; // Tier 10 (최고 요금)
+  const [pricingInfo, setPricingInfo] = useState({
+    minRate: 1000, // 기본값
+    maxRate: 6000, // 기본값
+    minCreditsRate: 100, // 기본값
+    maxCreditsRate: 600, // 기본값
+    averageRate: averageRatePerMinute,
+    minTier: "티어 1 (Lv.1-99)",
+    maxTier: "티어 10 (Lv.999)",
+  });
 
-    return {
-      minRate: minLevel.creditsPerMinute * 10, // 원화로 변환
-      maxRate: maxLevel.creditsPerMinute * 10, // 원화로 변환
-      minCreditsRate: minLevel.creditsPerMinute,
-      maxCreditsRate: maxLevel.creditsPerMinute,
-      averageRate: averageRatePerMinute,
-      minTier: getKoreanTierName(minLevel.name),
-      maxTier: getKoreanTierName(maxLevel.name),
+  // 레벨 정보 로드
+  useEffect(() => {
+    const loadLevelInfo = async () => {
+      try {
+        const levels = await fetchAllLevels();
+        if (levels.length > 0) {
+          const minLevel = levels[levels.length - 1]; // Tier 1 (최저 요금)
+          const maxLevel = levels[0]; // Tier 10 (최고 요금)
+          
+          const minTier = await fetchKoreanTierName(minLevel.name);
+          const maxTier = await fetchKoreanTierName(maxLevel.name);
+          
+          setPricingInfo({
+            minRate: minLevel.creditsPerMinute * 10, // 원화로 변환
+            maxRate: maxLevel.creditsPerMinute * 10, // 원화로 변환
+            minCreditsRate: minLevel.creditsPerMinute,
+            maxCreditsRate: maxLevel.creditsPerMinute,
+            averageRate: averageRatePerMinute,
+            minTier,
+            maxTier,
+          });
+        }
+      } catch (error) {
+        console.error('레벨 정보 로드 실패:', error);
+      }
     };
-  };
 
-  const pricingInfo = getLevelPricingInfo();
+    loadLevelInfo();
+  }, [averageRatePerMinute]);
+
+
 
   const packs = [
     // 크레딧 충전 패키지들 (충전량이 많을수록 보너스 증가)

@@ -26,6 +26,89 @@ import { dummyReviews } from '@/data/dummy/reviews';
 // 임시 저장소 (실제로는 데이터베이스 사용)
 let reviews: Review[] = [...dummyReviews];
 
+// 전문가 통계 업데이트 헬퍼 함수
+async function updateExpertStatsAfterReview(
+  expertId: string, 
+  action: 'add' | 'update' | 'delete', 
+  newRating?: number, 
+  oldRating?: number
+) {
+  try {
+    // 현재 전문가 통계 조회
+    const statsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/expert-stats?expertId=${expertId}`);
+    if (!statsResponse.ok) {
+      throw new Error('전문가 통계 조회 실패');
+    }
+    
+    const statsResult = await statsResponse.json();
+    if (!statsResult.success) {
+      throw new Error('전문가 통계 데이터 없음');
+    }
+    
+    const currentStats = statsResult.data;
+    
+    // 해당 전문가의 모든 리뷰 조회
+    const reviewsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/reviews?expertId=${expertId}`);
+    if (!reviewsResponse.ok) {
+      throw new Error('리뷰 조회 실패');
+    }
+    
+    const reviewsResult = await reviewsResponse.json();
+    if (!reviewsResult.success) {
+      throw new Error('리뷰 데이터 없음');
+    }
+    
+    const expertReviews = reviewsResult.data.reviews;
+    
+    // 새로운 통계 계산
+    let newReviewCount = currentStats.reviewCount;
+    let newAvgRating = currentStats.avgRating;
+    
+    if (action === 'add') {
+      newReviewCount += 1;
+      // 평균 평점 재계산
+      const totalRating = expertReviews.reduce((sum: number, review: any) => sum + review.rating, 0);
+      newAvgRating = totalRating / newReviewCount;
+    } else if (action === 'update' && oldRating !== undefined && newRating !== undefined) {
+      // 평점 변경 시 평균 재계산
+      const totalRating = expertReviews.reduce((sum: number, review: any) => {
+        if (review.id === currentStats.expertId) {
+          return sum + newRating; // 새로운 평점 사용
+        }
+        return sum + review.rating;
+      }, 0);
+      newAvgRating = totalRating / newReviewCount;
+    } else if (action === 'delete') {
+      newReviewCount = Math.max(0, newReviewCount - 1);
+      if (newReviewCount > 0) {
+        const totalRating = expertReviews.reduce((sum: number, review: any) => sum + review.rating, 0);
+        newAvgRating = totalRating / newReviewCount;
+      } else {
+        newAvgRating = 0;
+      }
+    }
+    
+    // 전문가 통계 업데이트
+    const updateResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/expert-stats`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        expertId,
+        reviewCount: newReviewCount,
+        avgRating: Math.round(newAvgRating * 10) / 10 // 소수점 첫째 자리까지 반올림
+      })
+    });
+    
+    if (!updateResponse.ok) {
+      throw new Error('전문가 통계 업데이트 실패');
+    }
+    
+  } catch (error) {
+    console.error('전문가 통계 업데이트 오류:', error);
+    throw error;
+  }
+}
+
 // GET: 리뷰 목록 조회
 export async function GET(request: NextRequest) {
   try {
@@ -136,6 +219,18 @@ export async function POST(request: NextRequest) {
 
     reviews.push(newReview);
 
+    // 전문가 통계 업데이트
+    try {
+      await updateExpertStatsAfterReview(expertId, 'add', rating);
+      
+      // 전문가 데이터 업데이트 이벤트 발생 (클라이언트에서 감지)
+      // 이 이벤트는 클라이언트 측에서 전문가 찾기 페이지의 데이터를 새로고침하는 데 사용됨
+      console.log(`전문가 ${expertId}의 리뷰 추가로 인한 통계 업데이트 완료`);
+    } catch (error) {
+      console.error('전문가 통계 업데이트 실패:', error);
+      // 리뷰는 성공했지만 통계 업데이트는 실패한 경우
+    }
+
     return NextResponse.json({
       success: true,
       data: newReview,
@@ -196,6 +291,17 @@ export async function PUT(request: NextRequest) {
 
     reviews[reviewIndex].date = new Date().toISOString();
 
+    // 평점이 변경된 경우 전문가 통계 업데이트
+    if (rating !== undefined) {
+      try {
+        const oldRating = reviews[reviewIndex].rating;
+        const expertId = reviews[reviewIndex].expertId;
+        await updateExpertStatsAfterReview(expertId, 'update', rating, oldRating);
+      } catch (error) {
+        console.error('전문가 통계 업데이트 실패:', error);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data: reviews[reviewIndex],
@@ -232,6 +338,14 @@ export async function DELETE(request: NextRequest) {
     }
 
     const deletedReview = reviews.splice(reviewIndex, 1)[0];
+
+    // 전문가 통계 업데이트
+    try {
+      await updateExpertStatsAfterReview(deletedReview.expertId, 'delete');
+    } catch (error) {
+      console.error('전문가 통계 업데이트 실패:', error);
+      // 리뷰는 삭제했지만 통계 업데이트는 실패한 경우
+    }
 
     return NextResponse.json({
       success: true,

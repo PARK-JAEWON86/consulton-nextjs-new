@@ -14,10 +14,19 @@ interface ExpertProfile {
   availability: Record<string, { available: boolean; hours: string }>;
   certifications: Array<{ name: string; issuer: string }>;
   profileImage?: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'deleted';
   rejectionReason?: string;
   createdAt: string;
   updatedAt: string;
+  // 추가 필드들
+  rating?: number;
+  reviewCount?: number;
+  totalSessions?: number;
+  repeatClients?: number;
+  responseTime?: string;
+  languages?: string[];
+  location?: string;
+  timeZone?: string;
 }
 
 // 메모리 기반 저장 (실제 프로덕션에서는 데이터베이스 사용)
@@ -47,7 +56,16 @@ const initializeDummyData = () => {
         status: 'approved' as const,
         rejectionReason: undefined,
         createdAt: converted.createdAt?.toISOString() || new Date().toISOString(),
-        updatedAt: converted.updatedAt?.toISOString() || new Date().toISOString()
+        updatedAt: converted.updatedAt?.toISOString() || new Date().toISOString(),
+        // 추가 필드들
+        rating: converted.rating || 4.5,
+        reviewCount: converted.reviewCount || 0,
+        totalSessions: converted.totalSessions || 0,
+        repeatClients: converted.repeatClients || 0,
+        responseTime: converted.responseTime || '1시간 이내',
+        languages: converted.languages || ['한국어'],
+        location: converted.location || '서울특별시',
+        timeZone: converted.timeZone || 'Asia/Seoul'
       };
     });
   }

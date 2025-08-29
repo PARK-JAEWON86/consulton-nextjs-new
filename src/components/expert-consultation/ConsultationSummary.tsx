@@ -49,10 +49,42 @@ export default function ConsultationSummary({
     setRating(value);
   };
 
-  const handleSubmitReview = () => {
-    // 리뷰 제출 로직
-    console.log("리뷰 제출:", { rating, review });
-    setShowReviewForm(false);
+  const handleSubmitReview = async () => {
+    try {
+      // 리뷰 제출 로직
+      console.log("리뷰 제출:", { rating, review });
+      
+      // 여기에 실제 리뷰 API 호출 로직을 추가할 수 있습니다
+      // const response = await fetch('/api/reviews', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({
+      //     consultationId: consultation.id,
+      //     expertId: consultation.expertId,
+      //     rating,
+      //     content: review,
+      //     // 기타 필요한 데이터
+      //   })
+      // });
+      
+      // 리뷰 제출 성공 시 전문가 데이터 업데이트 이벤트 발생
+      window.dispatchEvent(new CustomEvent('expertDataUpdated', {
+        detail: { 
+          expertId: consultation.id,
+          action: 'reviewSubmitted',
+          rating,
+          review 
+        }
+      }));
+      
+      setShowReviewForm(false);
+      
+      // 성공 메시지 표시
+      alert('리뷰가 성공적으로 제출되었습니다!');
+    } catch (error) {
+      console.error('리뷰 제출 실패:', error);
+      alert('리뷰 제출에 실패했습니다. 다시 시도해주세요.');
+    }
   };
 
   const handleDownloadTranscript = () => {

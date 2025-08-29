@@ -20,11 +20,21 @@ export { getExtendedCategories, getExtendedAgeGroups, getExtendedDurations } fro
 // 통계 관련
 export * from './stats';
 
-// 게시글 관련
-export * from './posts';
-
-// 리뷰 관련 - 명시적으로 export하여 중복 방지
-export { reviews, dummyReviews, type DummyReview } from './reviews';
+// 리뷰 및 커뮤니티 게시글 관련 - 통합된 데이터
+export { 
+  reviews, 
+  dummyReviews, 
+  type DummyReview,
+  communityPosts,
+  type CommunityPost,
+  getPostsByType,
+  getPostsByCategory,
+  sortPosts,
+  getCategoriesWithCount,
+  getReviewsByExpert,
+  getCommunityReviewsByExpert,
+  getExpertFeedback
+} from './reviews';
 
 // 더미 데이터 사용 여부를 확인하는 플래그
 export const USING_DUMMY_DATA = false;

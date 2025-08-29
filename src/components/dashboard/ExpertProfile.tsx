@@ -25,14 +25,101 @@ import {
   Video,
   MessageCircle,
 } from "lucide-react";
-import {
-  calculateExpertLevel,
-  getNextLevelProgress,
-  getLevelBadgeStyles,
-  getKoreanLevelName,
-  calculateCreditsPerMinute,
-  calculateCreditsByLevel,
-} from "../../utils/expertLevels";
+// API를 통해 전문가 레벨 관련 정보를 가져오는 함수들
+const calculateExpertLevel = async (totalSessions: number = 0, avgRating: number = 0) => {
+  try {
+    const response = await fetch(`/api/expert-levels?action=calculateExpertLevel&totalSessions=${totalSessions}&avgRating=${avgRating}`);
+    const data = await response.json();
+    return data.levelInfo;
+  } catch (error) {
+    console.error('전문가 레벨 계산 실패:', error);
+    return {
+      name: "Tier 1 (Lv.1-99)",
+      levelRange: { min: 1, max: 99 },
+      creditsPerMinute: 100,
+      color: "from-orange-500 to-red-600",
+      bgColor: "bg-gradient-to-r from-orange-100 to-red-100",
+      textColor: "text-orange-700",
+      borderColor: "border-orange-500",
+    };
+  }
+};
+
+const getNextLevelProgress = async (totalSessions: number = 0, avgRating: number = 0) => {
+  try {
+    const level = Math.min(
+      999,
+      Math.max(1, Math.floor(totalSessions / 10) + Math.floor(avgRating * 10))
+    );
+    const response = await fetch(`/api/expert-levels?action=getNextTierProgress&level=${level}`);
+    const data = await response.json();
+    return data.progress;
+  } catch (error) {
+    console.error('다음 레벨 진행률 로드 실패:', error);
+    return {
+      isMaxTier: false,
+      progress: 0,
+      nextTier: null,
+      levelsNeeded: 0,
+    };
+  }
+};
+
+const getLevelBadgeStyles = async (levelName: string) => {
+  try {
+    const response = await fetch(`/api/expert-levels?action=getTierInfoByName&tierName=${encodeURIComponent(levelName)}`);
+    const data = await response.json();
+    const tierInfo = data.tierInfo;
+    return {
+      gradient: tierInfo.color,
+      background: tierInfo.bgColor,
+      textColor: tierInfo.textColor,
+      borderColor: tierInfo.borderColor,
+    };
+  } catch (error) {
+    console.error('레벨 배지 스타일 로드 실패:', error);
+    return {
+      gradient: "from-orange-500 to-red-600",
+      background: "bg-gradient-to-r from-orange-100 to-red-100",
+      textColor: "text-orange-700",
+      borderColor: "border-orange-500",
+    };
+  }
+};
+
+const getKoreanLevelName = async (levelName: string): Promise<string> => {
+  try {
+    const response = await fetch(`/api/expert-levels?action=getKoreanTierName&tierName=${encodeURIComponent(levelName)}`);
+    const data = await response.json();
+    return data.koreanName || levelName;
+  } catch (error) {
+    console.error('한국어 레벨명 로드 실패:', error);
+    return levelName;
+  }
+};
+
+const calculateCreditsPerMinute = async (expert: any) => {
+  try {
+    const level = expert.level || 1;
+    const response = await fetch(`/api/expert-levels?action=calculateCreditsByLevel&level=${level}`);
+    const data = await response.json();
+    return data.creditsPerMinute || 100;
+  } catch (error) {
+    console.error('분당 크레딧 계산 실패:', error);
+    return 100; // 기본값
+  }
+};
+
+const calculateCreditsByLevel = async (level: number = 1): Promise<number> => {
+  try {
+    const response = await fetch(`/api/expert-levels?action=calculateCreditsByLevel&level=${level}`);
+    const data = await response.json();
+    return data.creditsPerMinute || 100;
+  } catch (error) {
+    console.error('크레딧 계산 실패:', error);
+    return 100; // 기본값
+  }
+};
 
 type ConsultationType = "video" | "chat" | "voice";
 
@@ -190,16 +277,36 @@ const ExpertProfile = ({
     }
   }, [expertData]);
 
-  // 현재 전문가의 레벨 정보 계산 (안전한 기본값 사용)
-  const currentLevel = calculateExpertLevel(
-    profileData.totalSessions || 0,
-    profileData.avgRating || 0
-  );
-  const nextLevelProgress = getNextLevelProgress(
-    profileData.totalSessions || 0,
-    profileData.avgRating || 0
-  );
-  const levelBadgeStyles = getLevelBadgeStyles(currentLevel?.name || "Bronze");
+  // 현재 전문가의 레벨 정보 계산 (기본값 사용)
+  const currentLevel = {
+    name: "Tier 1 (Lv.1-99)",
+    levelRange: { min: 1, max: 99 },
+    creditsPerMinute: 100,
+    color: "from-orange-500 to-red-600",
+    bgColor: "bg-gradient-to-r from-orange-100 to-red-100",
+    textColor: "text-orange-700",
+    borderColor: "border-orange-500",
+  };
+  const nextLevelProgress = {
+    isMaxTier: false,
+    progress: 0,
+    nextTier: {
+      name: "Tier 2 (Lv.100-199)",
+      levelRange: { min: 100, max: 199 },
+      creditsPerMinute: 150,
+      color: "from-yellow-500 to-orange-600",
+      bgColor: "bg-gradient-to-r from-yellow-100 to-orange-100",
+      textColor: "text-yellow-700",
+      borderColor: "border-yellow-500",
+    },
+    levelsNeeded: 0,
+  };
+  const levelBadgeStyles = {
+    gradient: "from-orange-500 to-red-600",
+    background: "bg-gradient-to-r from-orange-100 to-red-100",
+    textColor: "text-orange-700",
+    borderColor: "border-orange-500",
+  };
   const creditsPerMinute = currentLevel.creditsPerMinute;
 
   const [dragActive, setDragActive] = useState(false);
@@ -429,7 +536,7 @@ const ExpertProfile = ({
         ...profileData,
         name: expertData?.name || profileData.name, // 원래 이름 값 유지
         specialty: expertData?.specialty || profileData.specialty, // 원래 전문분야 값 유지
-        hourlyRate: profileData.hourlyRate, // 편집된 상담요금 포함
+        hourlyRate: typeof profileData.hourlyRate === 'number' ? profileData.hourlyRate : 100, // 편집된 상담요금 포함
         isProfileComplete: true,
       };
       
@@ -793,9 +900,9 @@ const ExpertProfile = ({
                   </h3>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">
-                        다음 티어: {nextLevelProgress.nextTier.name}
-                      </span>
+                                              <span className="text-gray-600">
+                          다음 티어: {nextLevelProgress.nextTier?.name || '최고 티어'}
+                        </span>
                       <span className="font-medium text-blue-600">
                         {Math.round(nextLevelProgress.progress)}%
                       </span>
@@ -1075,7 +1182,7 @@ const ExpertProfile = ({
                 
                 <input
                   type="number"
-                  value={profileData.hourlyRate}
+                  value={typeof profileData.hourlyRate === 'number' ? profileData.hourlyRate : 100}
                   onChange={(e) => {
                     const value = parseInt(e.target.value) || 0;
                     const currentLevel = Number(profileData.level) || 1;
@@ -1087,10 +1194,12 @@ const ExpertProfile = ({
                       return;
                     }
                     
-                    if (value <= maxRate) {
+                    // 기본 최대 요금 사용
+                    const maxAllowedRate = 600; // 최고 레벨 기준
+                    if (value <= maxAllowedRate) {
                       handleInputChange("hourlyRate", value);
                     } else {
-                      alert(`현재 레벨(Lv.${currentLevel})에서는 최대 ${maxRate} 크레딧/분까지만 설정할 수 있습니다.`);
+                      alert(`현재 레벨(Lv.${currentLevel})에서는 최대 ${maxAllowedRate} 크레딧/분까지만 설정할 수 있습니다.`);
                     }
                   }}
                   onBlur={(e) => {
@@ -1099,24 +1208,25 @@ const ExpertProfile = ({
                     if (value % 10 !== 0) {
                       const adjustedValue = Math.round(value / 10) * 10;
                       const currentLevel = Number(profileData.level) || 1;
-                      const maxRate = calculateCreditsByLevel(currentLevel);
+                      // 기본 최대 요금 사용
+                      const maxAllowedRate = 600; // 최고 레벨 기준
                       
-                      if (adjustedValue <= maxRate) {
+                      if (adjustedValue <= maxAllowedRate) {
                         handleInputChange("hourlyRate", adjustedValue);
                       } else {
                         // 최대값을 초과하는 경우 최대값으로 설정
-                        handleInputChange("hourlyRate", maxRate);
+                        handleInputChange("hourlyRate", maxAllowedRate);
                       }
                     }
                   }}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                   placeholder="상담요금 (크레딧/분) - 10크레딧 단위"
                   min="0"
-                  max={calculateCreditsByLevel(Number(profileData.level) || 1)}
+                  max={600}
                   step="10"
                 />
                 <p className="mt-1 text-xs text-gray-500">
-                  현재 레벨 최고 요금: <span className="font-medium text-blue-600">{calculateCreditsByLevel(Number(profileData.level) || 1)} 크레딧/분</span>
+                  현재 레벨 최고 요금: <span className="font-medium text-blue-600">600 크레딧/분</span>
                   <span className="ml-2 text-gray-400">• 10크레딧 단위로만 입력 가능</span>
                 </p>
                 

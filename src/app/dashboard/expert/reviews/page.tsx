@@ -130,21 +130,23 @@ export default function ExpertReviewsPage() {
         setReviews(transformedReviews);
       } else {
         // API 실패 시 더미 데이터에서 해당 전문가의 리뷰만 필터링
-        const { dummyReviews } = await import('@/data/dummy/reviews');
-        const expertReviews = dummyReviews.filter(review => review.expertId === user?.id);
+        const { getReviewsByExpert } = await import('@/data/dummy/reviews');
+        const expertIdString = `expert-${user?.id?.toString().padStart(3, '0')}`;
+        const expertReviews = getReviewsByExpert(expertIdString);
         
-        const transformedReviews = expertReviews.map((dummyReview) => ({
+                const transformedReviews = expertReviews.map((dummyReview) => ({
           id: parseInt(dummyReview.id),
+          expertId: dummyReview.expertId,
           userId: dummyReview.userId,
           userName: dummyReview.userName,
           userAvatar: dummyReview.userAvatar,
           rating: dummyReview.rating,
           comment: dummyReview.content,
           consultationTopic: dummyReview.category,
-          consultationType: 'video',
+          consultationType: 'video' as const,
           createdAt: dummyReview.date,
           isVerified: dummyReview.isVerified,
-          expertReply: dummyReview.expertReply || null
+          expertReply: dummyReview.expertReply || undefined
         }));
         
         setReviews(transformedReviews);
@@ -152,21 +154,23 @@ export default function ExpertReviewsPage() {
     } catch (error) {
       console.error('전문가 리뷰 로드 실패:', error);
       // 에러 시 더미 데이터 사용
-      const { dummyReviews } = await import('@/data/dummy/reviews');
-      const expertReviews = dummyReviews.filter(review => review.expertId === user?.id);
+      const { getReviewsByExpert } = await import('@/data/dummy/reviews');
+      const expertIdString = `expert-${user?.id?.toString().padStart(3, '0')}`;
+      const expertReviews = getReviewsByExpert(expertIdString);
       
       const transformedReviews = expertReviews.map((dummyReview) => ({
         id: parseInt(dummyReview.id),
+        expertId: dummyReview.expertId,
         userId: dummyReview.userId,
         userName: dummyReview.userName,
         userAvatar: dummyReview.userAvatar,
         rating: dummyReview.rating,
         comment: dummyReview.content,
         consultationTopic: dummyReview.category,
-        consultationType: 'video',
+        consultationType: 'video' as const,
         createdAt: dummyReview.date,
         isVerified: dummyReview.isVerified,
-        expertReply: dummyReview.expertReply || null
+                  expertReply: dummyReview.expertReply || undefined
       }));
       
       setReviews(transformedReviews);
