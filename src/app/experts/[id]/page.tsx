@@ -114,6 +114,9 @@ export default function ExpertProfilePage() {
     specialtyRanking?: number;
     specialtyTotalExperts?: number;
     specialty?: string;
+    // 레벨 관련 필드 추가
+    level?: number;
+    tierInfo?: any;
   } | null>(null);
 
   // 랭킹 탭 상태
@@ -294,6 +297,7 @@ export default function ExpertProfilePage() {
       const result = await response.json();
       if (result.success) {
         setExpertStats(result.data);
+        console.log('전문가 통계 로드 성공:', result.data);
       }
     } catch (error) {
       console.error('전문가 통계 로드 실패:', error);
@@ -961,6 +965,53 @@ export default function ExpertProfilePage() {
                         <span>{expertStats?.repeatClients || expert.repeatClients}명 재방문</span>
                       </div>
                     </div>
+
+                    {/* 랭킹 점수 및 레벨 정보 */}
+                    {expertStats && (
+                      <div className="pt-4 border-t border-gray-100">
+                        <div className="grid grid-cols-2 gap-4">
+                          {/* 랭킹 점수 */}
+                          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-100">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-blue-700">랭킹 점수</p>
+                                <p className="text-2xl font-bold text-blue-900">
+                                  {expertStats.rankingScore || 0}
+                                </p>
+                                <p className="text-xs text-blue-600">3자리 점수 체계</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm text-blue-600">순위</p>
+                                <p className="text-lg font-semibold text-blue-900">
+                                  {expertStats.ranking ? `#${expertStats.ranking}` : '계산 중...'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 레벨 정보 */}
+                          <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg border border-purple-100">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-purple-700">전문가 레벨</p>
+                                <p className="text-2xl font-bold text-purple-900">
+                                  Lv.{expertStats.level || 0}
+                                </p>
+                                <p className="text-xs text-purple-600">
+                                  {expertStats.tierInfo?.name || '티어 정보 로딩 중...'}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm text-purple-600">크레딧</p>
+                                <p className="text-lg font-semibold text-purple-900">
+                                  {expertStats.tierInfo?.creditsPerMinute || 0}/분
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* 상담 방식과 구사 언어 */}
                     <div className="pt-4 border-t border-gray-100">

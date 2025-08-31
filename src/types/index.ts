@@ -208,6 +208,21 @@ export interface ExpertProfile {
     description: string;
   }>;
   reschedulePolicy?: string;
+  
+  // 랭킹 및 레벨 관련 필드들
+  rankingScore?: number;
+  ranking?: number;
+  level?: number;
+  tierInfo?: {
+    name: string;
+    levelRange: { min: number; max: number };
+    scoreRange: { min: number; max: number };
+    creditsPerMinute: number;
+    color: string;
+    bgColor: string;
+    textColor: string;
+    borderColor: string;
+  };
 }
 
 // 기존 Expert 인터페이스는 호환성을 위해 유지

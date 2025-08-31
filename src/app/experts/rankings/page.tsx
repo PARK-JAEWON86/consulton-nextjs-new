@@ -12,6 +12,7 @@ import {
   Search,
   ArrowLeft
 } from "lucide-react";
+import { dummyExpertStats, updateAllRankingScores } from '@/data/dummy/expert-stats';
 
 interface RankingItem {
   expertId: string;
@@ -24,6 +25,10 @@ interface RankingItem {
   specialty?: string;
   specialtyRanking?: number;
   specialtyTotalExperts?: number;
+  // 새로운 필드들 추가
+  level?: number;
+  tierInfo?: any;
+  ranking?: number;
 }
 
 interface ExpertProfile {
@@ -54,36 +59,38 @@ export default function ExpertRankingsPage() {
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>('');
   const [selectedTier, setSelectedTier] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<'ranking' | 'score' | 'sessions' | 'rating' | 'reviews' | 'likes'>('ranking');
+  const [sortBy, setSortBy] = useState<'ranking' | 'score' | 'level' | 'sessions' | 'rating' | 'reviews' | 'likes'>('ranking');
+  const [showAllCategories, setShowAllCategories] = useState<boolean>(false);
 
   // 전문 분야 목록 (API에서 로드)
   const [categories, setCategories] = useState<Category[]>([]);
 
-  // 레벨 티어 목록
+  // 레벨 티어 목록 (긍정적이고 동기부여가 되는 티어 이름)
   const tierOptions = [
     { id: 'all', name: '전체', range: '모든 레벨' },
-    { id: 'bronze', name: '브론즈', range: 'Lv.1-50' },
-    { id: 'silver', name: '실버', range: 'Lv.51-100' },
-    { id: 'gold', name: '골드', range: 'Lv.101-200' },
-    { id: 'platinum', name: '플래티넘', range: 'Lv.201-300' },
-    { id: 'diamond', name: '다이아몬드', range: 'Lv.301-500' },
-    { id: 'master', name: '마스터', range: 'Lv.501+' }
+    { id: 'freshmind', name: 'Fresh Mind (신예)', range: 'Lv.1-99' },
+    { id: 'emergingtalent', name: 'Emerging Talent (신진)', range: 'Lv.100-199' },
+    { id: 'risingstar', name: 'Rising Star (신성)', range: 'Lv.200-299' },
+    { id: 'core', name: 'Core (핵심)', range: 'Lv.300-399' },
+    { id: 'skilled', name: 'Skilled (숙련)', range: 'Lv.400-499' },
+    { id: 'professional', name: 'Professional (프로페셔널)', range: 'Lv.500-599' },
+    { id: 'senior', name: 'Senior (시니어)', range: 'Lv.600-699' },
+    { id: 'expert', name: 'Expert (전문가)', range: 'Lv.700-799' },
+    { id: 'master', name: 'Master (마스터)', range: 'Lv.800-899' },
+    { id: 'grandmaster', name: 'Grand Master (그랜드마스터)', range: 'Lv.900-998' },
+    { id: 'legend', name: 'Legend (전설)', range: 'Lv.999' }
   ];
 
   // 카테고리 목록 로드
   const loadCategories = async () => {
     try {
       setIsCategoriesLoading(true);
-      console.log('카테고리 로드 시작...');
       const response = await fetch('/api/categories');
       const result = await response.json();
-      console.log('카테고리 API 응답:', result);
       if (result.success) {
         const categoriesData = result.data || [];
-        console.log('로드된 카테고리:', categoriesData);
         setCategories(categoriesData);
       } else {
-        console.error('카테고리 로드 실패:', result.error);
         // 기본 카테고리 제공
         const defaultCategories = [
           { id: 'psychology', name: '심리상담', description: '스트레스, 우울, 불안', icon: 'Brain', isActive: true, order: 1 },
@@ -92,11 +99,9 @@ export default function ExpertRankingsPage() {
           { id: 'health', name: '건강상담', description: '영양, 운동, 건강관리', icon: 'Heart', isActive: true, order: 4 },
           { id: 'education', name: '교육상담', description: '학습법, 입시, 유학', icon: 'BookOpen', isActive: true, order: 5 }
         ];
-        console.log('기본 카테고리 사용:', defaultCategories);
         setCategories(defaultCategories);
       }
     } catch (error) {
-      console.error('카테고리 로드 실패:', error);
       // 기본 카테고리 제공
       const defaultCategories = [
         { id: 'psychology', name: '심리상담', description: '스트레스, 우울, 불안', icon: 'Brain', isActive: true, order: 1 },
@@ -105,7 +110,6 @@ export default function ExpertRankingsPage() {
         { id: 'health', name: '건강상담', description: '영양, 운동, 건강관리', icon: 'Heart', isActive: true, order: 4 },
         { id: 'education', name: '교육상담', description: '학습법, 입시, 유학', icon: 'BookOpen', isActive: true, order: 5 }
       ];
-      console.log('기본 카테고리 사용 (catch):', defaultCategories);
       setCategories(defaultCategories);
     } finally {
       setIsCategoriesLoading(false);
@@ -121,14 +125,18 @@ export default function ExpertRankingsPage() {
         setAllExpertProfiles(result.data.profiles || []);
       }
     } catch (error) {
-      console.error('전문가 프로필 로드 실패:', error);
+      // 에러 발생 시 조용히 처리
     }
   };
 
-  // 랭킹 목록 로드
-  const loadRankingList = async (type: 'overall' | 'specialty', specialty?: string) => {
+  // 랭킹 목록 로드 (더미데이터 + API 계산 데이터 사용)
+  const loadRankingList = async (type: 'overall' | 'specialty' | 'tier', specialty?: string, tier?: string) => {
     setIsLoading(true);
     try {
+      // 더미데이터에서 랭킹 점수 계산
+      const updatedStats = updateAllRankingScores();
+      
+      // API에서 추가 정보 가져오기
       let url = `/api/expert-stats?rankingType=${type}`;
       if (type === 'specialty' && specialty) {
         url += `&specialty=${encodeURIComponent(specialty)}`;
@@ -138,26 +146,119 @@ export default function ExpertRankingsPage() {
       const result = await response.json();
       
       if (result.success) {
-        const rankings = result.data.rankings || [];
+        const apiRankings = result.data.rankings || [];
         
-        // 전문가 이름과 전문분야 정보 추가
-        const rankingsWithNames = rankings.map((ranking: any) => {
-          const expertProfile = allExpertProfiles.find(exp => exp.id === ranking.expertId);
+        // 더미데이터와 API 데이터를 병합
+        const mergedRankings = updatedStats.map((stats, index) => {
+          const apiData = apiRankings.find((api: any) => api.expertId === stats.expertId);
+          const expertProfile = allExpertProfiles.find(exp => exp.id.toString() === stats.expertId);
+          
+          // API에서 계산된 레벨과 티어 정보를 우선 사용
+          const finalLevel = apiData?.level || 1;
+          const finalTierInfo = apiData?.tierInfo || null;
+          
           return {
-            ...ranking,
-            expertName: expertProfile?.fullName || `전문가 ${ranking.expertId}`,
-            specialty: expertProfile?.specialty || ranking.specialty
+            expertId: stats.expertId,
+            expertName: expertProfile?.fullName || `전문가 ${stats.expertId}`,
+            rankingScore: stats.rankingScore || 0,
+            totalSessions: stats.totalSessions,
+            avgRating: stats.avgRating,
+            reviewCount: stats.reviewCount,
+            likeCount: stats.likeCount,
+            specialty: stats.specialty,
+            // API에서 계산된 레벨 우선 사용
+            level: finalLevel,
+            ranking: apiData?.ranking || index + 1,
+            tierInfo: finalTierInfo,
+            specialtyRanking: apiData?.specialtyRanking || 0,
+            specialtyTotalExperts: apiData?.specialtyTotalExperts || 0
           };
         });
         
-        setRankingList(rankingsWithNames);
+        // 레벨 티어별 필터링 (tier 타입일 때)
+        let filteredRankings = mergedRankings;
+        if (type === 'tier' && tier && tier !== 'all') {
+          const selectedTierOption = tierOptions.find(t => t.id === tier);
+          
+          if (selectedTierOption) {
+            const [minLevel, maxLevel] = selectedTierOption.range.replace('Lv.', '').split('-').map(Number);
+            
+            filteredRankings = mergedRankings.filter(ranking => {
+              const level = ranking.level || 0;
+              const isInRange = maxLevel ? (level >= minLevel && level <= maxLevel) : (level === minLevel);
+              
+              return isInRange;
+            });
+          }
+        }
+        
+        // 랭킹 점수로 정렬
+        const sortedRankings = filteredRankings.sort((a, b) => (b.rankingScore || 0) - (a.rankingScore || 0));
+        
+        // 순위 재계산
+        const finalRankings = sortedRankings.map((ranking, index) => ({
+          ...ranking,
+          ranking: index + 1
+        }));
+        
+        setRankingList(finalRankings);
       } else {
-        console.error('랭킹 목록 로드 실패:', result.error);
-        setRankingList([]);
+        // API 실패 시 더미데이터만 사용
+        const fallbackRankings = updatedStats.map((stats, index) => {
+          const expertProfile = allExpertProfiles.find(exp => exp.id.toString() === stats.expertId);
+          return {
+            expertId: stats.expertId,
+            expertName: expertProfile?.fullName || `전문가 ${stats.expertId}`,
+            rankingScore: stats.rankingScore || 0,
+            totalSessions: stats.totalSessions,
+            avgRating: stats.avgRating,
+            reviewCount: stats.reviewCount,
+            likeCount: stats.likeCount,
+            specialty: stats.specialty,
+            ranking: index + 1,
+            level: stats.level || 1, // 더미데이터 기본값
+            tierInfo: null,
+            specialtyRanking: 0,
+            specialtyTotalExperts: 0
+          };
+        });
+        
+        const sortedFallback = fallbackRankings.sort((a, b) => (b.rankingScore || 0) - (a.rankingScore || 0));
+        const finalFallback = sortedFallback.map((ranking, index) => ({
+          ...ranking,
+          ranking: index + 1
+        }));
+        
+        setRankingList(finalFallback);
       }
     } catch (error) {
-      console.error('랭킹 목록 로드 실패:', error);
-      setRankingList([]);
+      // 에러 시에도 더미데이터 사용
+        const errorRankings = updateAllRankingScores().map((stats, index) => {
+          const expertProfile = allExpertProfiles.find(exp => exp.id.toString() === stats.expertId);
+        return {
+          expertId: stats.expertId,
+          expertName: expertProfile?.fullName || `전문가 ${stats.expertId}`,
+          rankingScore: stats.rankingScore || 0,
+          totalSessions: stats.totalSessions,
+          avgRating: stats.avgRating,
+          reviewCount: stats.reviewCount,
+          likeCount: stats.likeCount,
+          specialty: stats.specialty,
+          ranking: index + 1,
+                      level: stats.level || 1, // 더미데이터 기본값
+          tierInfo: null,
+          specialtyRanking: 0,
+          specialtyTotalExperts: 0
+        };
+      });
+      
+      const sortedError = errorRankings.sort((a, b) => (b.rankingScore || 0) - (a.rankingScore || 0));
+      const finalError = sortedError.map((ranking, index) => ({
+        ...ranking,
+        ranking: index + 1
+      }));
+      
+              setRankingList(finalError);
     } finally {
       setIsLoading(false);
     }
@@ -168,27 +269,26 @@ export default function ExpertRankingsPage() {
     loadCategories();
     loadExpertProfiles();
     loadExpertLevels();
-  }, []);
+    
+    // 더미데이터 초기화 및 랭킹 로드
+    if (allExpertProfiles.length > 0) {
+      loadRankingList('overall');
+    }
+  }, [allExpertProfiles.length]);
 
   // 탭 변경 시 랭킹 목록 로드
   useEffect(() => {
-    console.log('탭 변경 감지:', { activeTab, categoriesLength: categories.length, selectedSpecialty, selectedTier });
     if (allExpertProfiles.length > 0) {
       if (activeTab === 'overall') {
-        console.log('전체 랭킹 로드');
         loadRankingList('overall');
       } else if (activeTab === 'specialty') {
-        console.log('분야별 랭킹 탭 선택됨');
         // 분야별 랭킹 탭을 선택했을 때 기본 카테고리 선택
         if (categories.length > 0 && !selectedSpecialty) {
-          console.log('기본 카테고리 선택:', categories[0].name);
           setSelectedSpecialty(categories[0].name);
         } else if (selectedSpecialty) {
-          console.log('선택된 전문분야로 랭킹 로드:', selectedSpecialty);
           loadRankingList('specialty', selectedSpecialty);
         }
       } else if (activeTab === 'tier') {
-        console.log('레벨 티어별 랭킹 탭 선택됨');
         // 레벨 티어별 랭킹은 전체 랭킹을 로드하고 클라이언트에서 필터링
         loadRankingList('overall');
       }
@@ -206,7 +306,6 @@ export default function ExpertRankingsPage() {
   useEffect(() => {
     if (activeTab === 'tier' && selectedTier && allExpertProfiles.length > 0) {
       // 티어 변경 시에는 이미 로드된 전체 랭킹을 사용하므로 추가 로드 불필요
-      console.log('선택된 티어 변경:', selectedTier);
     }
   }, [selectedTier, activeTab, allExpertProfiles]);
 
@@ -230,7 +329,7 @@ export default function ExpertRankingsPage() {
         setExpertLevels(levelsMap);
       }
     } catch (error) {
-      console.error('전문가 레벨 로드 실패:', error);
+      // 에러 발생 시 조용히 처리
     }
   };
 
@@ -267,11 +366,15 @@ export default function ExpertRankingsPage() {
     return true;
   });
 
-  // 정렬된 랭킹 목록
+  // 정렬된 랭킹 목록 (더미데이터 랭킹 점수 우선)
   const sortedRankings = [...filteredRankings].sort((a, b) => {
     switch (sortBy) {
+      case 'ranking':
+        return (a.ranking || 0) - (b.ranking || 0);
       case 'score':
         return (b.rankingScore || 0) - (a.rankingScore || 0);
+      case 'level':
+        return (b.level || 0) - (a.level || 0);
       case 'sessions':
         return b.totalSessions - a.totalSessions;
       case 'rating':
@@ -281,7 +384,7 @@ export default function ExpertRankingsPage() {
       case 'likes':
         return (b.likeCount || 0) - (a.likeCount || 0);
       default:
-        return 0; // ranking은 이미 API에서 정렬됨
+        return (a.ranking || 0) - (b.ranking || 0); // 기본값은 랭킹 순
     }
   });
 
@@ -399,7 +502,15 @@ export default function ExpertRankingsPage() {
           {/* 탭 */}
           <div className="flex space-x-1 mb-6 bg-gray-100 rounded-lg p-1">
             <button
-              onClick={() => setActiveTab('overall')}
+              onClick={() => {
+                setActiveTab('overall');
+                setSelectedSpecialty('');
+                setSelectedTier('all');
+                setSearchQuery('');
+                setSortBy('ranking');
+                setShowAllCategories(false);
+                loadRankingList('overall');
+              }}
               className={`flex-1 py-3 px-4 text-sm font-medium rounded-md transition-colors ${
                 activeTab === 'overall'
                   ? 'bg-white text-blue-600 shadow-sm'
@@ -409,7 +520,18 @@ export default function ExpertRankingsPage() {
               전체 랭킹
             </button>
             <button
-              onClick={() => setActiveTab('specialty')}
+              onClick={() => {
+                setActiveTab('specialty');
+                setSelectedSpecialty('');
+                setSelectedTier('all');
+                setSearchQuery('');
+                setSortBy('ranking');
+                setShowAllCategories(false);
+                if (categories.length > 0) {
+                  setSelectedSpecialty(categories[0].name);
+                  loadRankingList('specialty', categories[0].name);
+                }
+              }}
               className={`flex-1 py-3 px-4 text-sm font-medium rounded-md transition-colors ${
                 activeTab === 'specialty'
                   ? 'bg-white text-blue-600 shadow-sm'
@@ -419,7 +541,16 @@ export default function ExpertRankingsPage() {
               분야별 랭킹
             </button>
             <button
-              onClick={() => setActiveTab('tier')}
+              onClick={() => {
+                setActiveTab('tier');
+                setSelectedSpecialty('');
+                setSelectedTier('all');
+                setSearchQuery('');
+                setSortBy('ranking');
+                setShowAllCategories(false);
+                // 티어 탭 선택 시 전체 데이터 로드
+                loadRankingList('tier', undefined, 'all');
+              }}
               className={`flex-1 py-3 px-4 text-sm font-medium rounded-md transition-colors ${
                 activeTab === 'tier'
                   ? 'bg-white text-blue-600 shadow-sm'
@@ -434,30 +565,70 @@ export default function ExpertRankingsPage() {
           {activeTab === 'specialty' && (
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">전문 분야 선택</label>
-              <div className="flex flex-wrap gap-2">
-                {isCategoriesLoading ? (
-                  <div className="flex items-center text-gray-500">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-                    카테고리 로딩 중...
+              <div className="space-y-3">
+                {/* 첫 줄: 주요 카테고리 (최대 5개) */}
+                <div className="flex flex-wrap gap-2">
+                  {isCategoriesLoading ? (
+                    <div className="flex items-center text-gray-500">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                      카테고리 로딩 중...
+                    </div>
+                  ) : categories.length === 0 ? (
+                    <div className="text-gray-500 text-sm">
+                      카테고리를 불러올 수 없습니다.
+                    </div>
+                  ) : (
+                    <>
+                      {categories.slice(0, 5).map((category) => (
+                        <button
+                          key={category.id}
+                          onClick={() => {
+                            setSelectedSpecialty(category.name);
+                            loadRankingList('specialty', category.name);
+                          }}
+                          className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
+                            selectedSpecialty === category.name
+                              ? 'bg-blue-600 text-white border-blue-600'
+                              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          {category.name}
+                        </button>
+                      ))}
+                      
+                      {/* 더보기 버튼 (카테고리가 5개 이상일 때만) */}
+                      {categories.length > 5 && (
+                        <button
+                          onClick={() => setShowAllCategories(!showAllCategories)}
+                          className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100 transition-colors"
+                        >
+                          {showAllCategories ? '접기' : '더보기'}
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+                
+                {/* 두 번째 줄: 나머지 카테고리 (더보기 클릭 시) */}
+                {showAllCategories && categories.length > 5 && (
+                  <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-200">
+                    {categories.slice(5).map((category) => (
+                      <button
+                        key={category.id}
+                        onClick={() => {
+                          setSelectedSpecialty(category.name);
+                          loadRankingList('specialty', category.name);
+                        }}
+                        className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
+                          selectedSpecialty === category.name
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        {category.name}
+                      </button>
+                    ))}
                   </div>
-                ) : categories.length === 0 ? (
-                  <div className="text-gray-500 text-sm">
-                    카테고리를 불러올 수 없습니다.
-                  </div>
-                ) : (
-                  categories.map((category) => (
-                    <button
-                      key={category.id}
-                      onClick={() => setSelectedSpecialty(category.name)}
-                      className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
-                        selectedSpecialty === category.name
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      {category.name}
-                    </button>
-                  ))
                 )}
               </div>
             </div>
@@ -471,7 +642,10 @@ export default function ExpertRankingsPage() {
                 {tierOptions.map((tier) => (
                   <button
                     key={tier.id}
-                    onClick={() => setSelectedTier(tier.id)}
+                    onClick={() => {
+                      setSelectedTier(tier.id);
+                      loadRankingList('tier', undefined, tier.id);
+                    }}
                     className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
                       selectedTier === tier.id
                         ? 'bg-blue-600 text-white border-blue-600'
@@ -510,6 +684,7 @@ export default function ExpertRankingsPage() {
               >
                 <option value="ranking">랭킹 순</option>
                 <option value="score">점수 순</option>
+                <option value="level">레벨 순</option>
                 <option value="sessions">상담 횟수 순</option>
                 <option value="rating">평점 순</option>
                 <option value="reviews">리뷰 순</option>
@@ -563,6 +738,7 @@ export default function ExpertRankingsPage() {
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       랭킹 점수
                     </th>
+
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -644,6 +820,8 @@ export default function ExpertRankingsPage() {
                           {item.rankingScore?.toFixed(1)}점
                         </div>
                       </td>
+                      
+
                     </tr>
                   ))}
                 </tbody>

@@ -340,7 +340,7 @@ const ExpertSearch = () => {
         const statsResults = await Promise.all(statsPromises);
         const validStats = statsResults.filter(result => result !== null);
         
-        // 통계 데이터로 전문가 정보 업데이트
+        // 통계 데이터로 전문가 정보 업데이트 (새로운 API 구조 반영)
         setAllExperts(prevExperts => 
           prevExperts.map(expert => {
             const stats = validStats.find(s => s?.expertId === expert.id)?.stats;
@@ -351,7 +351,13 @@ const ExpertSearch = () => {
                 avgRating: stats.avgRating || expert.avgRating,
                 rating: stats.avgRating || expert.rating,
                 reviewCount: stats.reviewCount || expert.reviewCount,
-                repeatClients: stats.repeatClients || expert.repeatClients
+                repeatClients: stats.repeatClients || expert.repeatClients,
+                // 새로운 필드들 추가
+                rankingScore: stats.rankingScore || 0,
+                level: stats.level || 0,
+                tierInfo: stats.tierInfo || null,
+                ranking: stats.ranking || 0,
+                specialty: stats.specialty || expert.specialty
               };
             }
             return expert;

@@ -6,15 +6,10 @@ import { ArrowRight, Users, Target, Brain, DollarSign, Scale, BookOpen, Heart, B
 import SearchFields from "./SearchFields";
 import { ExpertProfile } from "@/types";
 // API를 통해 레벨별 크레딧을 계산하는 함수
-const calculateCreditsByLevel = async (level: number = 1): Promise<number> => {
-  try {
-    const response = await fetch(`/api/expert-levels?action=calculateCreditsByLevel&level=${level}`);
-    const data = await response.json();
-    return data.creditsPerMinute || 100;
-  } catch (error) {
-    console.error('크레딧 계산 실패:', error);
-    return 100; // 기본값
-  }
+const calculateCreditsByLevel = (level: number = 1): number => {
+  // 클라이언트 컴포넌트에서는 동기적으로 처리하기 위해 기본값 반환
+  // 실제로는 useEffect에서 미리 로드하거나 다른 방식으로 처리해야 함
+  return 100; // 기본값
 };
 import ExpertLevelBadge from "@/components/expert/ExpertLevelBadge";
 

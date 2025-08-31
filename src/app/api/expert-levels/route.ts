@@ -20,7 +20,7 @@ export interface ExpertLevelLike {
 // 점수 기반 레벨 체계 정의
 const LEVELS: LevelTier[] = [
   {
-    name: "Tier 10 (Lv.999)",
+    name: "Legend (전설)",
     levelRange: { min: 999, max: 999 },
     scoreRange: { min: 950, max: 999 },
     creditsPerMinute: 600, // 6,000원/분 = 600크레딧/분 (특별 최고 요금)
@@ -30,7 +30,7 @@ const LEVELS: LevelTier[] = [
     borderColor: "border-red-500",
   },
   {
-    name: "Tier 10 (Lv.900-998)",
+    name: "Grand Master (그랜드마스터)",
     levelRange: { min: 900, max: 998 },
     scoreRange: { min: 900, max: 949.99 },
     creditsPerMinute: 500, // 5,000원/분 = 500크레딧/분 (고정 요금)
@@ -40,7 +40,7 @@ const LEVELS: LevelTier[] = [
     borderColor: "border-purple-500",
   },
   {
-    name: "Tier 9 (Lv.800-899)",
+    name: "Master (마스터)",
     levelRange: { min: 800, max: 899 },
     scoreRange: { min: 850, max: 899.99 },
     creditsPerMinute: 500, // 5,000원/분 = 500크레딧/분
@@ -50,7 +50,7 @@ const LEVELS: LevelTier[] = [
     borderColor: "border-indigo-500",
   },
   {
-    name: "Tier 8 (Lv.700-799)",
+    name: "Expert (전문가)",
     levelRange: { min: 700, max: 799 },
     scoreRange: { min: 800, max: 849.99 },
     creditsPerMinute: 450, // 4,500원/분 = 450크레딧/분
@@ -60,7 +60,7 @@ const LEVELS: LevelTier[] = [
     borderColor: "border-blue-500",
   },
   {
-    name: "Tier 7 (Lv.600-699)",
+    name: "Senior (시니어)",
     levelRange: { min: 600, max: 699 },
     scoreRange: { min: 750, max: 799.99 },
     creditsPerMinute: 400, // 4,000원/분 = 400크레딧/분
@@ -70,7 +70,7 @@ const LEVELS: LevelTier[] = [
     borderColor: "border-cyan-500",
   },
   {
-    name: "Tier 6 (Lv.500-599)",
+    name: "Professional (프로페셔널)",
     levelRange: { min: 500, max: 599 },
     scoreRange: { min: 700, max: 749.99 },
     creditsPerMinute: 350, // 3,500원/분 = 350크레딧/분
@@ -80,7 +80,7 @@ const LEVELS: LevelTier[] = [
     borderColor: "border-teal-500",
   },
   {
-    name: "Tier 5 (Lv.400-499)",
+    name: "Skilled (숙련)",
     levelRange: { min: 400, max: 499 },
     scoreRange: { min: 650, max: 699.99 },
     creditsPerMinute: 300, // 3,000원/분 = 300크레딧/분
@@ -90,7 +90,7 @@ const LEVELS: LevelTier[] = [
     borderColor: "border-green-500",
   },
   {
-    name: "Tier 4 (Lv.300-399)",
+    name: "Core (핵심)",
     levelRange: { min: 300, max: 399 },
     scoreRange: { min: 600, max: 649.99 },
     creditsPerMinute: 250, // 2,500원/분 = 250크레딧/분
@@ -100,7 +100,7 @@ const LEVELS: LevelTier[] = [
     borderColor: "border-emerald-500",
   },
   {
-    name: "Tier 3 (Lv.200-299)",
+    name: "Rising Star (신성)",
     levelRange: { min: 200, max: 299 },
     scoreRange: { min: 550, max: 599.99 },
     creditsPerMinute: 200, // 2,000원/분 = 200크레딧/분
@@ -110,7 +110,7 @@ const LEVELS: LevelTier[] = [
     borderColor: "border-lime-500",
   },
   {
-    name: "Tier 2 (Lv.100-199)",
+    name: "Emerging Talent (신진)",
     levelRange: { min: 100, max: 199 },
     scoreRange: { min: 500, max: 549.99 },
     creditsPerMinute: 150, // 1,500원/분 = 150크레딧/분
@@ -120,7 +120,7 @@ const LEVELS: LevelTier[] = [
     borderColor: "border-yellow-500",
   },
   {
-    name: "Tier 1 (Lv.1-99)",
+    name: "Fresh Mind (신예)",
     levelRange: { min: 1, max: 99 },
     scoreRange: { min: 0, max: 499.99 },
     creditsPerMinute: 100, // 1,000원/분 = 100크레딧/분 (최저 요금)
@@ -358,17 +358,17 @@ const calculateTierStatistics = (experts: ExpertLevelLike[] = []) => {
 
 const getKoreanTierName = (tierName: string): string => {
   const tierMap: Record<string, string> = {
-    "Tier 10 (Lv.999)": "티어 10 (Lv.999) - 최고 레벨",
-    "Tier 10 (Lv.900-998)": "티어 10 (Lv.900-998)",
-    "Tier 9 (Lv.800-899)": "티어 9 (Lv.800-899)",
-    "Tier 8 (Lv.700-799)": "티어 8 (Lv.700-799)",
-    "Tier 7 (Lv.600-699)": "티어 7 (Lv.600-699)",
-    "Tier 6 (Lv.500-599)": "티어 6 (Lv.500-599)",
-    "Tier 5 (Lv.400-499)": "티어 5 (Lv.400-499)",
-    "Tier 4 (Lv.300-399)": "티어 4 (Lv.300-399)",
-    "Tier 3 (Lv.200-299)": "티어 3 (Lv.200-299)",
-    "Tier 2 (Lv.100-199)": "티어 2 (Lv.100-199)",
-    "Tier 1 (Lv.1-99)": "티어 1 (Lv.1-99)",
+    "Legend (전설)": "전설 (Lv.999) - 최고 레벨",
+    "Grand Master (그랜드마스터)": "그랜드마스터 (Lv.900-998)",
+    "Master (마스터)": "마스터 (Lv.800-899)",
+    "Expert (전문가)": "전문가 (Lv.700-799)",
+    "Senior (시니어)": "시니어 (Lv.600-699)",
+    "Professional (프로페셔널)": "프로페셔널 (Lv.500-599)",
+    "Skilled (숙련)": "숙련 (Lv.400-499)",
+    "Core (핵심)": "핵심 (Lv.300-399)",
+    "Rising Star (신성)": "신성 (Lv.200-299)",
+    "Emerging Talent (신진)": "신진 (Lv.100-199)",
+    "Fresh Mind (신예)": "신예 (Lv.1-99)",
   };
   return tierMap[tierName] || tierName;
 };

@@ -72,7 +72,7 @@ export default function HomePage() {
 
   // 사용자 인증 상태 확인
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkAuth = () => {
       try {
         // 로컬 스토리지에서 사용자 정보 확인
         const storedUser = localStorage.getItem('consulton-user');
@@ -95,13 +95,18 @@ export default function HomePage() {
         }
         
         // API에서 앱 상태 로드
-        const response = await fetch('/api/app-state');
-        const result = await response.json();
-        if (result.success) {
-          setIsAuthenticated(result.data.isAuthenticated);
-          setCurrentUserId(result.data.userId || "");
-          console.log('API에서 인증 상태 확인:', { isAuthenticated: result.data.isAuthenticated, userId: result.data.userId });
-        }
+        fetch('/api/app-state')
+          .then(response => response.json())
+          .then(result => {
+            if (result.success) {
+              setIsAuthenticated(result.data.isAuthenticated);
+              setCurrentUserId(result.data.userId || "");
+              console.log('API에서 인증 상태 확인:', { isAuthenticated: result.data.isAuthenticated, userId: result.data.userId });
+            }
+          })
+          .catch(error => {
+            console.error('인증 상태 확인 실패:', error);
+          });
       } catch (error) {
         console.error('인증 상태 확인 실패:', error);
       }
@@ -112,29 +117,30 @@ export default function HomePage() {
 
   // 전문가 프로필 데이터 로드
   useEffect(() => {
-    const loadExpertProfiles = async () => {
-      try {
-        console.log('랜딩페이지: 전문가 프로필 로드 시작...');
-        
-        // 먼저 API 초기화 호출
-        console.log('랜딩페이지: API 초기화 호출 중...');
-        const initResponse = await fetch('/api/expert-profiles', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            action: 'initializeProfiles'
-          })
-        });
-        
-        const initResult = await initResponse.json();
+    const loadExpertProfiles = () => {
+      console.log('랜딩페이지: 전문가 프로필 로드 시작...');
+      
+      // 먼저 API 초기화 호출
+      console.log('랜딩페이지: API 초기화 호출 중...');
+      fetch('/api/expert-profiles', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'initializeProfiles'
+        })
+      })
+      .then(initResponse => initResponse.json())
+      .then(initResult => {
         console.log('랜딩페이지: 초기화 결과:', initResult);
-
+        
         // 그 다음 전문가 프로필 조회
         console.log('랜딩페이지: 전문가 프로필 조회 중...');
-        const response = await fetch('/api/expert-profiles');
-        const result = await response.json();
+        return fetch('/api/expert-profiles');
+      })
+      .then(response => response.json())
+      .then(result => {
         console.log('랜딩페이지: 전문가 프로필 조회 결과:', result);
         
         if (result.success) {
@@ -213,37 +219,49 @@ export default function HomePage() {
           const fallbackExperts = dummyExperts.map(expert => convertExpertItemToProfile(expert));
           setAllExperts(fallbackExperts);
         }
-      } catch (error) {
+      })
+      .catch(error => {
         console.error('랜딩페이지: 전문가 프로필 로드 실패:', error);
         // API 호출 실패 시 더미 데이터를 fallback으로 사용
         const fallbackExperts = dummyExperts.map(expert => convertExpertItemToProfile(expert));
         setAllExperts(fallbackExperts);
-      }
+      });
     };
 
     loadExpertProfiles();
   }, []);
 
-  // 카테고리 데이터 로드
+    // 카테고리 데이터 로드
   useEffect(() => {
-    const loadCategories = async () => {
-      try {
-        setIsLoadingCategories(true);
-        const response = await fetch('/api/categories?activeOnly=true');
-        const result = await response.json();
-        
-        if (result.success) {
-          // API 응답을 기존 형식에 맞게 변환
-          const transformedCategories = result.data.map((cat: any) => ({
-            id: cat.id,
-            name: cat.name,
-            icon: cat.icon,
-            description: cat.description
-          }));
-          setCategories(transformedCategories);
-        } else {
-          console.error('카테고리 로드 실패:', result.message);
-          // API 실패 시 기본 카테고리로 fallback
+    const loadCategories = () => {
+      setIsLoadingCategories(true);
+      fetch('/api/categories?activeOnly=true')
+        .then(response => response.json())
+        .then(result => {
+          if (result.success) {
+            // API 응답을 기존 형식에 맞게 변환
+            const transformedCategories = result.data.map((cat: any) => ({
+              id: cat.id,
+              name: cat.name,
+              icon: cat.icon,
+              description: cat.description
+            }));
+            setCategories(transformedCategories);
+          } else {
+            console.error('카테고리 로드 실패:', result.message);
+            // API 실패 시 기본 카테고리로 fallback
+            setCategories([
+              { id: "career", name: "진로상담", icon: "Target", description: "취업, 이직, 진로 탐색" },
+              { id: "psychology", name: "심리상담", icon: "Brain", description: "스트레스, 우울, 불안" },
+              { id: "finance", name: "재무상담", icon: "DollarSign", description: "투자, 자산관리, 세무" },
+              { id: "legal", name: "법률상담", icon: "Scale", description: "계약, 분쟁, 상속" },
+              { id: "education", name: "교육상담", icon: "BookOpen", description: "학습법, 입시, 유학" }
+            ]);
+          }
+        })
+        .catch(error => {
+          console.error('카테고리 로드 실패:', error);
+          // 네트워크 오류 시 기본 카테고리로 fallback
           setCategories([
             { id: "career", name: "진로상담", icon: "Target", description: "취업, 이직, 진로 탐색" },
             { id: "psychology", name: "심리상담", icon: "Brain", description: "스트레스, 우울, 불안" },
@@ -251,20 +269,10 @@ export default function HomePage() {
             { id: "legal", name: "법률상담", icon: "Scale", description: "계약, 분쟁, 상속" },
             { id: "education", name: "교육상담", icon: "BookOpen", description: "학습법, 입시, 유학" }
           ]);
-        }
-      } catch (error) {
-        console.error('카테고리 로드 실패:', error);
-        // 네트워크 오류 시 기본 카테고리로 fallback
-        setCategories([
-          { id: "career", name: "진로상담", icon: "Target", description: "취업, 이직, 진로 탐색" },
-          { id: "psychology", name: "심리상담", icon: "Brain", description: "스트레스, 우울, 불안" },
-          { id: "finance", name: "재무상담", icon: "DollarSign", description: "투자, 자산관리, 세무" },
-          { id: "legal", name: "법률상담", icon: "Scale", description: "계약, 분쟁, 상속" },
-          { id: "education", name: "교육상담", icon: "BookOpen", description: "학습법, 입시, 유학" }
-        ]);
-      } finally {
-        setIsLoadingCategories(false);
-      }
+        })
+        .finally(() => {
+          setIsLoadingCategories(false);
+        });
     };
 
     loadCategories();
@@ -294,55 +302,128 @@ export default function HomePage() {
 
   // 전문가 필터링 함수
   const filterExperts = (experts: any[], category: string, date: string, duration: string, ageGroup: string) => {
-    return experts.filter(expert => {
-      // 1. 카테고리 필터링
-      const categoryMatch = expert.specialty === categories.find(c => c.id === category)?.name;
+    console.log('=== 전문가 필터링 시작 ===');
+    console.log('검색 조건:', { category, date, duration, ageGroup });
+    console.log('전체 전문가 수:', experts.length);
+    console.log('사용 가능한 카테고리:', categories);
+    
+    const selectedCategory = categories.find(c => c.id === category);
+    console.log('선택된 카테고리:', selectedCategory);
+    
+    if (!selectedCategory) {
+      console.error('선택된 카테고리를 찾을 수 없습니다:', category);
+      return [];
+    }
+    
+    const filteredResults = experts.filter(expert => {
+      console.log(`\n--- 전문가 ${expert.name} (ID: ${expert.id}) 분석 ---`);
+      console.log('전문가 정보:', {
+        specialty: expert.specialty,
+        specialtyAreas: expert.specialtyAreas,
+        specialties: expert.specialties,
+        tags: expert.tags,
+        targetAudience: expert.targetAudience
+      });
       
-      // 2. 연령대 필터링 (targetAudience 기준)
+      // 1. 카테고리 필터링 - 더 유연한 매칭
+      const categoryMatch = (
+        expert.specialty === selectedCategory.name ||
+        (expert.specialtyAreas && Array.isArray(expert.specialtyAreas) && 
+         expert.specialtyAreas.some((area: string) => area === selectedCategory.name)) ||
+        (expert.specialties && Array.isArray(expert.specialties) && 
+         expert.specialties.some((specialty: string) => specialty === selectedCategory.name)) ||
+        (expert.tags && Array.isArray(expert.tags) && 
+         expert.tags.some((tag: string) => tag === selectedCategory.name))
+      );
+      
+      console.log('카테고리 매칭 결과:', {
+        expertSpecialty: expert.specialty,
+        selectedCategoryName: selectedCategory.name,
+        categoryMatch,
+        matchDetails: {
+          exactMatch: expert.specialty === selectedCategory.name,
+          specialtyAreasMatch: expert.specialtyAreas?.some((area: string) => area === selectedCategory.name),
+          specialtiesMatch: expert.specialties?.some((specialty: string) => specialty === selectedCategory.name),
+          tagsMatch: expert.tags?.some((tag: string) => tag === selectedCategory.name)
+        }
+      });
+      
+      // 2. 연령대 필터링 (targetAudience 기준) - 더 유연하게
       const ageGroupName = ageGroups.find(a => a.id === ageGroup)?.name;
       let ageMatch = true;
+      
       if (ageGroupName && expert.targetAudience && Array.isArray(expert.targetAudience)) {
+        const targetAudience = expert.targetAudience.map((target: string) => target.toLowerCase());
+        
         if (ageGroup === "teen") {
-          ageMatch = expert.targetAudience.some((target: string) => 
-            target.includes("청소년") || target.includes("중학생") || target.includes("고등학생")
+          ageMatch = targetAudience.some((target: string) => 
+            target.includes("청소년") || target.includes("중학생") || target.includes("고등학생") || target.includes("10대")
           );
         } else if (ageGroup === "student") {
-          ageMatch = expert.targetAudience.some((target: string) => 
-            target.includes("대학생") || target.includes("취준생") || target.includes("학생")
+          ageMatch = targetAudience.some((target: string) => 
+            target.includes("대학생") || target.includes("취준생") || target.includes("학생") || target.includes("20대")
           );
         } else if (ageGroup === "adult") {
-          ageMatch = expert.targetAudience.some((target: string) => 
-            target.includes("성인") || target.includes("직장인") || target.includes("자영업자")
+          ageMatch = targetAudience.some((target: string) => 
+            target.includes("성인") || target.includes("직장인") || target.includes("자영업자") || 
+            target.includes("30대") || target.includes("40대") || target.includes("50대")
           );
         } else if (ageGroup === "senior") {
-          ageMatch = expert.targetAudience.some((target: string) => 
-            target.includes("시니어") || target.includes("은퇴")
+          ageMatch = targetAudience.some((target: string) => 
+            target.includes("시니어") || target.includes("은퇴") || target.includes("60대") || target.includes("70대")
           );
         }
       }
       
-      // 3. 날짜 필터링 (현재는 모든 전문가가 가능하다고 가정)
-      const dateMatch = true; // 실제로는 expert.weeklyAvailability와 date를 비교
+      console.log('연령대 매칭 결과:', {
+        targetAudience: expert.targetAudience,
+        ageGroupName,
+        ageMatch
+      });
       
-      // 4. 상담시간 필터링
+      // 3. 날짜 필터링 (현재는 모든 전문가가 가능하다고 가정)
+      const dateMatch = true;
+      
+      // 4. 상담시간 필터링 - 더 유연하게
       let durationMatch = true;
       if (duration && duration !== "decide_after_matching") {
         const requestedDuration = parseInt(duration);
-        // pricingTiers가 있는 경우에만 필터링, 없으면 기본적으로 매칭됨
         if (expert.pricingTiers && Array.isArray(expert.pricingTiers)) {
           durationMatch = expert.pricingTiers.some((tier: any) => tier.duration === requestedDuration);
         } else {
-          // pricingTiers가 없는 경우 일반적인 상담 시간 (30, 60, 90분)을 지원한다고 가정
+          // pricingTiers가 없는 경우 일반적인 상담 시간을 지원한다고 가정
           durationMatch = [30, 60, 90].includes(requestedDuration);
         }
       }
       
-      return categoryMatch && ageMatch && dateMatch && durationMatch;
+      const finalMatch = categoryMatch && ageMatch && dateMatch && durationMatch;
+      console.log('최종 매칭 결과:', {
+        categoryMatch,
+        ageMatch,
+        dateMatch,
+        durationMatch,
+        finalMatch
+      });
+      
+      return finalMatch;
     });
+    
+    console.log('필터링 완료: 총', filteredResults.length, '명의 전문가가 매칭되었습니다.');
+    return filteredResults;
   };
 
   // 검색 실행
   const handleSearch = () => {
+    console.log('=== 검색 실행 시작 ===');
+    console.log('검색 조건:', {
+      searchCategory,
+      searchStartDate,
+      searchEndDate,
+      searchAgeGroup
+    });
+    console.log('사용 가능한 카테고리 수:', categories.length);
+    console.log('전체 전문가 수:', allExperts.length);
+
     if (
       !searchCategory ||
       !searchStartDate ||
@@ -360,6 +441,7 @@ export default function HomePage() {
     setTimeout(() => {
       // 상태에서 전문가 데이터 가져오기
       const currentExperts = allExperts;
+      console.log('현재 전문가 데이터:', currentExperts.length, '명');
       
       // 검색 조건에 맞는 전문가 필터링
       const filteredExperts = filterExperts(
@@ -370,6 +452,8 @@ export default function HomePage() {
         searchAgeGroup
       );
       
+      console.log('필터링 결과:', filteredExperts.length, '명');
+      
       // 정확한 매칭 수 저장
       setExactMatchCount(filteredExperts.length);
       
@@ -378,11 +462,13 @@ export default function HomePage() {
       if (filteredExperts.length < 3) {
         // 부족한 경우 다른 카테고리 전문가도 추가 (관련 전문가로 표시)
         const additionalExperts = currentExperts
-          .filter((expert: any) => !filteredExperts.some(filtered => filtered.id === expert.id))
+          .filter((expert: any) => !filteredExperts.some((filtered: any) => filtered.id === expert.id))
           .slice(0, 5 - filteredExperts.length);
         finalResults = [...filteredExperts, ...additionalExperts];
+        console.log('추가 전문가:', additionalExperts.length, '명');
       }
       
+      console.log('최종 검색 결과:', finalResults.length, '명');
       setSearchResults(finalResults);
       setIsSearching(false);
     }, 800);

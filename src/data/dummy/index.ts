@@ -19,6 +19,7 @@ export { getExtendedCategories, getExtendedAgeGroups, getExtendedDurations } fro
 
 // 통계 관련
 export * from './stats';
+export * from './expert-stats';
 
 // 리뷰 및 커뮤니티 게시글 관련 - 통합된 데이터
 export { 
