@@ -68,14 +68,18 @@ export default function ConsultationSummary({
       // });
       
       // 리뷰 제출 성공 시 전문가 데이터 업데이트 이벤트 발생
-      window.dispatchEvent(new CustomEvent('expertDataUpdated', {
-        detail: { 
-          expertId: consultation.id,
-          action: 'reviewSubmitted',
-          rating,
-          review 
-        }
-      }));
+      try {
+        window.dispatchEvent(new CustomEvent('expertDataUpdated', {
+          detail: { 
+            expertId: consultation.id,
+            action: 'reviewSubmitted',
+            rating,
+            review 
+          }
+        }));
+      } catch (error) {
+        console.error('이벤트 발생 실패:', error);
+      }
       
       setShowReviewForm(false);
       

@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Users, Star, Award, Clock, MessageCircle, Video, Heart } from "lucide-react";
+import { Users, Star, Award, Clock, MessageCircle, Video, Heart, Calendar, MapPin } from "lucide-react";
 import { ExpertProfile } from "@/types";
 import ExpertLevelBadge from "./ExpertLevelBadge";
 
@@ -40,12 +40,22 @@ const getExpertLevelPricing = async (expertId: number, totalSessions: number = 0
   }
 };
 
+import { calculateCreditsByLevel } from "@/utils/expertLevels";
+
 interface ExpertCardProps {
-  expert: ExpertProfile;
+  expert: ExpertProfile | any;
+  mode?: 'default' | 'grid' | 'list' | 'hero';
   showFavoriteButton?: boolean;
   isFavorite?: boolean;
   onToggleFavorite?: (expertId: number) => void;
   showProfileButton?: boolean;
+  onProfileView?: (expert: any) => void;
+  searchContext?: {
+    category?: string;
+    ageGroup?: string;
+    startDate?: string;
+    endDate?: string;
+  };
 }
 
 // 상담 방식 아이콘 함수
@@ -82,12 +92,60 @@ const getResponseTimeColor = (responseTime: string | number | null | undefined):
   return "text-gray-400";
 };
 
+// 전문가 데이터 정규화 함수
+const normalizeExpert = (raw: any) => {
+  const reviewCount = raw.reviewCount ?? raw.totalConsultations ?? 0;
+  const specialties: string[] = Array.isArray(raw.specialties)
+    ? raw.specialties
+    : Array.isArray(raw.tags)
+      ? raw.tags
+      : raw.specialty
+        ? [raw.specialty]
+        : [];
+  const consultationTypes: string[] = Array.isArray(raw.consultationTypes)
+    ? raw.consultationTypes
+    : ["video", "chat"]; // 기본값
+  const level =
+    raw.level ??
+    Math.max(
+      1,
+      Math.floor(
+        ((raw.experience || 0) * 10 +
+          (raw.rating || 0) * 20 +
+          reviewCount * 0.5) /
+          10
+      )
+    );
+
+  return {
+    id: raw.id,
+    name: raw.name,
+    specialty: raw.specialty ?? (specialties[0] || ""),
+    rating: raw.rating ?? 0,
+    reviewCount,
+    experience: raw.experience ?? 0,
+    description: raw.description ?? "",
+    specialties,
+    consultationTypes,
+    languages: raw.languages ?? [],
+    profileImage: raw.profileImage ?? raw.image ?? null,
+    responseTime: raw.responseTime,
+    level,
+    consultationCount: raw.consultationCount,
+    totalSessions: raw.totalSessions,
+    avgRating: raw.avgRating,
+  };
+};
+
 export default function ExpertCard({
-  expert,
+  expert: rawExpert,
+  mode = 'default',
   showFavoriteButton = false,
   isFavorite = false,
   onToggleFavorite,
-  showProfileButton = true
+  showProfileButton = true,
+  onProfileView,
+  searchContext,
 }: ExpertCardProps) {
   const router = useRouter();
   const [pricingInfo, setPricingInfo] = useState<{
@@ -97,6 +155,10 @@ export default function ExpertCard({
     tierInfo: any;
   } | null>(null);
   const [isLoadingPricing, setIsLoadingPricing] = useState(true);
+  const [isHovered, setIsHovered] = useState(false);
+
+  // 전문가 데이터 정규화
+  const expert = normalizeExpert(rawExpert);
 
   // 전문가 레벨과 요금 정보 로드
   useEffect(() => {
@@ -127,9 +189,125 @@ export default function ExpertCard({
   }, [expert.id, expert.totalSessions, expert.avgRating]);
 
   // 요금 정보가 로딩 중이거나 없을 때 기본값 사용
-  const creditsPerMinute = pricingInfo?.creditsPerMinute || 100;
+  const creditsPerMinute = pricingInfo?.creditsPerMinute || calculateCreditsByLevel(expert.level || 1);
   const tierName = pricingInfo?.tierName || "Tier 1 (Lv.1-99)";
 
+  const handleProfileView = () => {
+    if (onProfileView) {
+      onProfileView(expert);
+    } else if (expert.id) {
+      // 검색 컨텍스트가 있으면 URL 파라미터로 전달
+      let url = `/experts/${expert.id}`;
+      if (searchContext) {
+        const params = new URLSearchParams();
+        if (searchContext.category) params.set('fromCategory', searchContext.category);
+        if (searchContext.ageGroup) params.set('fromAgeGroup', searchContext.ageGroup);
+        if (searchContext.startDate) params.set('fromStartDate', searchContext.startDate);
+        if (searchContext.endDate) params.set('fromEndDate', searchContext.endDate);
+        
+        if (params.toString()) {
+          url += `?${params.toString()}`;
+        }
+      }
+      router.push(url);
+    }
+  };
+
+  // 매칭 모드 (간소화된 카드)
+  if (mode === 'grid' || mode === 'list') {
+    return (
+      <div
+        className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-all duration-300 ${
+          mode === "grid" ? "hover:shadow-lg hover:scale-105" : ""
+        }`}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        {/* 전문가 이미지 */}
+        <div className="relative h-48 bg-gradient-to-br from-blue-100 to-indigo-100">
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center">
+              <span className="text-white text-2xl font-bold">
+                {expert.name?.charAt(0) || "E"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* 전문가 정보 */}
+        <div className="p-4">
+          <div className="mb-3">
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">
+              {expert.name || "전문가 이름"}
+            </h3>
+            <p className="text-sm text-gray-600 mb-2">
+              {expert.specialty || "전문 분야"}
+            </p>
+
+            {/* 평점 */}
+            <div className="flex items-center space-x-1 mb-2">
+              <Star className="h-4 w-4 text-yellow-500 fill-current" />
+              <span className="text-sm font-semibold text-gray-900">
+                {expert.rating || 4.5}
+              </span>
+              <span className="text-sm text-gray-500">
+                ({expert.reviewCount || 12})
+              </span>
+            </div>
+          </div>
+
+          {/* 전문 분야 */}
+          <div className="mb-3">
+            <div className="flex gap-1.5 overflow-hidden">
+              {(expert.specialties || ["전문분야1", "전문분야2"]).map(
+                (specialty: string, index: number) => (
+                  <span
+                    key={index}
+                    className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100 flex-shrink-0 whitespace-nowrap"
+                  >
+                    {specialty}
+                  </span>
+                ),
+              )}
+            </div>
+          </div>
+
+          {/* 상담 정보 */}
+          <div className="grid grid-cols-2 gap-3 text-sm mb-4">
+            <div className="flex items-center space-x-2 text-gray-600">
+              <Calendar className="h-4 w-4" />
+              <span>{expert.experience || "5"}년 경력</span>
+            </div>
+            <div className="flex items-center space-x-2 text-gray-600">
+              <MessageCircle className="h-4 w-4" />
+              <span>{expert.consultationCount || expert.totalSessions || "50"}회 상담</span>
+            </div>
+          </div>
+
+          {/* 하단 섹션 */}
+          <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+            {/* 가격 정보 */}
+            <div className="flex items-center space-x-2">
+              <span className="font-bold text-gray-900 text-xl">
+                {creditsPerMinute}크레딧
+              </span>
+              <span className="text-sm text-gray-500">/분</span>
+            </div>
+
+            {/* 프로필 보기 버튼 */}
+            <button 
+              onClick={handleProfileView} 
+              className="px-4 py-2 rounded-lg font-medium transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 shadow-sm"
+            >
+              프로필 보기
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 기본 모드 (상세한 카드)
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-lg transition-all duration-300 hover:border-blue-200">
       <div className="p-6">
@@ -282,7 +460,7 @@ export default function ExpertCard({
           {showProfileButton && (
             <div className="flex space-x-2">
               <button
-                onClick={() => router.push(`/experts/${expert.id}`)}
+                onClick={handleProfileView}
                 className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-sm"
                 aria-label={`${expert.name} 전문가 프로필 보기`}
               >

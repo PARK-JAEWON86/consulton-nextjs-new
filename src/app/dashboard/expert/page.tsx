@@ -341,7 +341,7 @@ export default function ExpertDashboardProfilePage() {
                   <div className="ml-4">
                     <h2 className="text-xl font-bold text-blue-900">{user.name} (전문가)</h2>
                     <div className="flex items-center mt-2 space-x-4 text-sm">
-                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                      <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded flex items-center justify-center min-w-[80px] whitespace-nowrap">
                         전문가
                       </span>
                       <span className="text-blue-600">
@@ -378,7 +378,7 @@ export default function ExpertDashboardProfilePage() {
                 <div className="text-2xl font-bold text-orange-600">
                   {requestStats.pendingRequests} 건
                 </div>
-                <div className="mt-2 text-xs inline-flex items-center px-2 py-0.5 rounded-full font-medium bg-orange-100 text-orange-700">
+                <div className="mt-2 text-xs inline-flex items-center px-3 py-0.5 rounded-full font-medium bg-orange-100 text-orange-700 whitespace-nowrap">
                   {requestStats.urgentRequests}건 긴급
                 </div>
               </div>
@@ -389,7 +389,7 @@ export default function ExpertDashboardProfilePage() {
                 <div className="text-2xl font-bold text-green-600">
                   {requestStats.acceptedRequests} 건
                 </div>
-                <div className="mt-2 text-xs inline-flex items-center px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700">
+                <div className="mt-2 text-xs inline-flex items-center px-3 py-0.5 rounded-full font-medium bg-green-100 text-green-700 whitespace-nowrap">
                   수락률 {requestStats.acceptanceRate}%
                 </div>
               </div>
@@ -435,7 +435,7 @@ export default function ExpertDashboardProfilePage() {
                                   {req.clientName} · {req.topic}
                                 </div>
                                 {req.priority === 'urgent' && (
-                                  <span className="px-2 py-0.5 text-xs bg-red-100 text-red-700 rounded-full">
+                                  <span className="px-3 py-0.5 text-xs bg-red-100 text-red-700 rounded-full flex items-center justify-center whitespace-nowrap">
                                     긴급
                                   </span>
                                 )}

@@ -18,6 +18,7 @@ export interface ConsultationItem {
   notes?: string;
   startDate?: string; // 상담 시작 시간
   endDate?: string; // 상담 종료 시간
+  rating?: number; // 평점 추가
   issue?: {
     type: "refund" | "quality" | "other";
     reason: string;

@@ -869,10 +869,10 @@ export default function ExpertProfilePage() {
               <div className="p-6">
                 {/* 헤더: 왼쪽 프로필 사진, 오른쪽 모든 정보 */}
                 <div className="flex items-start space-x-6">
-                  {/* 왼쪽: 프로필 사진 */}
-                  <div className="flex-shrink-0">
+                  {/* 왼쪽: 프로필 사진과 랭킹 점수 */}
+                  <div className="flex-shrink-0 space-y-4">
                     <div className="relative">
-                      <div className="w-36 h-48 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl flex items-center justify-center overflow-hidden border-2 border-gray-100 shadow-md">
+                      <div className="w-36 h-48 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100 flex items-center justify-center overflow-hidden">
                         {expert.profileImage ? (
                           <img
                             src={expert.profileImage}
@@ -885,33 +885,48 @@ export default function ExpertProfilePage() {
                           </span>
                         )}
                       </div>
-                      
-                      {/* 전문가 레벨 배지 */}
-                      <ExpertLevelBadge
-                        expertId={expert.id.toString()}
-                        size="lg"
-                        showTitle={true}
-                        showProgress={true}
-                        className="absolute -bottom-2 -right-2"
-                      />
                     </div>
+                    
+                    {/* 랭킹 점수 */}
+                    {expertStats && (
+                      <div className="w-36 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-100">
+                        <div className="text-center">
+                          <p className="text-sm font-medium text-blue-700">랭킹 점수</p>
+                          <p className="text-2xl font-bold text-blue-900">
+                            {expertStats.rankingScore || 0}
+                          </p>
+                          <div className="mt-2">
+                            <p className="text-sm text-blue-600">순위</p>
+                            <p className="text-lg font-semibold text-blue-900">
+                              {expertStats.ranking && expertStats.totalExperts ? 
+                                `${expertStats.ranking}/${expertStats.totalExperts}` : 
+                                '계산 중...'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* 오른쪽: 모든 정보 */}
                   <div className="flex-1 min-w-0 space-y-4">
-                    {/* 상단: 이름과 좋아요 수 */}
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center space-x-2">
-                        <h1 className="text-xl font-bold text-gray-900 truncate">{expert.name}</h1>
-                      </div>
+                    {/* 좋아요 수와 레벨 배지 */}
+                    <div className="flex items-center justify-between">
+                      <ExpertLevelBadge
+                        expertId={expert.id.toString()}
+                        size="like"
+                      />
                       <div className="flex items-center bg-red-50 text-red-600 px-3 py-1.5 rounded-full text-sm flex-shrink-0">
                         <Heart className="h-4 w-4 mr-1.5 fill-current" />
                         <span className="font-medium">{expertStats?.likeCount || 0}</span>
                       </div>
                     </div>
                     
-                    {/* 전문 분야 */}
-                    <p className="text-base text-gray-600 font-medium">{expert.specialty}</p>
+                    {/* 전문가 이름과 전문 분야 */}
+                    <div className="flex items-center space-x-3">
+                      <h1 className="text-xl font-bold text-gray-900 truncate">{expert.name}</h1>
+                      <p className="text-base text-gray-600 font-medium">{expert.specialty}</p>
+                    </div>
                     
                     {/* 평점 및 정보 */}
                     <div className="flex items-center space-x-4">
@@ -966,52 +981,7 @@ export default function ExpertProfilePage() {
                       </div>
                     </div>
 
-                    {/* 랭킹 점수 및 레벨 정보 */}
-                    {expertStats && (
-                      <div className="pt-4 border-t border-gray-100">
-                        <div className="grid grid-cols-2 gap-4">
-                          {/* 랭킹 점수 */}
-                          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-100">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-sm font-medium text-blue-700">랭킹 점수</p>
-                                <p className="text-2xl font-bold text-blue-900">
-                                  {expertStats.rankingScore || 0}
-                                </p>
-                                <p className="text-xs text-blue-600">3자리 점수 체계</p>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-sm text-blue-600">순위</p>
-                                <p className="text-lg font-semibold text-blue-900">
-                                  {expertStats.ranking ? `#${expertStats.ranking}` : '계산 중...'}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
 
-                          {/* 레벨 정보 */}
-                          <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg border border-purple-100">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-sm font-medium text-purple-700">전문가 레벨</p>
-                                <p className="text-2xl font-bold text-purple-900">
-                                  Lv.{expertStats.level || 0}
-                                </p>
-                                <p className="text-xs text-purple-600">
-                                  {expertStats.tierInfo?.name || '티어 정보 로딩 중...'}
-                                </p>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-sm text-purple-600">크레딧</p>
-                                <p className="text-lg font-semibold text-purple-900">
-                                  {expertStats.tierInfo?.creditsPerMinute || 0}/분
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
 
                     {/* 상담 방식과 구사 언어 */}
                     <div className="pt-4 border-t border-gray-100">
@@ -1097,33 +1067,6 @@ export default function ExpertProfilePage() {
               <div className="px-6 pb-8">
                 {activeTab === 'overview' && (
                   <div className="space-y-6">
-                    {/* 레벨 정보 섹션 */}
-                    <div>
-                      <h3 className="text-xl font-semibold text-gray-900 mb-4">전문가 레벨</h3>
-                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-100">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center space-x-4">
-                            <ExpertLevelBadge
-                              expertId={expert.id.toString()}
-                              size="lg"
-                              showTitle={true}
-                              showProgress={true}
-                            />
-                            <div>
-                              <h4 className="text-lg font-semibold text-gray-900">
-                                {expert.name} 전문가의 현재 레벨
-                              </h4>
-                              <p className="text-gray-600 text-sm">
-                                상담 경험과 고객 만족도를 기반으로 계산됩니다
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* 레벨 상세 정보는 ExpertLevelBadge에서 자동으로 표시됨 */}
-                      </div>
-                    </div>
-
                     <div>
                       <h3 className="text-xl font-semibold text-gray-900 mb-4">소개</h3>
                       <p className="text-gray-700 leading-relaxed text-base">{expert.description}</p>
@@ -1471,9 +1414,9 @@ export default function ExpertProfilePage() {
           </div>
 
           {/* 사이드바 */}
-          <div className="hidden lg:block w-72 flex-shrink-0 space-y-6">
-            {/* 상담 신청 카드 */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                      <div className="hidden lg:block w-72 flex-shrink-0 space-y-6">
+              {/* 상담 신청 카드 */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100 p-6">
               <div className="mb-4">
                 {(() => {
                   // 기본 레벨 계산 (동기적으로)
@@ -1487,36 +1430,36 @@ export default function ExpertProfilePage() {
                   
                   return (
                     <>
-                      <div className="text-2xl font-bold text-gray-900 mb-1">
-                        {baseCreditsPerMinute}크레딧<span className="text-base font-normal text-gray-500">/분</span>
-                      </div>
-                      <p className="text-sm text-gray-600">평균 세션 시간: {expert.averageSessionDuration}분</p>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-blue-700 mb-1">
                         Lv.{actualLevel} 레벨 요금
                       </p>
+                      <div className="text-3xl font-bold text-blue-900 mb-1">
+                        {baseCreditsPerMinute}크레딧<span className="text-lg font-normal text-blue-600">/분</span>
+                      </div>
+                      <p className="text-sm text-blue-600">평균 세션 시간: {expert.averageSessionDuration}분 ({baseCreditsPerMinute * expert.averageSessionDuration}크레딧)</p>
                     </>
                   );
                 })()}
               </div>
 
-              <div className="space-y-3 mb-6">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">응답 시간</span>
-                  <span className="font-medium text-gray-900">{expert.responseTime}</span>
+                              <div className="space-y-3 mb-6">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-blue-600">응답 시간</span>
+                    <span className="font-medium text-blue-900">{expert.responseTime}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-blue-600">상담 대기자</span>
+                    <span className="font-medium text-blue-900">{expertStats?.waitingClients || 0}명</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-blue-600">재방문 고객</span>
+                    <span className="font-medium text-blue-900">{expertStats?.repeatClients || expert.repeatClients}명</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-blue-600">좋아요</span>
+                    <span className="font-medium text-blue-900">{expertStats?.likeCount || 0}개</span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">상담 대기자</span>
-                  <span className="font-medium text-gray-900">{expertStats?.waitingClients || 0}명</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">재방문 고객</span>
-                  <span className="font-medium text-gray-900">{expertStats?.repeatClients || expert.repeatClients}명</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">좋아요</span>
-                  <span className="font-medium text-gray-900">{expertStats?.likeCount || 0}개</span>
-                </div>
-              </div>
 
               <button
                 onClick={handleConsultationRequest}
@@ -1525,11 +1468,11 @@ export default function ExpertProfilePage() {
                 상담 신청하기
               </button>
 
-              <div className="mt-4 text-center">
-                <p className="text-xs text-gray-500">
-                  {expert.cancellationPolicy}
-                </p>
-              </div>
+                              <div className="mt-4 text-center">
+                  <p className="text-xs text-blue-600">
+                    {expert.cancellationPolicy}
+                  </p>
+                </div>
             </div>
 
 

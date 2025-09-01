@@ -120,14 +120,18 @@ export default function ConsultationSession({
         }
         
         // 상담 완료 시 전문가 데이터 업데이트 이벤트 발생
-        window.dispatchEvent(new CustomEvent('expertDataUpdated', {
-          detail: { 
-            expertId: consultation.id, // id를 expertId로 사용
-            action: 'sessionCompleted',
-            duration: sessionTime,
-            sessionType: consultation.consultationType
-          }
-        }));
+        try {
+          window.dispatchEvent(new CustomEvent('expertDataUpdated', {
+            detail: { 
+              expertId: consultation.id, // id를 expertId로 사용
+              action: 'sessionCompleted',
+              duration: sessionTime,
+              sessionType: consultation.consultationType
+            }
+          }));
+        } catch (error) {
+          console.error('이벤트 발생 실패:', error);
+        }
         
         // 상담 요약 표시
         setShowSummary(true);
@@ -477,12 +481,12 @@ export default function ConsultationSession({
             <h4 className="font-medium text-gray-900 mb-3">상담 컨트롤</h4>
             
             {!isSessionActive ? (
-                              <button
-                  onClick={handleStartSession}
-                  className="w-full bg-green-600 text-white py-2 px-3 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
-                >
-                  상담 시작
-                </button>
+              <button
+                onClick={handleStartSession}
+                className="w-full bg-green-600 text-white py-2 px-3 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+              >
+                상담 시작
+              </button>
             ) : (
               <div className="space-y-3">
                 {/* 음소거 컨트롤 (음성/화상 상담 시) */}

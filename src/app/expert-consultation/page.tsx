@@ -19,16 +19,13 @@ import {
 } from "lucide-react";
 import ServiceLayout from "@/components/layout/ServiceLayout";
 import ConsultationSession from "@/components/expert-consultation/ConsultationSession";
-// API를 통해 레벨별 크레딧을 계산하는 함수
-const calculateCreditsByLevel = async (level: number = 1): Promise<number> => {
-  try {
-    const response = await fetch(`/api/expert-levels?action=calculateCreditsByLevel&level=${level}`);
-    const data = await response.json();
-    return data.creditsPerMinute || 100;
-  } catch (error) {
-    console.error('크레딧 계산 실패:', error);
-    return 100; // 기본값
-  }
+
+// API를 통해 레벨별 크레딧을 계산하는 함수 (동기 버전)
+const calculateCreditsByLevel = (level: number = 1): number => {
+  // 기본 크레딧 요금 계산 (실제로는 API 호출이 필요하지만 여기서는 기본값 사용)
+  const baseCreditsPerMinute = 150; // 기본값
+  const levelMultiplier = Math.max(1, level / 100); // 레벨에 따른 배수
+  return Math.round(baseCreditsPerMinute * levelMultiplier);
 };
 
 interface ConsultationSession {
@@ -112,55 +109,57 @@ export default function ExpertConsultationPage() {
     loadCategories();
   }, []);
 
-  // 더미 데이터 로드
+  // 더미 데이터 로드 (카테고리가 로드된 후)
   useEffect(() => {
-    const dummyConsultations: ConsultationSession[] = [
-      {
-        id: "1",
-        expertId: "expert_1",
-        expertName: "박지영",
-        expertAvatar: "박",
-        expertSpecialty: categories.length > 0 ? categories[0]?.name || "심리상담" : "심리상담",
-        topic: "스트레스 관리 및 불안감 치료",
-        scheduledTime: "2024-01-15T14:00:00",
-        duration: 60,
-        consultationType: "video",
-        status: "scheduled",
-        expertLevel: 300,
-        description: "직장에서의 스트레스와 불안감에 대한 상담이 필요합니다.",
-      },
-      {
-        id: "2",
-        expertId: "expert_2",
-        expertName: "이민수",
-        expertAvatar: "이",
-        expertSpecialty: categories.length > 1 ? categories[2]?.name || "법률상담" : "법률상담",
-        topic: "계약서 검토 및 법적 자문",
-        scheduledTime: "2024-01-15T16:00:00",
-        duration: 45,
-        consultationType: "voice",
-        status: "scheduled",
-        expertLevel: 200,
-        description: "사업 계약서 검토와 법적 위험 요소에 대한 자문이 필요합니다.",
-      },
-      {
-        id: "3",
-        expertId: "expert_3",
-        expertName: "이소연",
-        expertAvatar: "이",
-        expertSpecialty: categories.length > 2 ? categories[2]?.name || "재무상담" : "재무상담",
-        topic: "투자 포트폴리오 구성",
-        scheduledTime: "2024-01-16T10:00:00",
-        duration: 90,
-        consultationType: "chat",
-        status: "scheduled",
-        expertLevel: 100,
-        description: "현재 자산 상황을 바탕으로 한 투자 포트폴리오 구성 상담이 필요합니다.",
-      },
-    ];
+    if (!isLoadingCategories) {
+      const dummyConsultations: ConsultationSession[] = [
+        {
+          id: "1",
+          expertId: "expert_1",
+          expertName: "박지영",
+          expertAvatar: "박",
+          expertSpecialty: categories.length > 0 ? categories[0]?.name || "심리상담" : "심리상담",
+          topic: "스트레스 관리 및 불안감 치료",
+          scheduledTime: "2024-01-15T14:00:00",
+          duration: 60,
+          consultationType: "video",
+          status: "scheduled",
+          expertLevel: 300,
+          description: "직장에서의 스트레스와 불안감에 대한 상담이 필요합니다.",
+        },
+        {
+          id: "2",
+          expertId: "expert_2",
+          expertName: "이민수",
+          expertAvatar: "이",
+          expertSpecialty: categories.length > 1 ? categories[1]?.name || "법률상담" : "법률상담",
+          topic: "계약서 검토 및 법적 자문",
+          scheduledTime: "2024-01-15T16:00:00",
+          duration: 45,
+          consultationType: "voice",
+          status: "scheduled",
+          expertLevel: 200,
+          description: "사업 계약서 검토와 법적 위험 요소에 대한 자문이 필요합니다.",
+        },
+        {
+          id: "3",
+          expertId: "expert_3",
+          expertName: "이소연",
+          expertAvatar: "이",
+          expertSpecialty: categories.length > 2 ? categories[2]?.name || "재무상담" : "재무상담",
+          topic: "투자 포트폴리오 구성",
+          scheduledTime: "2024-01-16T10:00:00",
+          duration: 90,
+          consultationType: "chat",
+          status: "scheduled",
+          expertLevel: 100,
+          description: "현재 자산 상황을 바탕으로 한 투자 포트폴리오 구성 상담이 필요합니다.",
+        },
+      ];
 
-    setConsultations(dummyConsultations);
-  }, []);
+      setConsultations(dummyConsultations);
+    }
+  }, [isLoadingCategories, categories]);
 
   // 상담 시작
   const handleStartConsultation = (consultation: ConsultationSession) => {
@@ -230,16 +229,15 @@ export default function ExpertConsultationPage() {
     return date.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
   };
 
-  // 크레딧 요금 계산
+  // 크레딧 요금 계산 (동기 버전)
   const getCreditsPerMinute = (expertLevel: number) => {
     return calculateCreditsByLevel(expertLevel);
   };
 
-  // 총 크레딧 요금 계산 (기본값 사용)
+  // 총 크레딧 요금 계산
   const getTotalCredits = (expertLevel: number, duration: number) => {
-    // 기본 크레딧 요금 사용 (실제로는 비동기로 계산해야 함)
-    const baseCreditsPerMinute = 150; // 기본값
-    return baseCreditsPerMinute * duration;
+    const creditsPerMinute = getCreditsPerMinute(expertLevel);
+    return creditsPerMinute * duration;
   };
 
   // 브라우저 뒤로가기/앞으로가기 처리

@@ -1127,13 +1127,13 @@ const ExpertSearch = () => {
                     {(expert.specialties || []).slice(0, 3).map((specialty, index) => (
                       <span
                         key={index}
-                        className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs rounded-full border border-blue-100 flex-shrink-0"
+                        className="px-3 py-1 bg-blue-50 text-blue-700 text-xs rounded-full border border-blue-100 flex-shrink-0 whitespace-nowrap"
                       >
                         {specialty}
                       </span>
                     ))}
                     {(expert.specialties || []).length > 3 && (
-                      <span className="px-2.5 py-1 bg-gray-50 text-gray-600 text-xs rounded-full border border-gray-100 flex-shrink-0">
+                      <span className="px-3 py-1 bg-gray-50 text-gray-600 text-xs rounded-full border border-gray-100 flex-shrink-0 whitespace-nowrap">
                         +{(expert.specialties || []).length - 3}
                       </span>
                     )}
@@ -1147,7 +1147,7 @@ const ExpertSearch = () => {
                         return (
                           <div
                             key={type}
-                            className="flex items-center text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded"
+                            className="flex items-center text-xs text-gray-600 bg-gray-100 px-3 py-1 rounded whitespace-nowrap"
                             title={type === "video" ? "화상 상담" : "채팅 상담"}
                           >
                             <Icon className="h-3 w-3 mr-1" />
