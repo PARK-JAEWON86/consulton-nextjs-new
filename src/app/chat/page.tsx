@@ -4,7 +4,6 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Send, Plus, Mic, Bot, User, X, Image, File } from "lucide-react";
 import ServiceLayout from "@/components/layout/ServiceLayout";
-import { useSpecificEventRefresh } from "@/hooks/useEventBasedRefresh";
 import { eventBus, CREDIT_EVENTS, CHAT_EVENTS } from "@/utils/eventBus";
 
 interface ChatMessage {
@@ -35,8 +34,15 @@ export default function ChatPage() {
   const [aiUsageData, setAiUsageData] = useState<any>(null);
   const [isLoadingAIUsage, setIsLoadingAIUsage] = useState(true);
   
-  // 이벤트 기반 새로고침 훅 사용
-  const { registerRefreshFunction } = useSpecificEventRefresh(CREDIT_EVENTS.AI_USAGE_UPDATED);
+  // 이벤트 기반 새로고침 함수 (훅 대신 직접 구현)
+  const registerRefreshFunction = useCallback((refreshFn: () => void) => {
+    // 이벤트 리스너 등록
+    const handleEvent = () => refreshFn();
+    const unsubscribe = eventBus.subscribe(CREDIT_EVENTS.AI_USAGE_UPDATED, handleEvent);
+    
+    // 클린업 함수 반환
+    return unsubscribe;
+  }, []);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);

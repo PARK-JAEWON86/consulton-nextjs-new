@@ -336,29 +336,50 @@ const Sidebar: React.FC<SidebarProps> = ({
   // 하이드레이션 완료 상태 체크
   const [isHydrated, setIsHydrated] = useState(false);
   const effectiveVariant: "user" | "expert" = useMemo(() => {
+    console.log('effectiveVariant 계산:', { variant, pathname, isHydrated, viewMode, userRole: user?.role, isAuthenticated });
+    
     // 1. 명시적으로 전달된 variant가 있으면 우선
-    if (variant) return variant;
+    if (variant) {
+      console.log('명시적 variant 사용:', variant);
+      return variant;
+    }
     
-    // 2. URL 경로 기반으로 먼저 판단 (가장 확실한 방법)
-    if (pathname.startsWith("/dashboard/expert")) return "expert";
-    if (pathname.startsWith("/dashboard")) return "user";
+    // 2. 사용자가 설정한 viewMode가 있으면 그것을 사용 (가장 우선)
+    if (viewMode && isAuthenticated) {
+      console.log('사용자 설정 viewMode 사용:', viewMode);
+      return viewMode;
+    }
     
-    // 3. 하이드레이션이 완료되지 않았으면 URL 기반으로 판단
+    // 3. URL 경로 기반으로 판단 (하지만 viewMode가 설정되어 있으면 우선순위 낮춤)
+    if (pathname.startsWith("/dashboard/expert")) {
+      console.log('URL 기반으로 expert 모드 결정');
+      return "expert";
+    }
+    if (pathname.startsWith("/dashboard")) {
+      console.log('URL 기반으로 user 모드 결정');
+      return "user";
+    }
+    
+    // 4. 하이드레이션이 완료되지 않았으면 URL 기반으로 판단
     if (!isHydrated) {
       if (pathname.startsWith("/dashboard/expert")) return "expert";
       return "user";
     }
     
-    // 4. 사용자가 설정한 viewMode가 있으면 그것을 사용
-    if (viewMode) return viewMode;
-    
     // 5. 사용자 role에 따라 결정 (로그인 직후 자동 결정)
-    if (user?.role === 'expert') return "expert";
-    if (user?.role === 'client' || user?.role === 'admin') return "user";
+    if (user?.role === 'expert') {
+      console.log('사용자 role 기반으로 expert 모드 결정');
+      return "expert";
+    }
+    if (user?.role === 'client' || user?.role === 'admin') {
+      console.log('사용자 role 기반으로 user 모드 결정');
+      return "user";
+    }
     
     // 6. 기본값
+    console.log('기본값 user 모드 사용');
     return "user";
-  }, [variant, pathname, isHydrated, viewMode, user]);
+  }, [variant, pathname, isHydrated, viewMode, user?.role, isAuthenticated]);
 
   // 하이드레이션 완료 체크 - 안전한 방식으로 수정
   useEffect(() => {
@@ -367,6 +388,12 @@ const Sidebar: React.FC<SidebarProps> = ({
       setIsHydrated(true);
     }
   }, []);
+
+  // viewMode 변경 감지하여 즉시 반영
+  useEffect(() => {
+    console.log('viewMode 변경 감지:', viewMode);
+    // viewMode가 변경되면 강제로 리렌더링
+  }, [viewMode]);
 
 
 
@@ -509,6 +536,8 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   // 메뉴 정의: 심플 스타일
   const primaryMenu: MenuItem[] = useMemo(() => {
+    console.log('메뉴 재계산:', { effectiveVariant, user, isAuthenticated, viewMode });
+    
     if (effectiveVariant === "expert") {
       return [
         { id: "home", name: "대시보드", icon: Home, path: "/dashboard/expert" },
@@ -580,7 +609,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     );
 
     return userMenu;
-  }, [effectiveVariant, user, isAuthenticated]);
+  }, [effectiveVariant, user, isAuthenticated, viewMode]);
 
 
 
@@ -601,7 +630,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const handleNavigate = (item: MenuItem) => {
-    console.log('메뉴 클릭:', { item: item.id, isAuthenticated, user, pathname });
+    console.log('메뉴 클릭:', { item: item.id, isAuthenticated, user, pathname, effectiveVariant });
     
     // 전문가 찾기 메뉴만 로그인 없이도 접근 가능
     if (item.id === "experts") {
@@ -660,6 +689,27 @@ const Sidebar: React.FC<SidebarProps> = ({
       router.push(`/auth/login?redirect=${encodeURIComponent(redirectPath)}`);
       if (onClose) onClose();
       return;
+    }
+    
+    // 로그인된 사용자의 경우 추가 검증
+    if (isAuthenticated && user) {
+      console.log('로그인된 사용자 메뉴 클릭:', { item: item.id, userRole: user.role, effectiveVariant });
+      
+      // 전문가 모드에서 전문가 전용 메뉴 클릭 시
+      if (effectiveVariant === "expert" && user.role === "expert") {
+        console.log('전문가 모드에서 전문가 메뉴 클릭:', item.id);
+        router.push(item.path);
+        if (onClose) onClose();
+        return;
+      }
+      
+      // 사용자 모드에서 일반 사용자 메뉴 클릭 시
+      if (effectiveVariant === "user" && (user.role === "client" || user.role === "admin")) {
+        console.log('사용자 모드에서 일반 사용자 메뉴 클릭:', item.id);
+        router.push(item.path);
+        if (onClose) onClose();
+        return;
+      }
     }
     
     if (pathname === "/chat" && item.id !== "chat") {

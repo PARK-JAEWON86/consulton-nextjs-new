@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { CreditCard, Plus, History, TrendingUp, Zap, RefreshCw } from "lucide-react";
-import { useSpecificEventRefresh } from "@/hooks/useEventBasedRefresh";
-import { CREDIT_EVENTS } from "@/utils/eventBus";
+import { eventBus, CREDIT_EVENTS } from "@/utils/eventBus";
 
 interface CreditBalanceProps {
   credits: number;
@@ -53,8 +52,15 @@ const CreditBalance = ({ credits }: CreditBalanceProps) => {
     }
   }, [credits]);
 
-  // 이벤트 기반 새로고침 훅 사용
-  const { registerRefreshFunction } = useSpecificEventRefresh(CREDIT_EVENTS.AI_USAGE_UPDATED);
+  // 이벤트 기반 새로고침 함수 (훅 대신 직접 구현)
+  const registerRefreshFunction = useCallback((refreshFn: () => void) => {
+    // 이벤트 리스너 등록
+    const handleEvent = () => refreshFn();
+    const unsubscribe = eventBus.subscribe(CREDIT_EVENTS.AI_USAGE_UPDATED, handleEvent);
+    
+    // 클린업 함수 반환
+    return unsubscribe;
+  }, []);
 
   const fetchAIUsageData = useCallback(async () => {
     try {

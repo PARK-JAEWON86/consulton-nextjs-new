@@ -185,8 +185,9 @@ const LoginForm = () => {
           // Navbar 상태 즉시 업데이트
           updateNavbarState(userData);
           
-          // 전문가로 로그인하면 viewMode를 expert로 설정
-          setViewMode('expert');
+          // 전문가로 로그인하면 viewMode를 expert로 설정 (가장 먼저)
+          console.log('전문가 로그인: viewMode를 expert로 설정');
+          await setViewMode('expert');
           
           enterService();
           
@@ -235,8 +236,9 @@ const LoginForm = () => {
               expertProfile: null
             });
             
-            // 일반 사용자로 로그인하면 viewMode를 user로 설정
-            setViewMode('user');
+            // 일반 사용자로 로그인하면 viewMode를 user로 설정 (가장 먼저)
+            console.log('일반 사용자 로그인: viewMode를 user로 설정');
+            await setViewMode('user');
             
             enterService();
             

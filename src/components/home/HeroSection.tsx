@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Users, Target, Brain, DollarSign, Scale, BookOpen, Heart, Briefcase, Code, Palette, Languages, Music, Trophy, Plane, ChefHat, Scissors, PawPrint, Sprout, TrendingUp, Receipt, Building2, GraduationCap, Baby, School, User, UserCheck, X, Star, Award, Clock, MessageCircle, Video } from "lucide-react";
 import SearchFields from "./SearchFields";
 import { ExpertProfile } from "@/types";
+import LoginModal from "@/components/auth/LoginModal";
 // API를 통해 레벨별 크레딧을 계산하는 함수
 const calculateCreditsByLevel = (level: number = 1): number => {
   // 클라이언트 컴포넌트에서는 동기적으로 처리하기 위해 기본값 반환
@@ -12,6 +13,7 @@ const calculateCreditsByLevel = (level: number = 1): number => {
   return 100; // 기본값
 };
 import ExpertLevelBadge from "@/components/expert/ExpertLevelBadge";
+import ExpertCard from "@/components/expert/ExpertCard";
 
 type IconType = any;
 
@@ -74,13 +76,43 @@ export default function HeroSection(props: HeroSectionProps) {
   } = props;
 
   const router = useRouter();
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // 인증 상태 확인
+  useEffect(() => {
+    const checkAuth = () => {
+      try {
+        const storedUser = localStorage.getItem('consulton-user');
+        const storedAuth = localStorage.getItem('consulton-auth');
+        
+        if (storedUser && storedAuth) {
+          const isAuth = JSON.parse(storedAuth);
+          setIsAuthenticated(isAuth);
+        } else {
+          setIsAuthenticated(false);
+        }
+      } catch (error) {
+        setIsAuthenticated(false);
+      }
+    };
+    
+    checkAuth();
+  }, []);
 
   const handleAIChatClick = () => {
+    // 로그인하지 않은 경우 로그인 모달 표시
+    if (!isAuthenticated) {
+      setShowLoginModal(true);
+      return;
+    }
+    
     router.push("/chat");
   };
 
   return (
-    <section className="relative z-10 overflow-visible py-28 sm:py-40 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
+    <>
+      <section className="relative z-10 overflow-visible py-28 sm:py-40 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
       <div
         aria-hidden="true"
         className="absolute inset-x-0 -top-40 -z-10 transform-gpu overflow-hidden blur-3xl"
@@ -202,145 +234,22 @@ export default function HeroSection(props: HeroSectionProps) {
               
               <div className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {searchResults.slice(0, 6).map((expert: ExpertProfile) => {
-
-                    return (
-                      <div
-                        key={expert.id}
-                        className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-lg transition-all duration-300 hover:border-blue-200"
-                      >
-                        <div className="p-6">
-                          {/* 전문가 기본 정보 */}
-                          <div className="flex items-start justify-between mb-5">
-                            <div className="flex items-center space-x-4">
-                              <div className="relative flex-shrink-0">
-                                <div className="w-24 h-24 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl flex items-center justify-center overflow-hidden border-2 border-gray-100">
-                                  {expert.profileImage ? (
-                                    <img
-                                      src={expert.profileImage}
-                                      alt={expert.name}
-                                      className="w-full h-full object-cover"
-                                    />
-                                  ) : (
-                                    <Users className="h-10 w-10 text-gray-400" />
-                                  )}
-                                </div>
-                                {/* 전문가 레벨 표시 */}
-                                <ExpertLevelBadge
-                                  expertId={expert.id.toString()}
-                                  size="md"
-                                  className="absolute -bottom-1 -right-1"
-                                />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center space-x-2 mb-2">
-                                  <h3 className="text-xl font-bold text-gray-900 truncate">
-                                    {expert.name}
-                                  </h3>
-                                </div>
-                                <p className="text-base text-gray-600 font-medium">
-                                  {expert.specialty}
-                                </p>
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => {
-                                // 즐겨찾기 기능 (로컬 상태로 관리)
-                                console.log('즐겨찾기:', expert.name);
-                              }}
-                              className="p-2 rounded-full transition-colors text-gray-400 hover:text-red-500 hover:bg-red-50"
-                            >
-                              <Heart className="h-5 w-5" />
-                            </button>
-                          </div>
-
-                          {/* 평점 및 정보 */}
-                          <div className="flex items-center space-x-4 mb-3">
-                            <div className="flex items-center">
-                              <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                              <span className="text-sm font-semibold text-gray-900 ml-1">
-                                {expert.rating || 4.5}
-                              </span>
-                              <span className="text-sm text-gray-500 ml-1">
-                                ({expert.reviewCount || 0})
-                              </span>
-                            </div>
-                            <div className="flex items-center text-sm text-gray-500">
-                              <Award className="h-4 w-4 mr-1" />
-                              {expert.experience || 0}년 경력
-                            </div>
-                          </div>
-
-                          {/* 설명 */}
-                          <p className="text-sm text-gray-600 mb-4 line-clamp-2 text-left">
-                            {expert.description || "전문적인 상담 서비스를 제공합니다."}
-                          </p>
-
-                          {/* 전문 분야 태그 */}
-                          <div className="flex gap-1.5 overflow-hidden mb-4">
-                            {(expert.specialties || []).slice(0, 3).map((specialty, index) => (
-                              <span
-                                key={index}
-                                className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs rounded-full border border-blue-100 flex-shrink-0"
-                              >
-                                {specialty}
-                              </span>
-                            ))}
-                            {(expert.specialties || []).length > 3 && (
-                              <span className="px-2.5 py-1 bg-gray-50 text-gray-600 text-xs rounded-full border border-gray-100 flex-shrink-0">
-                                +{(expert.specialties || []).length - 3}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* 상담 방식 및 답변 시간 */}
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center space-x-2">
-                              {(expert.consultationTypes || ["video", "chat"]).map((type) => {
-                                const Icon = type === "video" ? Video : MessageCircle;
-                                return (
-                                  <div
-                                    key={type}
-                                    className="flex items-center text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded"
-                                    title={type === "video" ? "화상 상담" : "채팅 상담"}
-                                  >
-                                    <Icon className="h-3 w-3 mr-1" />
-                                    {type === "video" && "화상"}
-                                    {type === "chat" && "채팅"}
-                                  </div>
-                                );
-                              })}
-                            </div>
-
-                            {/* 답변 시간 표시 */}
-                            <div className="flex items-center space-x-1 text-xs text-gray-600">
-                              <Clock className="h-3 w-3 text-green-500" />
-                              <span>{expert.responseTime || "1시간 이내"}</span>
-                            </div>
-                          </div>
-
-                          {/* 가격 및 버튼 */}
-                          <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                            <div className="text-xl font-bold text-gray-900">
-                              {calculateCreditsByLevel(1)} 크레딧
-                              <span className="text-sm font-normal text-gray-500">
-                                /분
-                              </span>
-                            </div>
-                            <div className="flex space-x-2">
-                              <button
-                                onClick={() => router.push(`/experts/${expert.id}`)}
-                                className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-sm"
-                                aria-label={`${expert.name} 전문가 프로필 보기`}
-                              >
-                                프로필 보기
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                  {searchResults.slice(0, 6).map((expert: ExpertProfile) => (
+                    <ExpertCard
+                      key={expert.id}
+                      expert={expert}
+                      mode="default"
+                      showFavoriteButton={false}
+                      showProfileButton={true}
+                      onProfileView={(e) => router.push(`/experts/${e.id}`)}
+                      searchContext={{
+                        category: searchCategory,
+                        ageGroup: searchAgeGroup,
+                        startDate: searchStartDate,
+                        endDate: searchEndDate,
+                      }}
+                    />
+                  ))}
                 </div>
                 
                 {searchResults.length > 6 && (
@@ -393,5 +302,13 @@ export default function HeroSection(props: HeroSectionProps) {
         )}
       </div>
     </section>
+
+    {/* 로그인 모달 */}
+    <LoginModal
+      isOpen={showLoginModal}
+      onClose={() => setShowLoginModal(false)}
+      redirectPath="/chat"
+    />
+  </>
   );
 }

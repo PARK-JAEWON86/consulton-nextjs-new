@@ -1,10 +1,49 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import { Brain, MessageCircle, Target, DollarSign } from "lucide-react";
 import { useRouter } from "next/navigation";
+import LoginModal from "@/components/auth/LoginModal";
 
 export default function AIChatPromoSection() {
   const router = useRouter();
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // 인증 상태 확인
+  useEffect(() => {
+    const checkAuth = () => {
+      try {
+        const storedUser = localStorage.getItem('consulton-user');
+        const storedAuth = localStorage.getItem('consulton-auth');
+        
+        if (storedUser && storedAuth) {
+          const isAuth = JSON.parse(storedAuth);
+          setIsAuthenticated(isAuth);
+        } else {
+          setIsAuthenticated(false);
+        }
+      } catch (error) {
+        setIsAuthenticated(false);
+      }
+    };
+    
+    checkAuth();
+  }, []);
+
+  const handleAIChatClick = () => {
+    // 로그인하지 않은 경우 로그인 모달 표시
+    if (!isAuthenticated) {
+      setShowLoginModal(true);
+      return;
+    }
+    
+    router.push("/chat");
+  };
+
   return (
-    <section className="py-20 bg-gradient-to-r from-blue-600 to-indigo-700">
+    <>
+      <section className="py-20 bg-gradient-to-r from-blue-600 to-indigo-700">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <div className="max-w-4xl mx-auto">
           <div className="flex justify-center mb-6">
@@ -52,7 +91,7 @@ export default function AIChatPromoSection() {
           </div>
 
           <button
-            onClick={() => router.push("/chat")}
+            onClick={handleAIChatClick}
             className="bg-white text-blue-600 hover:bg-blue-50 px-8 py-4 rounded-2xl text-lg font-semibold transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
           >
             무료 AI 채팅상담 시작하기 →
@@ -63,5 +102,13 @@ export default function AIChatPromoSection() {
         </div>
       </div>
     </section>
+
+    {/* 로그인 모달 */}
+    <LoginModal
+      isOpen={showLoginModal}
+      onClose={() => setShowLoginModal(false)}
+      redirectPath="/chat"
+    />
+  </>
   );
 }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getConsultationsByExpert, getRequestsByExpert, getRequestStats } from '@/data/dummy/consultationRequests';
+import { getRequestsByExpert, getRequestStats } from '@/data/dummy/consultationRequests';
 import { expertDataService } from '@/services/ExpertDataService';
-import { getConsultationsByExpert as getConsultationHistory } from '@/data/dummy/consultationHistory';
+import { getConsultationsByExpert } from '@/data/dummy/consultationHistory';
 
 // 기간 타입 정의
 type PeriodKey = "today" | "last7" | "last30" | "thisMonth" | "lastWeek";
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
     const pendingRequests = getRequestsByExpert(expertId).filter(req => req.status === 'pending');
 
     // 상담 내역 조회
-    const consultationHistory = getConsultationHistory(expertId);
+    const consultationHistory = getConsultationsByExpert(expertId);
     
     // 기간별 수익 계산
     const { currentRevenue, previousRevenue, currentSessions, previousSessions } = calculatePeriodStats(

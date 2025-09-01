@@ -116,22 +116,23 @@ export const getSpecialtyRankings = (specialty: string) => {
     }));
 };
 
-// 랭킹 점수 계산 함수 (더 낮은 점수로 조정)
+// 랭킹 점수 계산 함수 (3자리 점수 체계에 맞게 조정)
 export const calculateRankingScore = (stats: ExpertStatsData): number => {
-  // 1. 상담 횟수 (40% 가중치) - 점수 낮춤
-  const sessionScore = Math.floor(stats.totalSessions * 0.3);
+  // 1. 상담 횟수 (40% 가중치) - 3자리 점수 체계에 맞게 조정
+  const sessionScore = Math.min(stats.totalSessions / 100, 1) * 400; // 100회당 400점
   
-  // 2. 평점 (30% 가중치) - 점수 낮춤
-  const ratingScore = Math.floor(stats.avgRating * 15);
+  // 2. 평점 (30% 가중치) - 3자리 점수 체계에 맞게 조정
+  const ratingScore = (stats.avgRating / 5) * 300; // 5점 만점에서 300점
   
-  // 3. 리뷰 수 (15% 가중치) - 점수 낮춤
-  const reviewScore = Math.floor(stats.reviewCount * 0.15);
+  // 3. 리뷰 수 (15% 가중치) - 3자리 점수 체계에 맞게 조정
+  const reviewScore = Math.min(stats.reviewCount / 50, 1) * 150; // 50개당 150점
   
-  // 4. 재방문 고객 수 (10% 가중치) - 점수 낮춤
-  const repeatScore = Math.floor(stats.repeatClients * 0.1);
+  // 4. 재방문 고객 비율 (10% 가중치) - 3자리 점수 체계에 맞게 조정
+  const repeatRate = stats.totalSessions > 0 ? stats.repeatClients / stats.totalSessions : 0;
+  const repeatScore = repeatRate * 100; // 100% 재방문시 100점
   
-  // 5. 좋아요 수 (5% 가중치) - 점수 낮춤
-  const likeScore = Math.floor(stats.likeCount * 0.05);
+  // 5. 좋아요 수 (5% 가중치) - 3자리 점수 체계에 맞게 조정
+  const likeScore = Math.min(stats.likeCount / 100, 1) * 50; // 100개당 50점
   
   return Math.round((sessionScore + ratingScore + reviewScore + repeatScore + likeScore) * 100) / 100;
 };

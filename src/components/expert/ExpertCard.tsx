@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { Users, Star, Award, Clock, MessageCircle, Video, Heart, Calendar, MapPin } from "lucide-react";
 import { ExpertProfile } from "@/types";
 import ExpertLevelBadge from "./ExpertLevelBadge";
+import LoginModal from "@/components/auth/LoginModal";
 
 // API를 통해 전문가 레벨과 요금 정보를 가져오는 함수
 const getExpertLevelPricing = async (expertId: number, totalSessions: number = 0, avgRating: number = 0) => {
@@ -156,9 +157,32 @@ export default function ExpertCard({
   } | null>(null);
   const [isLoadingPricing, setIsLoadingPricing] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // 전문가 데이터 정규화
   const expert = normalizeExpert(rawExpert);
+
+  // 인증 상태 확인
+  useEffect(() => {
+    const checkAuth = () => {
+      try {
+        const storedUser = localStorage.getItem('consulton-user');
+        const storedAuth = localStorage.getItem('consulton-auth');
+        
+        if (storedUser && storedAuth) {
+          const isAuth = JSON.parse(storedAuth);
+          setIsAuthenticated(isAuth);
+        } else {
+          setIsAuthenticated(false);
+        }
+      } catch (error) {
+        setIsAuthenticated(false);
+      }
+    };
+    
+    checkAuth();
+  }, []);
 
   // 전문가 레벨과 요금 정보 로드
   useEffect(() => {
@@ -193,6 +217,12 @@ export default function ExpertCard({
   const tierName = pricingInfo?.tierName || "Tier 1 (Lv.1-99)";
 
   const handleProfileView = () => {
+    // 로그인하지 않은 경우 로그인 모달 표시
+    if (!isAuthenticated) {
+      setShowLoginModal(true);
+      return;
+    }
+
     if (onProfileView) {
       onProfileView(expert);
     } else if (expert.id) {
@@ -309,7 +339,8 @@ export default function ExpertCard({
 
   // 기본 모드 (상세한 카드)
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-lg transition-all duration-300 hover:border-blue-200">
+    <>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-lg transition-all duration-300 hover:border-blue-200">
       <div className="p-6">
         {/* 전문가 기본 정보 */}
         <div className="flex items-start justify-between mb-5">
@@ -326,14 +357,15 @@ export default function ExpertCard({
                   <Users className="h-10 w-10 text-gray-400" />
                 )}
               </div>
-              {/* 전문가 레벨 표시 */}
-              <ExpertLevelBadge
-                expertId={expert.id.toString()}
-                size="md"
-                className="absolute -bottom-1 -right-1"
-              />
             </div>
             <div className="flex-1 min-w-0">
+              {/* 전문가 레벨 배지 (이름 위) */}
+              <div className="mb-1">
+                <ExpertLevelBadge
+                  expertId={expert.id.toString()}
+                  size="md"
+                />
+              </div>
               <div className="flex items-center space-x-2 mb-2">
                 <h3 className="text-xl font-bold text-gray-900 truncate">
                   {expert.name}
@@ -342,32 +374,27 @@ export default function ExpertCard({
               <p className="text-base text-gray-600 font-medium">
                 {expert.specialty}
               </p>
-              {/* 티어 정보 표시 */}
-              {pricingInfo && (
-                <div className="flex items-center space-x-2 mt-1">
-                  <span className="text-xs px-2 py-1 bg-blue-50 text-blue-700 rounded-full border border-blue-100">
-                    {tierName}
-                  </span>
-                </div>
-              )}
             </div>
           </div>
-          {showFavoriteButton && (
-            <button
-              onClick={() => onToggleFavorite?.(expert.id)}
-              className={`p-2 rounded-full transition-colors ${
-                isFavorite
-                  ? "text-red-500 bg-red-50"
-                  : "text-gray-400 hover:text-red-500 hover:bg-red-50"
-              }`}
-            >
-              <Heart
-                className={`h-5 w-5 ${
-                  isFavorite ? "fill-current" : ""
+          <div className="flex items-center space-x-2">
+            {/* 좋아요 버튼 */}
+            {showFavoriteButton && (
+              <button
+                onClick={() => onToggleFavorite?.(expert.id)}
+                className={`p-2 rounded-full transition-colors ${
+                  isFavorite
+                    ? "text-red-500 bg-red-50"
+                    : "text-gray-400 hover:text-red-500 hover:bg-red-50"
                 }`}
-              />
-            </button>
-          )}
+              >
+                <Heart
+                  className={`h-5 w-5 ${
+                    isFavorite ? "fill-current" : ""
+                  }`}
+                />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* 평점 및 정보 */}
@@ -471,5 +498,13 @@ export default function ExpertCard({
         </div>
       </div>
     </div>
+
+    {/* 로그인 모달 */}
+    <LoginModal
+      isOpen={showLoginModal}
+      onClose={() => setShowLoginModal(false)}
+      redirectPath={`/experts/${expert.id}`}
+    />
+  </>
   );
 }

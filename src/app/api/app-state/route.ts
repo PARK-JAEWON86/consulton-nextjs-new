@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { userDataService } from '@/services/UserDataService';
-import { dummyUserProfile } from '@/data/dummy/users';
+// userDataService import 제거 - 실제 서비스에서는 불필요
+// import { userDataService } from '@/services/UserDataService';
+// 더미 데이터 import 제거 - 실제 서비스에서는 불필요
+// import { dummyUserProfile } from '@/data/dummy/users';
 
 interface ChatHistoryItem {
   id: string;
@@ -54,35 +56,17 @@ let appState: AppState = {
   currentPage: "/",
   viewMode: "user",
   user: null,
-  chatHistory: [], // 빈 배열로 초기화 (더미데이터에서 가져올 예정)
+  chatHistory: [], // 빈 배열로 초기화
 };
 
 // GET: 현재 앱 상태 조회
 export async function GET() {
   try {
-    // 더미 사용자 데이터 가져오기
-    const dummyUsers = userDataService.getAllUsers();
-    const kimCheolsu = dummyUsers.find(user => user.name === "김철수");
-    
-    // 기본 상태에 더미 사용자 정보 추가
+    // 실제 서비스에서는 현재 저장된 앱 상태만 반환
+    // 더미 데이터나 하드코딩된 사용자 정보 제거
     const responseData = {
       ...appState,
-      isAuthenticated: true, // 김철수를 로그인된 상태로 설정
-      user: kimCheolsu ? {
-        id: kimCheolsu.id,
-        email: kimCheolsu.email,
-        name: kimCheolsu.name,
-        nickname: dummyUserProfile.nickname || kimCheolsu.name, // 닉네임 우선, 없으면 이름
-        credits: kimCheolsu.credits, // 더미데이터에서 크레딧 가져오기
-        expertLevel: null, // 하드코딩 제거
-        role: 'client' as const,
-        phone: dummyUserProfile.phone,
-        location: dummyUserProfile.location,
-        bio: dummyUserProfile.bio,
-        interestedCategories: dummyUserProfile.interests,
-        profileVisibility: 'experts',
-        paymentMethods: dummyUserProfile.paymentMethods
-      } : null
+      // 실제 인증 상태 유지 (더미 데이터로 덮어쓰지 않음)
     };
 
     const response = NextResponse.json({ 
@@ -101,43 +85,16 @@ export async function GET() {
     return response;
   } catch (error) {
     console.error('app-state API 오류:', error);
-    // 에러가 발생해도 기본 상태 반환하여 알러트 방지
+    // 에러 발생 시 기본 상태만 반환 (더미 사용자 정보 없음)
     const fallbackResponse = NextResponse.json({ 
       success: true, 
       data: {
-        hasEnteredService: true,
-        isAuthenticated: true,
+        hasEnteredService: false,
+        isAuthenticated: false,
         sidebarOpen: false,
         currentPage: "/",
         viewMode: "user",
-        user: {
-          id: 'client_1',
-          email: 'kimcheolsu@example.com',
-          name: '김철수',
-          nickname: '철수킹',
-          credits: 8850,
-          expertLevel: null,
-          role: 'client',
-          phone: '010-1234-5678',
-          location: '서울, 대한민국',
-          bio: '안녕하세요! 진로상담과 심리상담에 관심이 많은 김철수입니다.',
-          interestedCategories: ['career', 'psychology', 'finance'],
-          profileVisibility: 'experts',
-          paymentMethods: {
-            cards: [
-              {
-                id: 'pm_001',
-                cardNumber: '1234567890123456',
-                cardType: 'credit',
-                cardBrand: 'VISA',
-                expiryMonth: '12',
-                expiryYear: '28',
-                cardholderName: 'KIM CHEOL SU',
-                isDefault: true
-              }
-            ]
-          }
-        },
+        user: null,
         chatHistory: []
       }
     });

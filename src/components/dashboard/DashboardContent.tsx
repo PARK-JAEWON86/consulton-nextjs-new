@@ -22,7 +22,6 @@ import {
 } from "lucide-react";
 import CreditBalance from "./CreditBalance";
 import UserProfile from "./UserProfile";
-import { useEventBasedRefresh } from "@/hooks/useEventBasedRefresh";
 import { eventBus, CREDIT_EVENTS, USER_EVENTS } from "@/utils/eventBus";
 
 interface User {
@@ -55,8 +54,15 @@ export default function DashboardContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [showTokenHistory, setShowTokenHistory] = useState(false);
 
-  // 이벤트 기반 새로고침 훅 사용
-  const { registerRefreshFunction } = useEventBasedRefresh();
+  // 이벤트 기반 새로고침 함수 (훅 대신 직접 구현)
+  const registerRefreshFunction = useCallback((refreshFn: () => void) => {
+    // 이벤트 리스너 등록
+    const handleEvent = () => refreshFn();
+    const unsubscribe = eventBus.subscribe(CREDIT_EVENTS.CREDITS_UPDATED, handleEvent);
+    
+    // 클린업 함수 반환
+    return unsubscribe;
+  }, []);
 
   // 데이터 새로고침 함수
   const refreshData = useCallback(async () => {
