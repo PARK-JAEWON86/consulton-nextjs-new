@@ -303,25 +303,7 @@ export default function PayoutsPage() {
     URL.revokeObjectURL(url);
   };
 
-  // 로그인하지 않은 경우
-  if (!appState.user || appState.user.role !== 'expert') {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white border rounded-lg p-8 text-center max-w-md">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">전문가 로그인 필요</h2>
-          <p className="text-gray-600 mb-6">
-            정산 페이지는 전문가 계정으로 로그인해야 이용할 수 있습니다.
-          </p>
-          <a 
-            href="/auth/login"
-            className="inline-block bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors"
-          >
-            로그인하러 가기
-          </a>
-        </div>
-      </div>
-    );
-  }
+
 
   return (
     <div className="min-h-screen bg-gray-50">

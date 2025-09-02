@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import { usePathname } from "next/navigation";
 import ProfileSettings from "@/components/settings/ProfileSettings";
 import CalendarIntegration from "@/components/settings/CalendarIntegration";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
@@ -24,7 +23,6 @@ interface AppState {
 }
 
 export default function ExpertSettingsPage() {
-  const pathname = usePathname();
   const [appState, setAppState] = useState<AppState>({
     isAuthenticated: false,
     user: null,
@@ -83,10 +81,9 @@ export default function ExpertSettingsPage() {
   // 현재 모드 결정
   const effectiveVariant: "user" | "expert" = useMemo(() => {
     if (viewMode) return viewMode;
-    if (pathname.startsWith("/dashboard/expert")) return "expert";
     if (user?.role === 'expert') return "expert";
     return "user";
-  }, [viewMode, pathname, user]);
+  }, [viewMode, user]);
 
   // 테마 변경 함수
   const handleThemeChange = (newTheme: "light" | "dark" | "system") => {
@@ -150,6 +147,8 @@ export default function ExpertSettingsPage() {
     { id: "payouts", name: "정산/출금", icon: CreditCard, path: "/dashboard/expert/payouts" },
     { id: "consultations", name: "상담내역", icon: FileText, path: "/dashboard/expert/consultations" },
   ];
+
+
 
   return (
     <ProtectedRoute requireAuth={true}>

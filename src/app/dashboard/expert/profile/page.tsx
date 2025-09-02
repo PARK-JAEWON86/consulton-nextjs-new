@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { expertDataService } from "@/services/ExpertDataService";
 import { ExpertProfile as ExpertProfileType } from "@/types";
 import ExpertProfile from "@/components/dashboard/ExpertProfile";
@@ -48,7 +48,10 @@ type ExpertProfileData = {
   experience: number | string;
   description: string;
   education: string[];
-  certifications: string[];
+  certifications: Array<{
+    name: string;
+    issuer: string;
+  }>;
   specialties: string[];
   consultationTypes: ConsultationType[];
   languages: string[];
@@ -85,6 +88,7 @@ export default function ExpertProfilePage() {
     user: null
   });
   const [currentExpertId, setCurrentExpertId] = useState<number | null>(null);
+  const expertProfileRef = useRef<any>(null);
   
   // 앱 상태 로드
   useEffect(() => {
@@ -108,12 +112,12 @@ export default function ExpertProfilePage() {
 
   const { user } = appState;
   
-  // 프로필이 완성되지 않았으면 편집 모드로 시작
-  useEffect(() => {
-    if (initialData && !initialData.isProfileComplete) {
-      setIsEditing(true);
-    }
-  }, [initialData]);
+  // 기본적으로는 보기 모드로 시작 (편집 모드 자동 시작 제거)
+  // useEffect(() => {
+  //   if (initialData && !initialData.isProfileComplete) {
+  //     setIsEditing(true);
+  //   }
+  // }, [initialData]);
 
   // 전문가 프로필 스토어 사용
   // const { 
@@ -124,8 +128,8 @@ export default function ExpertProfilePage() {
   // } = useExpertProfileStore();
 
   useEffect(() => {
-    // 로그인한 전문가가 없으면 리턴
-    if (!user || user.role !== 'expert' || !user.expertProfile) {
+    // 로그인한 사용자가 없으면 리턴
+    if (!user) {
       return;
     }
     
@@ -157,8 +161,74 @@ export default function ExpertProfilePage() {
     });
 
     const expertProfile = latestProfile || user.expertProfile;
+    
+    // 전문가 프로필이 없으면 기본 프로필 생성
     if (!expertProfile) {
-      console.error('전문가 프로필을 찾을 수 없습니다:', expertId);
+      console.log('전문가 프로필이 없어서 기본 프로필을 생성합니다:', expertId);
+      
+      // 기본 프로필 데이터 생성
+      const defaultProfile = {
+        name: user.name || "",
+        specialty: "",
+        experience: 0,
+        description: "",
+        education: [""],
+        certifications: [{ name: "", issuer: "" }],
+        specialties: [""],
+        consultationTypes: [],
+        languages: ["한국어"],
+        hourlyRate: 0,
+        pricePerMinute: 0,
+        totalSessions: 0,
+        avgRating: 0,
+        level: user.expertLevel || "Tier 1 (Lv.1-99)",
+        completionRate: 95,
+        repeatClients: 0,
+        responseTime: '2시간 내',
+        averageSessionDuration: 60,
+        reviewCount: 0,
+        cancellationPolicy: '24시간 전 취소 가능',
+        availability: {
+          monday: { available: false, hours: "09:00-18:00" },
+          tuesday: { available: false, hours: "09:00-18:00" },
+          wednesday: { available: false, hours: "09:00-18:00" },
+          thursday: { available: false, hours: "09:00-18:00" },
+          friday: { available: false, hours: "09:00-18:00" },
+          saturday: { available: false, hours: "09:00-18:00" },
+          sunday: { available: false, hours: "09:00-18:00" },
+        },
+        holidayPolicy: "",
+        contactInfo: { 
+          phone: "", 
+          email: user.email || "", 
+          location: "", 
+          website: "" 
+        },
+        profileImage: null,
+        portfolioFiles: [],
+        socialProof: {
+          linkedIn: "",
+          website: "",
+          publications: [""],
+        },
+        portfolioItems: [],
+        consultationStyle: "",
+        successStories: 0,
+        nextAvailableSlot: "",
+        profileViews: 0,
+        lastActiveAt: new Date(),
+        joinedAt: new Date(),
+        reschedulePolicy: "12시간 전 일정 변경 가능",
+        pricingTiers: [
+          { duration: 30, price: 25000, description: "기본 상담" },
+          { duration: 60, price: 45000, description: "상세 상담" },
+          { duration: 90, price: 65000, description: "종합 상담" }
+        ],
+        targetAudience: ["성인", "직장인", "학생"],
+        isProfileComplete: false,
+      };
+      
+      setInitialData(defaultProfile);
       return;
     }
 
@@ -168,7 +238,7 @@ export default function ExpertProfilePage() {
       experience: expertProfile.experience || 0,
       description: expertProfile.description || "",
       education: expertProfile.education || [""],
-      certifications: expertProfile.certifications || [""],
+      certifications: expertProfile.certifications || [{ name: "", issuer: "" }],
       specialties: expertProfile.specialties || [expertProfile.specialty || ""],
       consultationTypes: expertProfile.consultationTypes || [],
       languages: expertProfile.languages || ["한국어"],
@@ -201,7 +271,29 @@ export default function ExpertProfilePage() {
       },
       profileImage: expertProfile.profileImage || null,
       portfolioFiles: expertProfile.portfolioFiles || [],
-      isProfileComplete: expertProfile?.isProfileComplete !== false,
+      // 소셜 증명 필드 추가
+      socialProof: expertProfile.socialProof || {
+        linkedIn: "",
+        website: "",
+        publications: [""],
+      },
+      // 포트폴리오 아이템 필드 추가
+      portfolioItems: expertProfile.portfolioItems || [],
+      // 상담 관련 세부 정보 필드 추가
+      consultationStyle: expertProfile.consultationStyle || "",
+      successStories: expertProfile.successStories || 0,
+      nextAvailableSlot: expertProfile.nextAvailableSlot || "",
+      profileViews: expertProfile.profileViews || 0,
+      lastActiveAt: expertProfile.lastActiveAt || new Date(),
+      joinedAt: expertProfile.joinedAt || new Date(),
+      reschedulePolicy: expertProfile.reschedulePolicy || "12시간 전 일정 변경 가능",
+      pricingTiers: expertProfile.pricingTiers || [
+        { duration: 30, price: 25000, description: "기본 상담" },
+        { duration: 60, price: 45000, description: "상세 상담" },
+        { duration: 90, price: 65000, description: "종합 상담" }
+      ],
+      targetAudience: expertProfile.targetAudience || ["성인", "직장인", "학생"],
+      isProfileComplete: expertProfile?.isProfileComplete === true,
     };
     setInitialData(convertedData);
   }, [user]);
@@ -217,7 +309,7 @@ export default function ExpertProfilePage() {
       experience: Number(updated.experience),
       description: updated.description,
       education: updated.education,
-      certifications: updated.certifications,
+      certifications: updated.certifications.map(cert => cert.name), // 객체를 문자열로 변환
       specialties: updated.specialties,
       specialtyAreas: updated.specialties, // 동일하게 설정
       consultationTypes: updated.consultationTypes,
@@ -241,9 +333,23 @@ export default function ExpertProfilePage() {
       timeZone: 'KST (UTC+9)',
       profileImage: updated.profileImage,
       portfolioFiles: updated.portfolioFiles,
-      portfolioItems: [],
+      portfolioItems: (updated as any).portfolioItems || [],
+      socialProof: (updated as any).socialProof,
+      // 상담 관련 세부 정보 필드들
+      consultationStyle: (updated as any).consultationStyle,
+      successStories: (updated as any).successStories || 0,
+      nextAvailableSlot: (updated as any).nextAvailableSlot,
+      profileViews: (updated as any).profileViews || 0,
+      lastActiveAt: (updated as any).lastActiveAt || new Date(),
+      joinedAt: (updated as any).joinedAt || new Date(),
+      reschedulePolicy: (updated as any).reschedulePolicy || "12시간 전 일정 변경 가능",
+      pricingTiers: (updated as any).pricingTiers || [
+        { duration: 30, price: 25000, description: "기본 상담" },
+        { duration: 60, price: 45000, description: "상세 상담" },
+        { duration: 90, price: 65000, description: "종합 상담" }
+      ],
       tags: updated.specialties,
-      targetAudience: ['일반인', '직장인', '학생'],
+      targetAudience: (updated as any).targetAudience || ['성인', '직장인', '학생'],
       isOnline: true,
       isProfileComplete: updated.isProfileComplete,
       createdAt: new Date(),
@@ -266,6 +372,9 @@ export default function ExpertProfilePage() {
       } catch {
         // ignore
       }
+      
+      // 저장 성공 후 편집 모드 종료
+      setIsEditing(false);
       
       console.log('✅ 중앙 서비스에 프로필 저장 완료:', currentExpertId);
     } else {
@@ -304,27 +413,44 @@ export default function ExpertProfilePage() {
     return weeklyAvailability;
   };
 
-  // 로그인하지 않은 경우
-  if (!user || user.role !== 'expert') {
+
+
+  // 인증되지 않은 사용자 처리
+  if (!appState.isAuthenticated || !appState.user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white border rounded-lg p-8 text-center max-w-md">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">전문가 로그인 필요</h2>
-          <p className="text-gray-600 mb-6">
-            프로필 페이지는 전문가 계정으로 로그인해야 이용할 수 있습니다.
-          </p>
-          <a 
-            href="/auth/login"
-            className="inline-block bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors"
+        <div className="text-center">
+          <div className="text-red-600 mb-4">
+            <svg className="h-16 w-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">로그인이 필요합니다</h2>
+          <p className="text-gray-600 mb-4">전문가 프로필을 보려면 먼저 로그인해주세요.</p>
+          <button 
+            onClick={() => window.location.href = '/auth/login'}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
-            로그인하러 가기
-          </a>
+            로그인하기
+          </button>
         </div>
       </div>
     );
   }
 
-  if (!initialData) return null;
+
+
+  // 로딩 상태 표시
+  if (!initialData) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">전문가 프로필을 로딩 중입니다...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -337,24 +463,22 @@ export default function ExpertProfilePage() {
             </p>
           </div>
           <div className="flex items-center space-x-4">
-            <div className="text-sm text-gray-600">
-              {initialData?.isProfileComplete ? (
-                <span className="flex items-center text-green-600">
-                  <svg className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  프로필 완성
-                </span>
-              ) : (
-                <span className="flex items-center text-yellow-600">
-                  <svg className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                  </svg>
-                  프로필 미완성
-                </span>
-              )}
-            </div>
-            {!isEditing && (
+            {isEditing ? (
+              <button
+                onClick={() => {
+                  // ExpertProfile 컴포넌트의 저장 함수 호출
+                  if (expertProfileRef.current && expertProfileRef.current.handleSave) {
+                    expertProfileRef.current.handleSave();
+                  }
+                }}
+                className="flex items-center px-4 py-2 text-sm bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium"
+              >
+                <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                저장하기
+              </button>
+            ) : (
               <button
                 onClick={() => setIsEditing(true)}
                 className="flex items-center px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
@@ -368,6 +492,7 @@ export default function ExpertProfilePage() {
           </div>
         </div>
         <ExpertProfile 
+          ref={expertProfileRef}
           expertData={initialData} 
           onSave={handleSave} 
           isEditing={isEditing}

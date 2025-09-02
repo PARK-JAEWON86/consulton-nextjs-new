@@ -91,14 +91,42 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [chatHistory, setChatHistory] = useState<any[]>([]);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [summaryNotificationCount, setSummaryNotificationCount] = useState(0);
+  const [notificationCount, setNotificationCount] = useState(0);
 
   
+  // 알림 개수 로드
+  const loadNotificationCount = async () => {
+    try {
+      // 임시 전문가 ID (실제로는 인증 시스템에서 가져와야 함)
+      const expertId = 'expert_1';
+      
+      const response = await fetch(`/api/notifications?userId=${expertId}&isRead=false`);
+      const result = await response.json();
+      
+      if (result.success) {
+        setNotificationCount(result.data.unreadCount);
+      }
+    } catch (error) {
+      console.error('알림 개수 로드 실패:', error);
+    }
+  };
+
   // 하이드레이션 완료 후 테마 설정
   useEffect(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("consulton-theme");
       setTheme(stored === "dark" ? "dark" : "light");
     }
+  }, []);
+
+  // 알림 개수 로드
+  useEffect(() => {
+    loadNotificationCount();
+    
+    // 주기적으로 알림 개수 업데이트 (30초마다)
+    const interval = setInterval(loadNotificationCount, 30000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const [appState, setAppState] = useState<AppState>({
@@ -333,8 +361,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     };
   }, []);
   
-  // 하이드레이션 완료 상태 체크
-  const [isHydrated, setIsHydrated] = useState(false);
+  // 하이드레이션 완료 상태 체크 - 초기값을 true로 설정하여 SSR 문제 방지
+  const [isHydrated, setIsHydrated] = useState(true);
   const effectiveVariant: "user" | "expert" = useMemo(() => {
     console.log('effectiveVariant 계산:', { variant, pathname, isHydrated, viewMode, userRole: user?.role, isAuthenticated });
     
@@ -381,13 +409,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     return "user";
   }, [variant, pathname, isHydrated, viewMode, user?.role, isAuthenticated]);
 
-  // 하이드레이션 완료 체크 - 안전한 방식으로 수정
-  useEffect(() => {
-    // 클라이언트 사이드에서만 실행
-    if (typeof window !== 'undefined') {
-      setIsHydrated(true);
-    }
-  }, []);
+  // 하이드레이션 완료 체크 - 초기값이 true로 설정되어 있으므로 추가 로직 불필요
 
   // viewMode 변경 감지하여 즉시 반영
   useEffect(() => {
@@ -542,10 +564,22 @@ const Sidebar: React.FC<SidebarProps> = ({
       return [
         { id: "home", name: "대시보드", icon: Home, path: "/dashboard/expert" },
         {
-          id: "expert-profile",
-          name: "전문가 프로필",
-          icon: User,
-          path: "/dashboard/expert/profile",
+          id: "consultation-requests",
+          name: "상담 신청 관리",
+          icon: MessageCircle,
+          path: "/dashboard/expert/consultation-requests",
+        },
+        {
+          id: "consultation-sessions",
+          name: "상담 세션",
+          icon: Video,
+          path: "/dashboard/expert/consultation-sessions",
+        },
+        {
+          id: "consultations",
+          name: "상담내역",
+          icon: FileText,
+          path: "/dashboard/expert/consultations",
         },
         {
           id: "reviews",
@@ -560,16 +594,10 @@ const Sidebar: React.FC<SidebarProps> = ({
           path: "/dashboard/expert/payouts",
         },
         {
-          id: "consultations",
-          name: "상담내역",
-          icon: FileText,
-          path: "/dashboard/expert/consultations",
-        },
-        {
-          id: "notifications",
-          name: "알림",
-          icon: Bell,
-          path: "/dashboard/notifications",
+          id: "expert-profile",
+          name: "전문가 프로필",
+          icon: User,
+          path: "/dashboard/expert/profile",
         },
         {
           id: "settings",
@@ -900,7 +928,11 @@ const Sidebar: React.FC<SidebarProps> = ({
       )}
 
       <aside
-        className={`fixed top-0 left-0 bottom-0 z-30 bg-white border-r border-gray-200 transform transition-transform duration-300 lg:translate-x-0 w-64 ${
+        className={`fixed top-0 left-0 bottom-0 z-30 ${
+          effectiveVariant === "expert" 
+            ? "bg-gradient-to-b from-blue-50 to-indigo-50 border-r border-blue-200" 
+            : "bg-white border-r border-gray-200"
+        } transform transition-transform duration-300 lg:translate-x-0 w-64 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -942,8 +974,12 @@ const Sidebar: React.FC<SidebarProps> = ({
                         isDisabled
                           ? "text-gray-400 cursor-not-allowed opacity-60"
                           : active
-                          ? "bg-gray-100 text-gray-900"
-                          : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                          ? effectiveVariant === "expert" 
+                            ? "bg-blue-100 text-blue-900" 
+                            : "bg-gray-100 text-gray-900"
+                          : effectiveVariant === "expert"
+                            ? "text-blue-700 hover:bg-blue-50 hover:text-blue-900"
+                            : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
                       }`}
                       title={isDisabled ? "로그인이 필요합니다" : ""}
                     >
@@ -952,8 +988,12 @@ const Sidebar: React.FC<SidebarProps> = ({
                           isDisabled 
                             ? "text-gray-400" 
                             : active 
-                            ? "text-gray-900" 
-                            : "text-gray-500"
+                            ? effectiveVariant === "expert" 
+                              ? "text-blue-900" 
+                              : "text-gray-900"
+                            : effectiveVariant === "expert"
+                              ? "text-blue-600"
+                              : "text-gray-500"
                         }`}
                       />
                       <span>{item.name}</span>
@@ -961,6 +1001,12 @@ const Sidebar: React.FC<SidebarProps> = ({
                       {item.id === "summary" && summaryNotificationCount > 0 && (
                         <span className="ml-2 bg-blue-600 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[16px] text-center">
                           {summaryNotificationCount}
+                        </span>
+                      )}
+                      {/* 일반 알림 표시 */}
+                      {item.id === "notifications" && notificationCount > 0 && (
+                        <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[16px] text-center">
+                          {notificationCount}
                         </span>
                       )}
                       {isDisabled && (
@@ -1127,7 +1173,11 @@ const Sidebar: React.FC<SidebarProps> = ({
           </div>
 
           {/* 프로필 섹션 - 하단 고정 */}
-          <div className="border-t border-gray-200 p-3 flex-shrink-0">
+          <div className={`border-t p-3 flex-shrink-0 ${
+            effectiveVariant === "expert" 
+              ? "border-blue-200" 
+              : "border-gray-200"
+          }`}>
             <div className="relative">
               {!isHydrated ? (
                 // 로딩 상태
@@ -1153,7 +1203,11 @@ const Sidebar: React.FC<SidebarProps> = ({
                 // 실제 프로필
                 <button
                   onClick={() => setShowProfileMenu((v) => !v)}
-                  className="w-full flex items-center gap-3 rounded-md px-2 py-2 hover:bg-gray-50"
+                  className={`w-full flex items-center gap-3 rounded-md px-2 py-2 ${
+                    effectiveVariant === "expert" 
+                      ? "hover:bg-blue-50" 
+                      : "hover:bg-gray-50"
+                  }`}
                 >
                   <div className="relative w-9 h-9 rounded-full overflow-hidden bg-blue-600" style={{minWidth: '36px', minHeight: '36px'}}>
                     <div className="w-full h-full flex items-center justify-center text-white text-sm font-medium">

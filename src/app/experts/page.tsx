@@ -7,10 +7,15 @@ import ServiceLayout from "@/components/layout/ServiceLayout";
 import {
   Search,
   Users,
+<<<<<<< HEAD
   ChevronDown,
   ChevronUp,
   X,
   SlidersHorizontal,
+=======
+  Award,
+  Heart,
+>>>>>>> 6615aeb (expert profile update)
   ChevronLeft,
   ChevronRight,
   Brain,
@@ -59,7 +64,7 @@ import ExpertCard from "@/components/expert/ExpertCard";
 // ExpertProfile 타입 사용
 type ExpertItem = ExpertProfile;
 
-type SortBy = "rating" | "experience" | "reviews";
+type SortBy = "rating" | "experience" | "sessions" | "reviews" | "likes" | "highRating";
 
 type SelectedFilters = {
   specialty: string;
@@ -81,7 +86,7 @@ const ExpertSearch = () => {
     availability: "",
     experience: 0,
   });
-  const [showFilters, setShowFilters] = useState(false);
+
   const [sortBy, setSortBy] = useState<SortBy>("rating");
   const [favorites, setFavorites] = useState<number[]>([]);
   const [filteredExperts, setFilteredExperts] = useState<ExpertItem[]>([]);
@@ -455,10 +460,24 @@ const ExpertSearch = () => {
           (a: ExpertItem, b: ExpertItem) => b.experience - a.experience
         );
         break;
+      case "sessions":
+        filtered.sort(
+          (a: ExpertItem, b: ExpertItem) => b.totalSessions - a.totalSessions
+        );
+        break;
       case "reviews":
         filtered.sort(
           (a: ExpertItem, b: ExpertItem) => b.reviewCount - a.reviewCount
         );
+        break;
+      case "likes":
+        // 좋아요는 현재 데이터에 없으므로 임시로 totalSessions 사용
+        filtered.sort(
+          (a: ExpertItem, b: ExpertItem) => b.totalSessions - a.totalSessions
+        );
+        break;
+      case "highRating":
+        filtered.sort((a: ExpertItem, b: ExpertItem) => b.rating - a.rating);
         break;
       default:
         break;
@@ -652,30 +671,35 @@ const ExpertSearch = () => {
               />
             </div>
 
-            {/* 필터 토글 버튼 */}
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center px-4 py-3 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg transition-colors"
-            >
-              <SlidersHorizontal className="h-5 w-5 mr-2" />
-              필터
-              {showFilters ? (
-                <ChevronUp className="h-4 w-4 ml-2" />
-              ) : (
-                <ChevronDown className="h-4 w-4 ml-2" />
-              )}
-            </button>
-
-            {/* 정렬 선택 */}
+            {/* 필터 드롭다운 */}
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as SortBy)}
-              className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e")`,
+                backgroundPosition: 'right 12px center',
+                backgroundRepeat: 'no-repeat',
+                backgroundSize: '16px'
+              }}
             >
               <option value="rating">평점 높은 순</option>
               <option value="experience">경력 많은 순</option>
+              <option value="sessions">상담횟수 많은 순</option>
               <option value="reviews">리뷰 많은 순</option>
+              <option value="likes">좋아요 많은 순</option>
+              <option value="highRating">별점 높은 순</option>
             </select>
+            
+            {/* 랭킹 페이지 버튼 */}
+            <button
+              onClick={() => router.push('/experts/rankings')}
+              className="px-4 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors flex items-center space-x-2"
+              title="전문가 랭킹 보기"
+            >
+              <Trophy className="h-5 w-5" />
+              <span>랭킹</span>
+            </button>
             
             {/* 새로고침 버튼 */}
             <button
@@ -850,84 +874,7 @@ const ExpertSearch = () => {
             </div>
           </div>
 
-          {/* 필터 패널 */}
-          {showFilters && (
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {/* 전문분야 */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    전문분야
-                  </label>
-                  <select
-                    value={selectedFilters.specialty}
-                    onChange={(e) =>
-                      handleFilterChange("specialty", e.target.value)
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">전체</option>
-                    {specialtyOptions.map((specialty) => (
-                      <option key={specialty} value={specialty}>
-                        {specialty}
-                      </option>
-                    ))}
-                  </select>
-                </div>
 
-                {/* 최소 평점 */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    최소 평점
-                  </label>
-                  <select
-                    value={selectedFilters.minRating}
-                    onChange={(e) =>
-                      handleFilterChange(
-                        "minRating",
-                        parseFloat(e.target.value)
-                      )
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value={0}>전체</option>
-                    <option value={4.5}>4.5점 이상</option>
-                    <option value={4.0}>4.0점 이상</option>
-                    <option value={3.5}>3.5점 이상</option>
-                  </select>
-                </div>
-
-                {/* 최소 경력 */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    최소 경력 ({selectedFilters.experience}년 이상)
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="20"
-                    step="1"
-                    value={selectedFilters.experience}
-                    onChange={(e) =>
-                      handleFilterChange("experience", parseInt(e.target.value))
-                    }
-                    className="w-full"
-                  />
-                </div>
-              </div>
-
-              {/* 필터 초기화 버튼 */}
-              <div className="mt-6 flex justify-end">
-                <button
-                  onClick={clearAllFilters}
-                  className="flex items-center px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <X className="h-4 w-4 mr-1" />
-                  필터 초기화
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* 검색 결과 및 상단 페이징 */}
@@ -976,6 +923,7 @@ const ExpertSearch = () => {
 
         {/* 전문가 목록 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+<<<<<<< HEAD
           {currentExperts.map((expert: ExpertItem) => (
             <ExpertCard
               key={expert.id}
@@ -988,6 +936,158 @@ const ExpertSearch = () => {
               onProfileView={() => handleProfileView(expert)}
             />
           ))}
+=======
+          {currentExperts.map((expert: ExpertItem) => {
+
+            return (
+              <div
+                key={expert.id}
+                className="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-lg transition-all duration-300 hover:border-blue-200"
+              >
+                <div className="p-6">
+                  {/* 전문가 기본 정보 */}
+                  <div className="flex items-start justify-between mb-5">
+                    <div className="flex items-center space-x-4">
+                      <div className="relative flex-shrink-0">
+                        <div className="w-24 h-24 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl flex items-center justify-center overflow-hidden border-2 border-gray-100">
+                          {expert.profileImage ? (
+                            <img
+                              src={expert.profileImage}
+                              alt={expert.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <Users className="h-10 w-10 text-gray-400" />
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        {/* 전문가 레벨 배지를 이름 위로 이동 */}
+                        <div className="mb-2">
+                          <ExpertLevelBadge
+                            expertId={expert.id.toString()}
+                            size="sm"
+                            className="flex-shrink-0"
+                          />
+                        </div>
+                        <div className="flex items-center space-x-2 mb-2">
+                          <h3 className="text-xl font-bold text-gray-900 truncate">
+                            {expert.name}
+                          </h3>
+                        </div>
+                        <p className="text-base text-gray-600 font-medium">
+                          {expert.specialty}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => toggleFavorite(expert.id)}
+                      className={`p-2 rounded-full transition-colors ${
+                        favorites.includes(expert.id)
+                          ? "text-red-500 bg-red-50"
+                          : "text-gray-400 hover:text-red-500 hover:bg-red-50"
+                      }`}
+                    >
+                      <Heart
+                        className={`h-5 w-5 ${
+                          favorites.includes(expert.id) ? "fill-current" : ""
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* 평점 및 정보 */}
+                  <div className="flex items-center space-x-4 mb-3">
+                    <div className="flex items-center">
+                      <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                      <span className="text-sm font-semibold text-gray-900 ml-1">
+                        {expert.rating}
+                      </span>
+                      <span className="text-sm text-gray-500 ml-1">
+                        ({expert.reviewCount})
+                      </span>
+                    </div>
+                    <div className="flex items-center text-sm text-gray-500">
+                      <Award className="h-4 w-4 mr-1" />
+                      {expert.experience}년 경력
+                    </div>
+                  </div>
+
+                  {/* 설명 */}
+                  <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                    {expert.description}
+                  </p>
+
+                  {/* 전문 분야 태그 */}
+                  <div className="flex gap-1.5 overflow-hidden mb-4">
+                    {(expert.specialties || []).slice(0, 3).map((specialty, index) => (
+                      <span
+                        key={index}
+                        className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs rounded-full border border-blue-100 flex-shrink-0"
+                      >
+                        {specialty}
+                      </span>
+                    ))}
+                    {(expert.specialties || []).length > 3 && (
+                      <span className="px-2.5 py-1 bg-gray-50 text-gray-600 text-xs rounded-full border border-gray-100 flex-shrink-0">
+                        +{(expert.specialties || []).length - 3}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* 상담 방식 및 답변 시간 */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-2">
+                      {(expert.consultationTypes || []).map((type) => {
+                        const Icon = getConsultationTypeIcon(type as ConsultationType);
+                        return (
+                          <div
+                            key={type}
+                            className="flex items-center text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded"
+                            title={type === "video" ? "화상 상담" : "채팅 상담"}
+                          >
+                            <Icon className="h-3 w-3 mr-1" />
+                            {type === "video" && "화상"}
+                            {type === "chat" && "채팅"}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* 답변 시간 표시 */}
+                    <div className="flex items-center space-x-1 text-xs text-gray-600">
+                      <Clock
+                        className={`h-3 w-3 ${getResponseTimeColor(
+                          expert.responseTime
+                        )}`}
+                      />
+                      <span>{getResponseTimeText(expert.responseTime)}</span>
+                    </div>
+                  </div>
+
+                  {/* 가격 및 버튼 */}
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                    <div className="text-xl font-bold text-gray-900">
+                      1 크레딧
+                      <span className="text-sm font-normal text-gray-500">
+                        /분
+                      </span>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleProfileView(expert)}
+                        className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-sm"
+                        aria-label={`${expert.name} 전문가 프로필 보기`}
+                      >
+                        프로필 보기
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+>>>>>>> 6615aeb (expert profile update)
         </div>
 
         {/* 하단 페이징 */}
@@ -1072,12 +1172,7 @@ const ExpertSearch = () => {
                     🔄 필터 초기화
                   </button>
                 )}
-                <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors font-medium"
-                >
-                  🔍 필터 {showFilters ? "닫기" : "열기"}
-                </button>
+
               </div>
 
               {/* 인기 검색어 제안 */}

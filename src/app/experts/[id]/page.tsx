@@ -23,6 +23,40 @@ import {
 import { dummyExperts, convertExpertItemToProfile } from "@/data/dummy/experts";
 import { dummyReviews, getReviewsByExpert } from "@/data/dummy/reviews";
 import { ExpertProfile, Review } from "@/types";
+
+// 답변 시간 텍스트 변환 함수
+const getResponseTimeText = (responseTime: string | number | null | undefined): string => {
+  if (!responseTime) return "답변 시간 정보 없음";
+  if (typeof responseTime === "number") {
+    if (responseTime < 60) return `${responseTime}분 내`;
+    if (responseTime < 1440) return `${Math.floor(responseTime / 60)}시간 내`;
+    return `${Math.floor(responseTime / 1440)}일 내`;
+  }
+  return responseTime.toString();
+};
+
+// 답변 시간 색상 함수
+const getResponseTimeColor = (responseTime: string | number | null | undefined): string => {
+  if (!responseTime) return "text-gray-400";
+  
+  if (typeof responseTime === "number") {
+    if (responseTime < 60) return "text-green-500";
+    if (responseTime < 1440) return "text-yellow-500";
+    return "text-red-500";
+  }
+  
+  // 문자열 처리
+  const timeStr = responseTime.toString().toLowerCase();
+  if (timeStr.includes("분") || timeStr.includes("minute")) {
+    return "text-green-500";
+  } else if (timeStr.includes("시간") || timeStr.includes("hour")) {
+    return "text-yellow-500";
+  } else if (timeStr.includes("일") || timeStr.includes("day")) {
+    return "text-red-500";
+  }
+  
+  return "text-gray-400";
+};
 // API를 통해 전문가 레벨 관련 정보를 가져오는 함수들
 const calculateExpertLevel = async (totalSessions: number = 0, avgRating: number = 0) => {
   try {
@@ -77,6 +111,7 @@ const getKoreanLevelName = async (levelName: string): Promise<string> => {
 };
 import ExpertCard from "@/components/expert/ExpertCard";
 import ExpertLevelBadge from "@/components/expert/ExpertLevelBadge";
+import ConsultationRequestModal, { ConsultationRequestData } from "@/components/consultation/ConsultationRequestModal";
 
 export default function ExpertProfilePage() {
   const params = useParams();
@@ -136,6 +171,9 @@ export default function ExpertProfilePage() {
   
   // 좋아요 상태
   const [isLiked, setIsLiked] = useState(false);
+  
+  // 상담 신청 모달 상태
+  const [showConsultationModal, setShowConsultationModal] = useState(false);
   
   // 좋아요 상태를 로컬 스토리지에서 불러오는 함수
   const loadLikeState = (expertId: number) => {
@@ -706,9 +744,50 @@ export default function ExpertProfilePage() {
     );
   }
 
+  // 상담 신청 모달 열기
   const handleConsultationRequest = () => {
-    // 상담 신청 로직 (추후 구현)
-    alert('상담 신청 기능은 준비 중입니다.');
+    setShowConsultationModal(true);
+  };
+
+  // 상담 신청 제출 처리
+  const handleConsultationSubmit = async (data: ConsultationRequestData) => {
+    try {
+      if (!expert) return;
+
+      // 현재 사용자 정보 가져오기 (실제로는 인증 시스템에서 가져와야 함)
+      const currentUser = {
+        id: 'user_123', // 임시 사용자 ID
+      };
+
+      // 상담 신청 데이터 구성
+      const consultationRequestData = {
+        clientId: currentUser.id,
+        expertId: expert.id.toString(),
+        clientName: data.clientName,
+        clientEmail: data.clientEmail,
+        consultationType: data.consultationType,
+        preferredDate: data.preferredDate ? new Date(data.preferredDate).toISOString() : undefined,
+        message: data.message
+      };
+
+      // 상담 신청 API 호출
+      const response = await fetch('/api/consultation-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(consultationRequestData)
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert('상담 신청이 완료되었습니다! 전문가가 확인 후 연락드릴 예정입니다.');
+      } else {
+        throw new Error(result.error || '상담 신청에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('상담 신청 오류:', error);
+      throw error; // 모달에서 에러 처리하도록 다시 throw
+    }
   };
 
   // 좋아요 토글 처리
@@ -885,6 +964,24 @@ export default function ExpertProfilePage() {
                           </span>
                         )}
                       </div>
+<<<<<<< HEAD
+=======
+                      
+                      {/* 랭킹 점수 - 프로필 사진 하단 */}
+                      {expertStats && (
+                        <div className="mt-4 w-36">
+                          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 rounded-lg border border-blue-100">
+                            <div className="text-center">
+                              <p className="text-xs font-medium text-blue-700 mb-1">랭킹 점수</p>
+                              <p className="text-lg font-bold text-blue-900">
+                                {expertStats.rankingScore || 0}
+                              </p>
+                              <p className="text-xs text-blue-600">순위 #{expertStats.ranking || '계산 중...'}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+>>>>>>> 6615aeb (expert profile update)
                     </div>
                     
                     {/* 랭킹 점수 */}
@@ -910,12 +1007,26 @@ export default function ExpertProfilePage() {
 
                   {/* 오른쪽: 모든 정보 */}
                   <div className="flex-1 min-w-0 space-y-4">
+<<<<<<< HEAD
                     {/* 좋아요 수와 레벨 배지 */}
                     <div className="flex items-center justify-between">
                       <ExpertLevelBadge
                         expertId={expert.id.toString()}
                         size="like"
                       />
+=======
+                    {/* 상단: 레벨 배지와 좋아요 수 */}
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center">
+                        {/* 레벨 배지 */}
+                        <ExpertLevelBadge
+                          expertId={expert.id.toString()}
+                          size="md"
+                          showTitle={false}
+                          showProgress={false}
+                        />
+                      </div>
+>>>>>>> 6615aeb (expert profile update)
                       <div className="flex items-center bg-red-50 text-red-600 px-3 py-1.5 rounded-full text-sm flex-shrink-0">
                         <Heart className="h-4 w-4 mr-1.5 fill-current" />
                         <span className="font-medium">{expertStats?.likeCount || 0}</span>
@@ -923,9 +1034,15 @@ export default function ExpertProfilePage() {
                     </div>
                     
                     {/* 전문가 이름과 전문 분야 */}
+<<<<<<< HEAD
                     <div className="flex items-center space-x-3">
                       <h1 className="text-xl font-bold text-gray-900 truncate">{expert.name}</h1>
                       <p className="text-base text-gray-600 font-medium">{expert.specialty}</p>
+=======
+                    <div className="flex items-center space-x-2">
+                      <h1 className="text-xl font-bold text-gray-900">{expert.name}</h1>
+                      <span className="text-base text-gray-600 font-medium">/ {expert.specialty}</span>
+>>>>>>> 6615aeb (expert profile update)
                     </div>
                     
                     {/* 평점 및 정보 */}
@@ -1414,9 +1531,15 @@ export default function ExpertProfilePage() {
           </div>
 
           {/* 사이드바 */}
+<<<<<<< HEAD
                       <div className="hidden lg:block w-72 flex-shrink-0 space-y-6">
               {/* 상담 신청 카드 */}
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100 p-6">
+=======
+          <div className="hidden lg:block w-72 flex-shrink-0 space-y-6">
+            {/* 상담 신청 카드 */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100 p-6">
+>>>>>>> 6615aeb (expert profile update)
               <div className="mb-4">
                 {(() => {
                   // 기본 레벨 계산 (동기적으로)
@@ -1430,6 +1553,7 @@ export default function ExpertProfilePage() {
                   
                   return (
                     <>
+<<<<<<< HEAD
                       <p className="text-xs text-blue-700 mb-1">
                         Lv.{actualLevel} 레벨 요금
                       </p>
@@ -1437,11 +1561,21 @@ export default function ExpertProfilePage() {
                         {baseCreditsPerMinute}크레딧<span className="text-lg font-normal text-blue-600">/분</span>
                       </div>
                       <p className="text-sm text-blue-600">평균 세션 시간: {expert.averageSessionDuration}분 ({baseCreditsPerMinute * expert.averageSessionDuration}크레딧)</p>
+=======
+                      <p className="text-xs text-gray-500 mb-1">
+                        Lv.{actualLevel} 레벨 요금
+                      </p>
+                      <div className="text-3xl font-bold text-gray-900 mb-1">
+                        {baseCreditsPerMinute}크레딧<span className="text-lg font-normal text-gray-500">/분</span>
+                      </div>
+                      <p className="text-sm text-gray-600">평균 세션 시간: {expert.averageSessionDuration}분</p>
+>>>>>>> 6615aeb (expert profile update)
                     </>
                   );
                 })()}
               </div>
 
+<<<<<<< HEAD
                               <div className="space-y-3 mb-6">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-blue-600">응답 시간</span>
@@ -1458,6 +1592,16 @@ export default function ExpertProfilePage() {
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-blue-600">좋아요</span>
                     <span className="font-medium text-blue-900">{expertStats?.likeCount || 0}개</span>
+=======
+              <div className="space-y-3 mb-6">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">응답 시간</span>
+                  <div className="flex items-center space-x-1">
+                    <Clock className={`h-4 w-4 ${getResponseTimeColor(expert.responseTime)}`} />
+                    <span className={`font-medium ${getResponseTimeColor(expert.responseTime)}`}>
+                      {getResponseTimeText(expert.responseTime)}
+                    </span>
+>>>>>>> 6615aeb (expert profile update)
                   </div>
                 </div>
 
@@ -1642,6 +1786,18 @@ export default function ExpertProfilePage() {
           </div>
         )}
       </div>
+
+      {/* 상담 신청 모달 */}
+      {expert && (
+        <ConsultationRequestModal
+          isOpen={showConsultationModal}
+          onClose={() => setShowConsultationModal(false)}
+          expertName={expert.name}
+          expertSpecialty={expert.specialty}
+          expertConsultationTypes={expert.consultationTypes}
+          onSubmit={handleConsultationSubmit}
+        />
+      )}
     </div>
   );
 }

@@ -24,110 +24,110 @@ const LEVELS: LevelTier[] = [
     levelRange: { min: 999, max: 999 },
     scoreRange: { min: 950, max: 999 },
     creditsPerMinute: 600, // 6,000원/분 = 600크레딧/분 (특별 최고 요금)
-    color: "from-red-500 to-pink-600",
-    bgColor: "bg-gradient-to-r from-red-100 to-pink-100",
-    textColor: "text-red-700",
-    borderColor: "border-red-500",
+    color: "from-red-600 to-pink-700",
+    bgColor: "bg-gradient-to-r from-red-600 to-pink-700",
+    textColor: "text-white",
+    borderColor: "border-red-600",
   },
   {
     name: "Grand Master (그랜드마스터)",
     levelRange: { min: 900, max: 998 },
     scoreRange: { min: 900, max: 949.99 },
     creditsPerMinute: 500, // 5,000원/분 = 500크레딧/분 (고정 요금)
-    color: "from-purple-500 to-indigo-600",
-    bgColor: "bg-gradient-to-r from-purple-100 to-indigo-100",
-    textColor: "text-purple-700",
-    borderColor: "border-purple-500",
+    color: "from-purple-600 to-indigo-700",
+    bgColor: "bg-gradient-to-r from-purple-600 to-indigo-700",
+    textColor: "text-white",
+    borderColor: "border-purple-600",
   },
   {
     name: "Master (마스터)",
     levelRange: { min: 800, max: 899 },
     scoreRange: { min: 850, max: 899.99 },
     creditsPerMinute: 500, // 5,000원/분 = 500크레딧/분
-    color: "from-indigo-500 to-blue-600",
-    bgColor: "bg-gradient-to-r from-indigo-100 to-blue-100",
-    textColor: "text-indigo-700",
-    borderColor: "border-indigo-500",
+    color: "from-indigo-600 to-blue-700",
+    bgColor: "bg-gradient-to-r from-indigo-600 to-blue-700",
+    textColor: "text-white",
+    borderColor: "border-indigo-600",
   },
   {
     name: "Expert (전문가)",
     levelRange: { min: 700, max: 799 },
     scoreRange: { min: 800, max: 849.99 },
     creditsPerMinute: 450, // 4,500원/분 = 450크레딧/분
-    color: "from-blue-500 to-cyan-600",
-    bgColor: "bg-gradient-to-r from-blue-100 to-cyan-100",
-    textColor: "text-blue-700",
-    borderColor: "border-blue-500",
+    color: "from-blue-600 to-cyan-700",
+    bgColor: "bg-gradient-to-r from-blue-600 to-cyan-700",
+    textColor: "text-white",
+    borderColor: "border-blue-600",
   },
   {
     name: "Senior (시니어)",
     levelRange: { min: 600, max: 699 },
     scoreRange: { min: 750, max: 799.99 },
     creditsPerMinute: 400, // 4,000원/분 = 400크레딧/분
-    color: "from-cyan-500 to-teal-600",
-    bgColor: "bg-gradient-to-r from-cyan-100 to-teal-100",
-    textColor: "text-cyan-700",
-    borderColor: "border-cyan-500",
+    color: "from-cyan-600 to-teal-700",
+    bgColor: "bg-gradient-to-r from-cyan-600 to-teal-700",
+    textColor: "text-white",
+    borderColor: "border-cyan-600",
   },
   {
     name: "Professional (프로페셔널)",
     levelRange: { min: 500, max: 599 },
     scoreRange: { min: 700, max: 749.99 },
     creditsPerMinute: 350, // 3,500원/분 = 350크레딧/분
-    color: "from-teal-500 to-green-600",
-    bgColor: "bg-gradient-to-r from-teal-100 to-green-100",
-    textColor: "text-teal-700",
-    borderColor: "border-teal-500",
+    color: "from-teal-600 to-green-700",
+    bgColor: "bg-gradient-to-r from-teal-600 to-green-700",
+    textColor: "text-white",
+    borderColor: "border-teal-600",
   },
   {
     name: "Skilled (숙련)",
     levelRange: { min: 400, max: 499 },
     scoreRange: { min: 650, max: 699.99 },
     creditsPerMinute: 300, // 3,000원/분 = 300크레딧/분
-    color: "from-green-500 to-emerald-600",
-    bgColor: "bg-gradient-to-r from-green-100 to-emerald-100",
-    textColor: "text-green-700",
-    borderColor: "border-green-500",
+    color: "from-green-600 to-emerald-700",
+    bgColor: "bg-gradient-to-r from-green-600 to-emerald-700",
+    textColor: "text-white",
+    borderColor: "border-green-600",
   },
   {
     name: "Core (핵심)",
     levelRange: { min: 300, max: 399 },
     scoreRange: { min: 600, max: 649.99 },
     creditsPerMinute: 250, // 2,500원/분 = 250크레딧/분
-    color: "from-emerald-500 to-lime-600",
-    bgColor: "bg-gradient-to-r from-emerald-100 to-lime-100",
-    textColor: "text-emerald-700",
-    borderColor: "border-emerald-500",
+    color: "from-emerald-600 to-lime-700",
+    bgColor: "bg-gradient-to-r from-emerald-600 to-lime-700",
+    textColor: "text-white",
+    borderColor: "border-emerald-600",
   },
   {
     name: "Rising Star (신성)",
     levelRange: { min: 200, max: 299 },
     scoreRange: { min: 550, max: 599.99 },
     creditsPerMinute: 200, // 2,000원/분 = 200크레딧/분
-    color: "from-lime-500 to-yellow-600",
-    bgColor: "bg-gradient-to-r from-lime-100 to-yellow-100",
-    textColor: "text-lime-700",
-    borderColor: "border-lime-500",
+    color: "from-lime-600 to-yellow-700",
+    bgColor: "bg-gradient-to-r from-lime-600 to-yellow-700",
+    textColor: "text-white",
+    borderColor: "border-lime-600",
   },
   {
     name: "Emerging Talent (신진)",
     levelRange: { min: 100, max: 199 },
     scoreRange: { min: 500, max: 549.99 },
     creditsPerMinute: 150, // 1,500원/분 = 150크레딧/분
-    color: "from-yellow-500 to-orange-600",
-    bgColor: "bg-gradient-to-r from-yellow-100 to-orange-100",
-    textColor: "text-yellow-700",
-    borderColor: "border-yellow-500",
+    color: "from-yellow-600 to-orange-700",
+    bgColor: "bg-gradient-to-r from-yellow-600 to-orange-700",
+    textColor: "text-white",
+    borderColor: "border-yellow-600",
   },
   {
     name: "Fresh Mind (신예)",
     levelRange: { min: 1, max: 99 },
     scoreRange: { min: 0, max: 499.99 },
     creditsPerMinute: 100, // 1,000원/분 = 100크레딧/분 (최저 요금)
-    color: "from-orange-500 to-red-600",
-    bgColor: "bg-gradient-to-r from-orange-100 to-red-100",
-    textColor: "text-orange-700",
-    borderColor: "border-orange-500",
+    color: "from-orange-600 to-red-700",
+    bgColor: "bg-gradient-to-r from-orange-600 to-red-700",
+    textColor: "text-white",
+    borderColor: "border-orange-600",
   },
 ];
 
@@ -403,6 +403,8 @@ const getExpertLevelFromStats = async (expertId: string) => {
 
 // API 라우트 핸들러
 export async function GET(request: NextRequest) {
+  const startTime = performance.now();
+  
   try {
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action');
@@ -684,8 +686,16 @@ export async function GET(request: NextRequest) {
         };
     }
 
+    const endTime = performance.now();
+    const processingTime = endTime - startTime;
+    console.log(`API 처리 시간: ${processingTime.toFixed(2)}ms (action: ${action}, expertId: ${expertId})`);
+    
     return NextResponse.json(result);
   } catch (error) {
+    const endTime = performance.now();
+    const processingTime = endTime - startTime;
+    console.log(`API 에러 처리 시간: ${processingTime.toFixed(2)}ms`);
+    
     return NextResponse.json(
       { error: '서버 오류가 발생했습니다.' },
       { status: 500 }

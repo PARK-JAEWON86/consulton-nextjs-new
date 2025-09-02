@@ -28,20 +28,26 @@ import ConsultationSummary from "./ConsultationSummary";
 interface ConsultationSessionProps {
   consultation: {
     id: string;
+    expertId?: string;
     expertName: string;
     expertAvatar: string;
     expertSpecialty: string;
+    clientId?: string;
+    clientName?: string;
+    clientAvatar?: string;
     topic: string;
     duration: number;
     consultationType: "chat" | "voice" | "video";
     price: number;
   };
   onEndSession: () => void;
+  isExpertView?: boolean; // 전문가 뷰 모드 여부
 }
 
 export default function ConsultationSession({
   consultation,
   onEndSession,
+  isExpertView = false,
 }: ConsultationSessionProps) {
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [sessionTime, setSessionTime] = useState(0);
@@ -64,11 +70,11 @@ export default function ConsultationSession({
 
   // 상담 시작
   const handleStartSession = () => {
-    setIsSessionActive(true);
-    setConnectionStatus("connecting");
-    
-    // 상담 세션 시작 시 브라우저 히스토리에 추가
     try {
+      setIsSessionActive(true);
+      setConnectionStatus("connecting");
+      
+      // 상담 세션 시작 시 브라우저 히스토리에 추가
       const sessionUrl = `/expert-consultation/session/${consultation.id}`;
       window.history.pushState(
         { 
@@ -80,7 +86,11 @@ export default function ConsultationSession({
         sessionUrl
       );
     } catch (error) {
-      console.log('히스토리 상태 추가 실패');
+      console.error('상담 시작 중 오류 발생:', error);
+      // 오류 발생 시 상태 복원
+      setIsSessionActive(false);
+      setConnectionStatus("disconnected");
+      return;
     }
     
     // 연결 시뮬레이션
@@ -88,11 +98,15 @@ export default function ConsultationSession({
       setIsConnected(true);
       setConnectionStatus("connected");
       
-      // 전문가 입장 메시지
+      // 입장 메시지 (전문가 뷰 모드에 따라 다르게 표시)
+      const entryMessage = isExpertView 
+        ? `${consultation.clientName || '클라이언트'}님이 입장했습니다. ${consultation.consultationType === "chat" ? "채팅" : consultation.consultationType === "voice" ? "음성" : "화상"} 상담을 시작하겠습니다.`
+        : `${consultation.expertName} 전문가가 입장했습니다. ${consultation.consultationType === "chat" ? "채팅" : consultation.consultationType === "voice" ? "음성" : "화상"} 상담을 시작하겠습니다. 채팅 기능도 함께 사용할 수 있습니다.`;
+      
       setChatMessages(prev => [...prev, {
         id: Date.now().toString(),
-        sender: "expert",
-        message: `${consultation.expertName} 전문가가 입장했습니다. ${consultation.consultationType === "chat" ? "채팅" : consultation.consultationType === "voice" ? "음성" : "화상"} 상담을 시작하겠습니다. 채팅 기능도 함께 사용할 수 있습니다.`,
+        sender: isExpertView ? "expert" : "expert",
+        message: entryMessage,
         timestamp: new Date(),
       }]);
     }, 2000);
@@ -171,28 +185,37 @@ export default function ConsultationSession({
 
   // 메시지 전송
   const handleSendMessage = () => {
-    if (!newMessage.trim() || !isConnected) return;
+    try {
+      if (!newMessage.trim() || !isConnected) return;
 
-    const userMessage = {
-      id: Date.now().toString(),
-      sender: "user" as const,
-      message: newMessage,
-      timestamp: new Date(),
-    };
-
-    setChatMessages(prev => [...prev, userMessage]);
-    setNewMessage("");
-
-    // 전문가 응답 시뮬레이션 (1-3초 후)
-    setTimeout(() => {
-      const expertResponse = {
-        id: (Date.now() + 1).toString(),
-        sender: "expert" as const,
-        message: `네, 말씀해주신 내용에 대해 자세히 설명드리겠습니다. ${newMessage}에 관련하여...`,
+      const userMessage = {
+        id: Date.now().toString(),
+        sender: isExpertView ? "expert" as const : "user" as const,
+        message: newMessage,
         timestamp: new Date(),
       };
-      setChatMessages(prev => [...prev, expertResponse]);
-    }, 1000 + Math.random() * 2000);
+
+      setChatMessages(prev => [...prev, userMessage]);
+      const currentMessage = newMessage; // 메시지 내용 저장
+      setNewMessage("");
+
+      // 응답 시뮬레이션 (전문가 뷰 모드에 따라 다르게)
+      setTimeout(() => {
+        const responseMessage = isExpertView 
+          ? `네, 말씀해주신 내용에 대해 자세히 설명드리겠습니다. ${currentMessage}에 관련하여...`
+          : `네, 말씀해주신 내용에 대해 자세히 설명드리겠습니다. ${currentMessage}에 관련하여...`;
+        
+        const response = {
+          id: (Date.now() + 1).toString(),
+          sender: isExpertView ? "user" as const : "expert" as const,
+          message: responseMessage,
+          timestamp: new Date(),
+        };
+        setChatMessages(prev => [...prev, response]);
+      }, 1000 + Math.random() * 2000);
+    } catch (error) {
+      console.error('메시지 전송 중 오류 발생:', error);
+    }
   };
 
   // 녹화 시작/중지
@@ -305,15 +328,15 @@ export default function ConsultationSession({
             </button>
             <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
               <span className="text-sm font-medium text-blue-600">
-                {consultation.expertAvatar}
+                {isExpertView ? (consultation.clientAvatar || '클') : consultation.expertAvatar}
               </span>
             </div>
             <div>
               <h3 className="text-lg font-semibold text-gray-900">
-                {consultation.expertName} 전문가
+                {isExpertView ? `${consultation.clientName || '클라이언트'}님` : `${consultation.expertName} 전문가`}
               </h3>
               <p className="text-sm text-gray-600">
-                {consultation.expertSpecialty} • {consultation.duration}분
+                {isExpertView ? `${consultation.duration}분 상담` : `${consultation.expertSpecialty} • ${consultation.duration}분`}
               </p>
             </div>
           </div>
@@ -411,18 +434,24 @@ export default function ConsultationSession({
                 chatMessages.map((message) => (
                   <div
                     key={message.id}
-                    className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
+                    className={`flex ${
+                      (isExpertView && message.sender === "expert") || (!isExpertView && message.sender === "user") 
+                        ? "justify-end" 
+                        : "justify-start"
+                    }`}
                   >
                     <div
                       className={`max-w-xs lg:max-w-md px-3 py-2 rounded-lg ${
-                        message.sender === "user"
+                        (isExpertView && message.sender === "expert") || (!isExpertView && message.sender === "user")
                           ? "bg-blue-600 text-white"
                           : "bg-gray-100 text-gray-900"
                       }`}
                     >
                       <p className="text-sm">{message.message}</p>
                       <p className={`text-xs mt-1 ${
-                        message.sender === "user" ? "text-blue-200" : "text-gray-500"
+                        (isExpertView && message.sender === "expert") || (!isExpertView && message.sender === "user")
+                          ? "text-blue-200" 
+                          : "text-gray-500"
                       }`}>
                         {message.timestamp.toLocaleTimeString("ko-KR", {
                           hour: "2-digit",
@@ -444,7 +473,7 @@ export default function ConsultationSession({
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
-                  placeholder="메시지를 입력하세요..."
+                  placeholder={isExpertView ? "클라이언트에게 메시지를 보내세요..." : "메시지를 입력하세요..."}
                   disabled={!isConnected}
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed text-sm"
                 />
@@ -473,6 +502,9 @@ export default function ConsultationSession({
                 consultation.consultationType === "voice" ? "음성" : "화상"
               }</p>
               <p><span className="font-medium">채팅:</span> <span className="text-green-600">활성화</span></p>
+              {isExpertView && consultation.clientName && (
+                <p><span className="font-medium">클라이언트:</span> {consultation.clientName}</p>
+              )}
             </div>
           </div>
 

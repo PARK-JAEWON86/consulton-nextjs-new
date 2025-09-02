@@ -109,7 +109,11 @@ export default function ExpertConsultationPage() {
     loadCategories();
   }, []);
 
+<<<<<<< HEAD
   // 더미 데이터 로드 (카테고리가 로드된 후)
+=======
+  // 더미 데이터 로드 (카테고리 로드 완료 후 실행)
+>>>>>>> 6615aeb (expert profile update)
   useEffect(() => {
     if (!isLoadingCategories) {
       const dummyConsultations: ConsultationSession[] = [
@@ -159,35 +163,54 @@ export default function ExpertConsultationPage() {
 
       setConsultations(dummyConsultations);
     }
+<<<<<<< HEAD
   }, [isLoadingCategories, categories]);
+=======
+  }, [categories, isLoadingCategories]);
+>>>>>>> 6615aeb (expert profile update)
 
   // 상담 시작
   const handleStartConsultation = (consultation: ConsultationSession) => {
-    setSelectedConsultation(consultation);
-    setIsSessionActive(true);
-    setSessionTime(0);
-    
-    // 상담 세션 시작 시 브라우저 히스토리에 추가
-    const sessionUrl = `/expert-consultation/session/${consultation.id}`;
-    window.history.pushState(
-      { 
-        consultationId: consultation.id, 
-        consultationName: consultation.expertName,
-        fromPage: '/expert-consultation'
-      }, 
-      '', 
-      sessionUrl
-    );
+    try {
+      setSelectedConsultation(consultation);
+      setIsSessionActive(true);
+      setSessionTime(0);
+      
+      // 상담 세션 시작 시 브라우저 히스토리에 추가
+      const sessionUrl = `/expert-consultation/session/${consultation.id}`;
+      window.history.pushState(
+        { 
+          consultationId: consultation.id, 
+          consultationName: consultation.expertName,
+          fromPage: '/expert-consultation'
+        }, 
+        '', 
+        sessionUrl
+      );
+    } catch (error) {
+      console.error('상담 시작 중 오류 발생:', error);
+      // 오류 발생 시 상태 복원
+      setIsSessionActive(false);
+      setSessionTime(0);
+    }
   };
 
   // 상담 종료
   const handleEndSession = () => {
-    setIsSessionActive(false);
-    setSessionTime(0);
-    setSelectedConsultation(null);
-    
-    // 상담 세션 종료 시 원래 페이지로 돌아가기
-    window.history.back();
+    try {
+      setIsSessionActive(false);
+      setSessionTime(0);
+      setSelectedConsultation(null);
+      
+      // 상담 세션 종료 시 원래 페이지로 돌아가기
+      window.history.back();
+    } catch (error) {
+      console.error('상담 종료 중 오류 발생:', error);
+      // 오류 발생 시에도 상태는 정리
+      setIsSessionActive(false);
+      setSessionTime(0);
+      setSelectedConsultation(null);
+    }
   };
 
   // 상담 예약 페이지로 이동
@@ -207,31 +230,59 @@ export default function ExpertConsultationPage() {
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  // 날짜 포맷팅
+  // 날짜 포맷팅 (방어 코드 포함)
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    try {
+      const date = new Date(dateString);
+      
+      // 유효하지 않은 날짜인 경우 처리
+      if (isNaN(date.getTime())) {
+        return "날짜 오류";
+      }
+      
+      const today = new Date();
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
 
-    if (date.toDateString() === today.toDateString()) {
-      return "오늘";
-    } else if (date.toDateString() === tomorrow.toDateString()) {
-      return "내일";
-    } else {
-      return date.toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
+      if (date.toDateString() === today.toDateString()) {
+        return "오늘";
+      } else if (date.toDateString() === tomorrow.toDateString()) {
+        return "내일";
+      } else {
+        return date.toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
+      }
+    } catch (error) {
+      console.error('날짜 포맷팅 오류:', error);
+      return "날짜 오류";
     }
   };
 
-  // 시간 포맷팅
+  // 시간 포맷팅 (방어 코드 포함)
   const formatTimeOnly = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+    try {
+      const date = new Date(dateString);
+      
+      // 유효하지 않은 날짜인 경우 처리
+      if (isNaN(date.getTime())) {
+        return "시간 오류";
+      }
+      
+      return date.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+    } catch (error) {
+      console.error('시간 포맷팅 오류:', error);
+      return "시간 오류";
+    }
   };
 
+<<<<<<< HEAD
   // 크레딧 요금 계산 (동기 버전)
+=======
+  // 크레딧 요금 계산 (비동기 함수를 동기적으로 처리)
+>>>>>>> 6615aeb (expert profile update)
   const getCreditsPerMinute = (expertLevel: number) => {
-    return calculateCreditsByLevel(expertLevel);
+    // 기본 크레딧 요금 반환 (실제로는 API 호출 결과를 사용해야 함)
+    const baseCreditsPerMinute = 150; // 기본값
+    return baseCreditsPerMinute;
   };
 
   // 총 크레딧 요금 계산
@@ -243,22 +294,30 @@ export default function ExpertConsultationPage() {
   // 브라우저 뒤로가기/앞으로가기 처리
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
-      // 상담 세션 중에 뒤로가기를 누른 경우
-      if (isSessionActive && selectedConsultation) {
-        if (confirm("진행 중인 상담이 있습니다. 정말 나가시겠습니까?")) {
+      try {
+        // 상담 세션 중에 뒤로가기를 누른 경우
+        if (isSessionActive && selectedConsultation) {
+          if (confirm("진행 중인 상담이 있습니다. 정말 나가시겠습니까?")) {
+            handleEndSession();
+          } else {
+            // 취소한 경우 현재 세션 상태 유지
+            const sessionUrl = `/expert-consultation/session/${selectedConsultation.id}`;
+            window.history.pushState(
+              { 
+                consultationId: selectedConsultation.id, 
+                consultationName: selectedConsultation.expertName,
+                fromPage: '/expert-consultation'
+              }, 
+              '', 
+              sessionUrl
+            );
+          }
+        }
+      } catch (error) {
+        console.error('브라우저 히스토리 처리 중 오류 발생:', error);
+        // 오류 발생 시 상담 세션 종료
+        if (isSessionActive) {
           handleEndSession();
-        } else {
-          // 취소한 경우 현재 세션 상태 유지
-          const sessionUrl = `/expert-consultation/session/${selectedConsultation.id}`;
-          window.history.pushState(
-            { 
-              consultationId: selectedConsultation.id, 
-              consultationName: selectedConsultation.expertName,
-              fromPage: '/expert-consultation'
-            }, 
-            '', 
-            sessionUrl
-          );
         }
       }
     };

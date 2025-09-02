@@ -303,6 +303,8 @@ export default function ExpertDashboardProfilePage() {
 
   if (!initialData) return null;
 
+
+
   return (
     <ProtectedRoute requireAuth={true}>
       <div className="min-h-screen bg-gray-50">
@@ -587,15 +589,23 @@ export default function ExpertDashboardProfilePage() {
 
             {/* 알림 요약 */}
             <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                알림
-              </h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  알림
+                </h3>
+                <button
+                  onClick={() => router.push('/dashboard/notifications')}
+                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  전체 보기
+                </button>
+              </div>
               <div className="space-y-2 text-sm">
                 {requestStats && (
                   <>
                     {requestStats.pendingRequests > 0 && (
                       <div className="flex items-center justify-between p-2 bg-orange-50 rounded">
-                        <span className="text-orange-700">새 요청</span>
+                        <span className="text-orange-700">새 상담 신청</span>
                         <span className="font-semibold text-orange-800">
                           {requestStats.pendingRequests}건
                         </span>

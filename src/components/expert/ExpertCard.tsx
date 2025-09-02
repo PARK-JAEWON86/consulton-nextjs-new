@@ -8,10 +8,10 @@ import ExpertLevelBadge from "./ExpertLevelBadge";
 import LoginModal from "@/components/auth/LoginModal";
 
 // API를 통해 전문가 레벨과 요금 정보를 가져오는 함수
-const getExpertLevelPricing = async (expertId: number, totalSessions: number = 0, avgRating: number = 0) => {
+const getExpertLevelPricing = async (expertId: number) => {
   try {
     // 전문가 레벨 정보를 가져옴
-    const response = await fetch(`/api/expert-levels?action=getExpertLevel&expertId=${expertId}&totalSessions=${totalSessions}&avgRating=${avgRating}`);
+    const response = await fetch(`/api/expert-levels?action=getExpertLevel&expertId=${expertId}`);
     const data = await response.json();
     
     if (data.currentLevel && data.pricing) {
@@ -23,21 +23,11 @@ const getExpertLevelPricing = async (expertId: number, totalSessions: number = 0
       };
     }
     
-    // API에서 데이터를 가져올 수 없는 경우 기본값 반환
-    return {
-      level: 1,
-      creditsPerMinute: 100,
-      tierName: "Tier 1 (Lv.1-99)",
-      tierInfo: null
-    };
+    // API에서 데이터를 가져올 수 없는 경우 null 반환
+    return null;
   } catch (error) {
     console.error('전문가 레벨 요금 정보 가져오기 실패:', error);
-    return {
-      level: 1,
-      creditsPerMinute: 100,
-      tierName: "Tier 1 (Lv.1-99)",
-      tierInfo: null
-    };
+    return null;
   }
 };
 
@@ -189,32 +179,28 @@ export default function ExpertCard({
     const loadPricingInfo = async () => {
       try {
         setIsLoadingPricing(true);
-        const pricing = await getExpertLevelPricing(
-          expert.id,
-          expert.totalSessions || 0,
-          expert.avgRating || 0
-        );
+        const pricing = await getExpertLevelPricing(expert.id);
         setPricingInfo(pricing);
       } catch (error) {
         console.error('요금 정보 로드 실패:', error);
-        // 에러 시 기본값 설정
-        setPricingInfo({
-          level: 1,
-          creditsPerMinute: 100,
-          tierName: "Tier 1 (Lv.1-99)",
-          tierInfo: null
-        });
+        setPricingInfo(null);
       } finally {
         setIsLoadingPricing(false);
       }
     };
 
     loadPricingInfo();
-  }, [expert.id, expert.totalSessions, expert.avgRating]);
+  }, [expert.id]);
 
+<<<<<<< HEAD
   // 요금 정보가 로딩 중이거나 없을 때 기본값 사용
   const creditsPerMinute = pricingInfo?.creditsPerMinute || calculateCreditsByLevel(expert.level || 1);
   const tierName = pricingInfo?.tierName || "Tier 1 (Lv.1-99)";
+=======
+  // 요금 정보가 로딩 중이거나 없을 때 스켈레톤 표시
+  const creditsPerMinute = pricingInfo?.creditsPerMinute;
+  const tierName = pricingInfo?.tierName;
+>>>>>>> 6615aeb (expert profile update)
 
   const handleProfileView = () => {
     // 로그인하지 않은 경우 로그인 모달 표시
@@ -359,11 +345,20 @@ export default function ExpertCard({
               </div>
             </div>
             <div className="flex-1 min-w-0">
+<<<<<<< HEAD
               {/* 전문가 레벨 배지 (이름 위) */}
               <div className="mb-1">
                 <ExpertLevelBadge
                   expertId={expert.id.toString()}
                   size="md"
+=======
+              {/* 전문가 레벨 배지를 이름 위로 이동 */}
+              <div className="mb-2">
+                <ExpertLevelBadge
+                  expertId={expert.id.toString()}
+                  size="sm"
+                  className="flex-shrink-0"
+>>>>>>> 6615aeb (expert profile update)
                 />
               </div>
               <div className="flex items-center space-x-2 mb-2">
@@ -374,6 +369,21 @@ export default function ExpertCard({
               <p className="text-base text-gray-600 font-medium">
                 {expert.specialty}
               </p>
+<<<<<<< HEAD
+=======
+              {/* 티어 정보 표시 */}
+              {tierName ? (
+                <div className="flex items-center space-x-2 mt-1">
+                  <span className="text-xs px-2 py-1 bg-blue-50 text-blue-700 rounded-full border border-blue-100">
+                    {tierName}
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2 mt-1">
+                  <div className="animate-pulse bg-gray-200 h-5 w-20 rounded-full"></div>
+                </div>
+              )}
+>>>>>>> 6615aeb (expert profile update)
             </div>
           </div>
           <div className="flex items-center space-x-2">
@@ -468,7 +478,7 @@ export default function ExpertCard({
         <div className="flex items-center justify-between pt-4 border-t border-gray-100">
           <div className="flex flex-col">
             <div className="text-xl font-bold text-gray-900">
-              {isLoadingPricing ? (
+              {isLoadingPricing || !creditsPerMinute ? (
                 <div className="animate-pulse bg-gray-200 h-6 w-20 rounded"></div>
               ) : (
                 `${creditsPerMinute} 크레딧`
@@ -478,7 +488,7 @@ export default function ExpertCard({
               </span>
             </div>
             {/* 시간당 요금 표시 */}
-            {!isLoadingPricing && (
+            {!isLoadingPricing && creditsPerMinute && (
               <div className="text-sm text-gray-500">
                 시간당 {creditsPerMinute * 60} 크레딧
               </div>

@@ -3,7 +3,22 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import type React from "react";
 import { Grid, List, Users, Star, Award, Clock, MessageCircle, Video, Heart } from "lucide-react";
+<<<<<<< HEAD
 import ExpertCard from "@/components/expert/ExpertCard";
+=======
+import ExpertLevelBadge from "@/components/expert/ExpertLevelBadge";
+// API를 통해 레벨별 크레딧을 계산하는 함수
+const calculateCreditsByLevel = async (level: number = 1): Promise<number> => {
+  try {
+    const response = await fetch(`/api/expert-levels?action=calculateCreditsByLevel&level=${level}`);
+    const data = await response.json();
+    return data.creditsPerMinute || 100;
+  } catch (error) {
+    console.error('크레딧 계산 실패:', error);
+    return 100; // 기본값
+  }
+};
+>>>>>>> 6615aeb (expert profile update)
 
 /**
  * 전문가 데이터 유효성 검사 함수
@@ -233,6 +248,7 @@ const ExpertList = ({
                 : "grid-cols-1"
             }`}
           >
+<<<<<<< HEAD
             {currentExperts.map((expert) => (
               <ExpertCard
                 key={expert.id}
@@ -242,6 +258,176 @@ const ExpertList = ({
                 onProfileView={() => handleExpertSelect(expert)}
               />
             ))}
+=======
+            {displayedExperts.map((expert) => {
+
+              // 타입 안전성을 위한 타입 가드
+              const specialties = Array.isArray(expert.specialties) ? expert.specialties : [];
+              const tags = Array.isArray(expert.tags) ? expert.tags : [];
+              const consultationTypes = Array.isArray(expert.consultationTypes) ? expert.consultationTypes : ["video", "chat"];
+              const profileImage = typeof expert.profileImage === 'string' ? expert.profileImage : null;
+              const description = typeof expert.description === 'string' ? expert.description : '';
+              const experience = typeof expert.experience === 'string' || typeof expert.experience === 'number' ? expert.experience : '5';
+              const reviewCount = typeof expert.reviewCount === 'number' ? expert.reviewCount : 0;
+              const responseTime = typeof expert.responseTime === 'string' ? expert.responseTime : '1시간 이내';
+              const consultationCount = typeof expert.consultationCount === 'number' ? expert.consultationCount : 50;
+
+              return (
+                <div key={expert.id} role="listitem">
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-blue-200">
+                    {/* 전문가 이미지 */}
+                    <div className="relative h-48 bg-gradient-to-br from-blue-100 to-indigo-100">
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        {profileImage ? (
+                          <img
+                            src={profileImage}
+                            alt={expert.name}
+                            className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-lg"
+                          />
+                        ) : (
+                          <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center">
+                            <span className="text-white text-2xl font-bold">
+                              {expert.name?.charAt(0) || "E"}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* 전문가 레벨 표시 */}
+                      <div className="absolute top-3 right-3">
+                        <ExpertLevelBadge
+                          expertId={expert.id.toString()}
+                          size="sm"
+                          className="border-2 border-white shadow-sm"
+                        />
+                      </div>
+
+                      {/* 즐겨찾기 버튼 */}
+                      <button
+                        onClick={() => {
+                          // 즐겨찾기 기능 (로컬 상태로 관리)
+                          console.log('즐겨찾기:', expert.name);
+                        }}
+                        className="absolute top-3 left-3 p-2 rounded-full transition-colors text-gray-400 hover:text-red-500 hover:bg-red-50"
+                      >
+                        <Heart className="h-5 w-5" />
+                      </button>
+                    </div>
+
+                    {/* 전문가 정보 */}
+                    <div className="p-6">
+                      <div className="mb-3">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                          {expert.name || "전문가 이름"}
+                        </h3>
+                        <p className="text-sm text-gray-600 mb-2">
+                          {expert.specialty || expert.title || "전문 분야"}
+                        </p>
+
+                        {/* 평점 */}
+                        <div className="flex items-center space-x-1 mb-2">
+                          <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                          <span className="text-sm font-semibold text-gray-900">
+                            {rating}
+                          </span>
+                          <span className="text-sm text-gray-500">
+                            ({reviewCount})
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* 설명 */}
+                      {description && (
+                        <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                          {description}
+                        </p>
+                      )}
+
+                      {/* 전문 분야 */}
+                      <div className="mb-3">
+                        <div className="flex gap-1.5 overflow-hidden">
+                          {(specialties.length > 0 ? specialties : tags).slice(0, 3).map(
+                            (specialty: string, index: number) => (
+                              <span
+                                key={index}
+                                className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100 flex-shrink-0"
+                              >
+                                {specialty}
+                              </span>
+                            ),
+                          )}
+                          {(specialties.length > 0 ? specialties : tags).length > 3 && (
+                            <span className="px-2.5 py-1 bg-gray-50 text-gray-600 text-xs rounded-full border border-gray-100 flex-shrink-0">
+                              +{(specialties.length > 0 ? specialties : tags).length - 3}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 상담 정보 */}
+                      <div className="grid grid-cols-2 gap-3 text-sm mb-4">
+                        <div className="flex items-center space-x-2 text-gray-600">
+                          <Award className="h-4 w-4" />
+                          <span>{experience}년 경력</span>
+                        </div>
+                        <div className="flex items-center space-x-2 text-gray-600">
+                          <MessageCircle className="h-4 w-4" />
+                          <span>{consultationCount}회 상담</span>
+                        </div>
+                      </div>
+
+                      {/* 상담 방식 및 답변 시간 */}
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-2">
+                          {consultationTypes.map((type: string) => {
+                            const Icon = type === "video" ? Video : MessageCircle;
+                            return (
+                              <div
+                                key={type}
+                                className="flex items-center text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded"
+                                title={type === "video" ? "화상 상담" : "채팅 상담"}
+                              >
+                                <Icon className="h-3 w-3 mr-1" />
+                                {type === "video" && "화상"}
+                                {type === "chat" && "채팅"}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* 답변 시간 표시 */}
+                        <div className="flex items-center space-x-1 text-xs text-gray-600">
+                          <Clock className="h-3 w-3 text-green-500" />
+                          <span>{responseTime}</span>
+                        </div>
+                      </div>
+
+                      {/* 하단 섹션 */}
+                      <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                        {/* 가격 정보 */}
+                        <div className="flex items-center space-x-2">
+                          <span className="font-bold text-gray-900 text-xl">
+                            {actualLevel 
+                              ? calculateCreditsByLevel(actualLevel) 
+                              : (typeof expert.creditsPerMinute === 'number' ? expert.creditsPerMinute : 100)}크레딧
+                          </span>
+                          <span className="text-sm text-gray-500">/분</span>
+                        </div>
+
+                        {/* 프로필 보기 버튼 */}
+                        <button 
+                          onClick={() => onExpertSelect(expert)}
+                          className="px-4 py-2 rounded-lg font-medium transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 shadow-sm"
+                        >
+                          프로필 보기
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+>>>>>>> 6615aeb (expert profile update)
           </div>
 
           {/* 페이지네이션 */}

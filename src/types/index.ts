@@ -137,9 +137,40 @@ export interface PortfolioFile {
 
 // 포트폴리오 아이템 타입
 export interface PortfolioItem {
+  id?: string;
   title: string;
   description: string;
   type: string;
+  url?: string;
+  imageUrl?: string;
+  createdAt?: Date;
+}
+
+// 소셜 증명 타입
+export interface SocialProof {
+  linkedIn?: string;
+  website?: string;
+  publications: string[];
+}
+
+// 가격 티어 타입
+export interface PricingTier {
+  duration: number; // 분 단위
+  price: number; // 크레딧 단위
+  description: string;
+}
+
+// 상담 관련 세부 정보 타입
+export interface ConsultationDetails {
+  consultationStyle?: string; // 상담 스타일
+  successStories?: number; // 성공 사례 수
+  nextAvailableSlot?: string; // 다음 예약 가능 시간
+  profileViews?: number; // 프로필 조회수
+  lastActiveAt?: Date; // 마지막 활동 시간
+  joinedAt?: Date; // 가입일
+  reschedulePolicy?: string; // 일정 변경 정책
+  pricingTiers?: PricingTier[]; // 가격 티어
+  targetAudience?: string[]; // 타겟 고객층
 }
 
 // 통합된 전문가 프로필 타입
@@ -181,6 +212,16 @@ export interface ExpertProfile {
   profileImage: string | null;
   portfolioFiles: PortfolioFile[];
   portfolioItems?: PortfolioItem[];
+  socialProof?: SocialProof;
+  // 상담 관련 세부 정보 필드들
+  consultationStyle?: string;
+  successStories?: number;
+  nextAvailableSlot?: string;
+  profileViews?: number;
+  lastActiveAt?: Date;
+  joinedAt?: Date;
+  reschedulePolicy?: string;
+  pricingTiers?: PricingTier[];
   tags: string[];
   targetAudience: string[];
   isOnline: boolean;
@@ -390,6 +431,45 @@ export interface CreateConsultationNumberResponse {
   sessionId: string;
   success: boolean;
   message?: string;
+}
+
+// 알림 타입
+export interface Notification {
+  id: string;
+  userId: string; // 알림을 받을 사용자 ID (전문가 ID)
+  type: 'consultation_request' | 'consultation_accepted' | 'consultation_rejected' | 'consultation_reminder' | 'review_received' | 'system';
+  title: string;
+  message: string;
+  data?: {
+    consultationId?: string;
+    expertId?: string;
+    clientId?: string;
+    clientName?: string;
+    consultationType?: ConsultationType;
+    scheduledDate?: Date;
+    [key: string]: any;
+  };
+  isRead: boolean;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  createdAt: Date;
+  readAt?: Date;
+  expiresAt?: Date; // 알림 만료 시간 (선택사항)
+}
+
+// 상담 신청 타입
+export interface ConsultationRequest {
+  id: string;
+  clientId: string;
+  expertId: string;
+  clientName: string;
+  clientEmail?: string;
+  consultationType: ConsultationType;
+  preferredDate?: Date;
+  message?: string;
+  status: 'pending' | 'accepted' | 'rejected' | 'expired';
+  createdAt: Date;
+  updatedAt: Date;
+  expiresAt?: Date; // 신청 만료 시간 (예: 24시간 후)
 }
 
 // 정산 시스템 타입 re-export
