@@ -1,4 +1,4 @@
-import { SWRConfiguration } from 'swr';
+// import { SWRConfiguration } from 'swr'; // swr 패키지가 설치되지 않음
 
 // API fetcher 함수
 export const fetcher = async (url: string) => {
@@ -16,7 +16,8 @@ export const fetcher = async (url: string) => {
   return data.success ? data.data : data;
 };
 
-// SWR 전역 설정
+// SWR 전역 설정 (swr 패키지가 설치되지 않아 주석 처리)
+/*
 export const swrConfig: SWRConfiguration = {
   fetcher,
   
@@ -64,6 +65,7 @@ export const swrConfig: SWRConfiguration = {
     }
   },
 };
+*/
 
 // 자주 사용되는 SWR 키 생성 함수들
 export const swrKeys = {

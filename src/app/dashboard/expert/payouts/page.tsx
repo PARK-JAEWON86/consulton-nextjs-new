@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import { getRepositoryContainer, getSettlementConfig } from "@/config/SettlementConfig";
 import { SettlementService } from "@/services/settlement/SettlementService";
 import { PaymentService } from "@/services/payment/PaymentService";
-import { getSettlementSummary } from "@/data/dummy/consultationHistory";
+// import { getSettlementSummary } from "@/data/dummy/consultationHistory"; // 더미 데이터 제거
 import type { PayoutItem, ExpertEarnings } from "@/types/settlement";
 
 interface User {

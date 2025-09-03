@@ -1,61 +1,91 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from 'next/server';
+import { getAuthenticatedUser } from '@/lib/auth';
 
-// 보호된 라우트 목록
+// 보호된 경로들
 const protectedRoutes = [
-  "/dashboard",
-  "/experts",
-  "/community",
-  "/chat",
-  "/video",
-  "/summary",
-  "/settings",
-  "/analytics",
+  '/dashboard',
+  '/api/user',
+  '/api/expert',
+  '/api/consultations',
+  '/api/reviews',
+  '/api/payment-methods',
+  '/api/payment-history',
+  '/api/notifications'
 ];
 
-// 공개 라우트 목록 (인증 없이 접근 가능)
-const publicRoutes = [
-  "/",
-  "/auth/login",
-  "/auth/register",
-  "/how-it-works",
-  "/terms",
-  "/experts/become",
+// 전문가 전용 경로들
+const expertOnlyRoutes = [
+  '/dashboard/expert',
+  '/api/expert/dashboard',
+  '/api/expert-stats',
+  '/api/payouts'
 ];
 
-export function middleware(request: NextRequest) {
+// 관리자 전용 경로들
+const adminOnlyRoutes = [
+  '/admin',
+  '/api/admin'
+];
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 공개 라우트는 항상 접근 가능
-  if (publicRoutes.some((route) => pathname.startsWith(route))) {
+  // 정적 파일이나 API 문서는 제외
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api/_next') ||
+    pathname.startsWith('/favicon.ico') ||
+    pathname.startsWith('/public') ||
+    pathname.includes('.')
+  ) {
     return NextResponse.next();
   }
 
-  // 보호된 라우트에 접근하려는 경우
-  if (protectedRoutes.some((route) => pathname.startsWith(route))) {
-    // 쿠키에서 인증 토큰 확인
-    const authToken = request.cookies.get("auth-token")?.value;
-    const userData = request.cookies.get("user-data")?.value;
+  // 인증이 필요한 경로인지 확인
+  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
+  const isExpertOnlyRoute = expertOnlyRoutes.some(route => pathname.startsWith(route));
+  const isAdminOnlyRoute = adminOnlyRoutes.some(route => pathname.startsWith(route));
 
-    // 인증 토큰과 사용자 데이터가 모두 있는지 확인
-    if (!authToken || !userData) {
-      // 인증되지 않은 경우 홈페이지로 리다이렉트
-      return NextResponse.redirect(new URL("/", request.url));
+  if (isProtectedRoute || isExpertOnlyRoute || isAdminOnlyRoute) {
+    // 인증된 사용자 확인
+    const authUser = await getAuthenticatedUser(request);
+    
+    if (!authUser) {
+      // 로그인 페이지로 리다이렉트
+      const loginUrl = new URL('/auth/login', request.url);
+      loginUrl.searchParams.set('redirect', pathname);
+      return NextResponse.redirect(loginUrl);
     }
 
-    // 사용자 데이터 파싱 시도
-    try {
-      JSON.parse(userData);
-    } catch {
-      // 사용자 데이터가 유효하지 않은 경우 홈페이지로 리다이렉트
-      return NextResponse.redirect(new URL("/", request.url));
+    // 전문가 전용 경로 접근 권한 확인
+    if (isExpertOnlyRoute && authUser.role !== 'expert' && authUser.role !== 'admin') {
+      return NextResponse.json(
+        { error: '전문가 권한이 필요합니다.' },
+        { status: 403 }
+      );
     }
 
-    // 인증된 사용자인 경우 접근 허용
-    return NextResponse.next();
+    // 관리자 전용 경로 접근 권한 확인
+    if (isAdminOnlyRoute && authUser.role !== 'admin') {
+      return NextResponse.json(
+        { error: '관리자 권한이 필요합니다.' },
+        { status: 403 }
+      );
+    }
+
+    // 사용자 정보를 헤더에 추가 (선택적)
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set('x-user-id', authUser.id.toString());
+    requestHeaders.set('x-user-role', authUser.role);
+    requestHeaders.set('x-user-email', authUser.email);
+
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
   }
 
-  // 기타 라우트는 접근 허용
   return NextResponse.next();
 }
 
@@ -68,6 +98,6 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      */
-    "/((?!api|_next/static|_next/image|favicon.ico).*)",
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };

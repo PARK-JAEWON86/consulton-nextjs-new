@@ -12,7 +12,7 @@ import {
   Search,
   ArrowLeft
 } from "lucide-react";
-import { dummyExpertStats, updateAllRankingScores } from '@/data/dummy/expert-stats';
+// import { dummyExpertStats, updateAllRankingScores } from '@/data/dummy/expert-stats'; // 더미 데이터 제거
 
 interface RankingItem {
   expertId: string;

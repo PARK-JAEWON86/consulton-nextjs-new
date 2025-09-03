@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { User, Expert, Consultation, ExpertProfile, UserCredits } from '@/lib/db/models';
+import { initializeDatabase } from '@/lib/db/init';
+import { getAuthenticatedUser } from '@/lib/auth';
 
 export interface PlatformStats {
   totalUsers: number;
@@ -59,23 +62,109 @@ let statsState: StatsState = {
 // GET: 플랫폼 통계 조회
 export async function GET(request: NextRequest) {
   try {
+    await initializeDatabase();
+    
+    const authUser = await getAuthenticatedUser(request);
+    if (!authUser || authUser.role !== 'admin') {
+      return NextResponse.json(
+        { success: false, message: '관리자 권한이 필요합니다.' },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const includeMatchingRecords = searchParams.get('includeMatchingRecords') === 'true';
     
+    // 실제 데이터베이스에서 통계 계산
+    const [
+      totalUsers,
+      totalExperts,
+      totalConsultations,
+      completedConsultations,
+      consultationsWithRating
+    ] = await Promise.all([
+      User.count(),
+      Expert.count(),
+      Consultation.count(),
+      Consultation.count({ where: { status: 'completed' } }),
+      Consultation.findAll({
+        where: { 
+          status: 'completed',
+          rating: { [require('sequelize').Op.gt]: 0 }
+        },
+        attributes: ['rating']
+      })
+    ]);
+
+    // 총 수익 계산 (완료된 상담의 가격 합계)
+    const revenueResult = await Consultation.sum('price', {
+      where: { status: 'completed' }
+    });
+    const totalRevenue = revenueResult || 0;
+
+    // 평균 평점 계산
+    const ratings = consultationsWithRating.map(c => c.rating).filter(r => r > 0);
+    const averageConsultationRating = ratings.length > 0 
+      ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length 
+      : 0;
+
+    // 상담 완료율 계산
+    const consultationCompletionRate = totalConsultations > 0 
+      ? Math.round((completedConsultations / totalConsultations) * 100) 
+      : 0;
+
+    // 월간 활성 사용자 계산 (최근 30일)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const monthlyActiveUsers = await User.count({
+      where: {
+        updatedAt: { [require('sequelize').Op.gte]: thirtyDaysAgo }
+      }
+    });
+
+    // 월간 활성 전문가 계산
+    const monthlyActiveExperts = await Expert.count({
+      where: {
+        updatedAt: { [require('sequelize').Op.gte]: thirtyDaysAgo }
+      }
+    });
+
+    // 사용자 만족도 점수 (평균 평점 기반)
+    const userSatisfactionScore = averageConsultationRating;
+
+    // 매칭 시간은 현재 데이터베이스에 저장되지 않으므로 기본값 사용
+    const averageMatchingTimeMinutes = 15; // 기본값
+
+    const stats: PlatformStats = {
+      totalUsers,
+      totalExperts,
+      totalConsultations,
+      totalRevenue,
+      averageConsultationRating: Math.round(averageConsultationRating * 100) / 100,
+      averageMatchingTimeMinutes,
+      monthlyActiveUsers,
+      monthlyActiveExperts,
+      consultationCompletionRate,
+      userSatisfactionScore: Math.round(userSatisfactionScore * 100) / 100,
+      lastUpdated: new Date().toISOString(),
+    };
+    
     const responseData: any = {
-      stats: statsState.stats,
+      stats,
       summary: {
-        totalUsers: statsState.stats.totalUsers,
-        totalExperts: statsState.stats.totalExperts,
-        totalConsultations: statsState.stats.totalConsultations,
-        averageMatchingTime: `${statsState.stats.averageMatchingTimeMinutes}분`,
-        completionRate: `${statsState.stats.consultationCompletionRate}%`,
-        satisfactionScore: `${statsState.stats.userSatisfactionScore}/5`,
+        totalUsers: stats.totalUsers,
+        totalExperts: stats.totalExperts,
+        totalConsultations: stats.totalConsultations,
+        averageMatchingTime: `${stats.averageMatchingTimeMinutes}분`,
+        completionRate: `${stats.consultationCompletionRate}%`,
+        satisfactionScore: `${stats.userSatisfactionScore}/5`,
       }
     };
     
     if (includeMatchingRecords) {
-      responseData.matchingRecords = statsState.matchingRecords;
+      // 매칭 기록은 현재 데이터베이스에 저장되지 않으므로 빈 배열 반환
+      responseData.matchingRecords = [];
     }
     
     return NextResponse.json({
@@ -83,8 +172,9 @@ export async function GET(request: NextRequest) {
       data: responseData
     });
   } catch (error) {
+    console.error('통계 조회 실패:', error);
     return NextResponse.json(
-      { success: false, error: '통계 조회 실패' },
+      { success: false, message: '통계 조회에 실패했습니다.' },
       { status: 500 }
     );
   }
@@ -93,225 +183,100 @@ export async function GET(request: NextRequest) {
 // POST: 통계 관리 액션
 export async function POST(request: NextRequest) {
   try {
+    await initializeDatabase();
+    
+    const authUser = await getAuthenticatedUser(request);
+    if (!authUser || authUser.role !== 'admin') {
+      return NextResponse.json(
+        { success: false, message: '관리자 권한이 필요합니다.' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { action, data } = body;
 
     switch (action) {
       case 'updateStats':
-        const update: StatsUpdate = data.update;
-        
-        switch (update.type) {
-          case 'consultation_completed':
-            statsState.stats.totalConsultations += 1;
-            break;
-          case 'expert_registered':
-            statsState.stats.totalExperts += 1;
-            break;
-          case 'user_registered':
-            statsState.stats.totalUsers += 1;
-            break;
-          case 'matching_time_recorded':
-            if (update.data?.matchingTimeMinutes) {
-              // 매칭 시간 기록은 recordMatching에서 처리
-            }
-            break;
-          case 'revenue_updated':
-            if (update.data?.revenue) {
-              statsState.stats.totalRevenue = update.data.revenue;
-            }
-            break;
-          case 'rating_updated':
-            if (update.data?.rating) {
-              statsState.stats.averageConsultationRating = update.data.rating;
-            }
-            break;
-        }
-        
-        statsState.stats.lastUpdated = new Date().toISOString();
+        // 통계는 실시간으로 계산되므로 특별한 업데이트는 필요하지 않음
+        // 필요시 캐시 무효화나 특별한 이벤트 처리에 사용
         
         return NextResponse.json({
           success: true,
           data: {
-            stats: statsState.stats,
-            message: '통계가 업데이트되었습니다.'
+            message: '통계 업데이트 요청이 처리되었습니다.'
           }
         });
 
       case 'recordMatching':
+        // 매칭 기록은 현재 데이터베이스에 별도 테이블이 없으므로 로그로만 처리
         const { userId, expertId, matchingTimeMinutes } = data;
-        const newRecord: MatchingRecord = {
-          id: `matching_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        
+        console.log('매칭 기록:', {
           userId,
           expertId,
           matchingTimeMinutes,
-          createdAt: new Date().toISOString(),
-        };
-        
-        statsState.matchingRecords.push(newRecord);
-        
-        // 평균 매칭 시간 재계산
-        if (statsState.matchingRecords.length > 0) {
-          const totalTime = statsState.matchingRecords.reduce(
-            (sum, record) => sum + record.matchingTimeMinutes,
-            0
-          );
-          statsState.stats.averageMatchingTimeMinutes = Math.round(totalTime / statsState.matchingRecords.length);
-        }
-        
-        statsState.stats.lastUpdated = new Date().toISOString();
+          timestamp: new Date().toISOString()
+        });
         
         return NextResponse.json({
           success: true,
           data: {
-            record: newRecord,
-            averageMatchingTime: statsState.stats.averageMatchingTimeMinutes,
-            message: '매칭 기록이 저장되었습니다.'
+            message: '매칭 기록이 로그에 저장되었습니다.'
           }
         });
 
       case 'completeConsultation':
-        statsState.stats.totalConsultations += 1;
-        statsState.stats.lastUpdated = new Date().toISOString();
-        
+        // 상담 완료는 실제 데이터베이스에서 자동으로 반영되므로 별도 처리 불필요
         return NextResponse.json({
           success: true,
           data: {
-            stats: statsState.stats,
-            message: '상담 완료 통계가 업데이트되었습니다.'
+            message: '상담 완료 이벤트가 기록되었습니다.'
           }
         });
 
       case 'registerExpert':
-        statsState.stats.totalExperts += 1;
-        statsState.stats.lastUpdated = new Date().toISOString();
-        
+        // 전문가 등록은 실제 데이터베이스에서 자동으로 반영되므로 별도 처리 불필요
         return NextResponse.json({
           success: true,
           data: {
-            stats: statsState.stats,
-            message: '전문가 등록 통계가 업데이트되었습니다.'
+            message: '전문가 등록 이벤트가 기록되었습니다.'
           }
         });
 
       case 'registerUser':
-        statsState.stats.totalUsers += 1;
-        statsState.stats.lastUpdated = new Date().toISOString();
-        
+        // 사용자 등록은 실제 데이터베이스에서 자동으로 반영되므로 별도 처리 불필요
         return NextResponse.json({
           success: true,
           data: {
-            stats: statsState.stats,
-            message: '사용자 등록 통계가 업데이트되었습니다.'
+            message: '사용자 등록 이벤트가 기록되었습니다.'
           }
         });
 
       case 'updateMetrics':
-        const { completionRate, satisfactionScore, monthlyActiveUsers, monthlyActiveExperts } = data;
-        
-        if (completionRate !== undefined) {
-          statsState.stats.consultationCompletionRate = completionRate;
-        }
-        if (satisfactionScore !== undefined) {
-          statsState.stats.userSatisfactionScore = satisfactionScore;
-        }
-        if (monthlyActiveUsers !== undefined) {
-          statsState.stats.monthlyActiveUsers = monthlyActiveUsers;
-        }
-        if (monthlyActiveExperts !== undefined) {
-          statsState.stats.monthlyActiveExperts = monthlyActiveExperts;
-        }
-        
-        statsState.stats.lastUpdated = new Date().toISOString();
-        
+        // 메트릭은 실시간으로 계산되므로 수동 업데이트 불필요
         return NextResponse.json({
           success: true,
           data: {
-            stats: statsState.stats,
-            message: '메트릭이 업데이트되었습니다.'
+            message: '메트릭 업데이트 요청이 처리되었습니다.'
           }
         });
 
       case 'resetStats':
-        statsState = {
-          stats: {
-            totalUsers: 0,
-            totalExperts: 0,
-            totalConsultations: 0,
-            totalRevenue: 0,
-            averageConsultationRating: 0,
-            averageMatchingTimeMinutes: 0,
-            monthlyActiveUsers: 0,
-            monthlyActiveExperts: 0,
-            consultationCompletionRate: 0,
-            userSatisfactionScore: 0,
-            lastUpdated: new Date().toISOString(),
-          },
-          matchingRecords: [],
-        };
-        
+        // 실제 데이터베이스의 통계는 삭제할 수 없으므로 경고 메시지만 반환
         return NextResponse.json({
-          success: true,
+          success: false,
           data: {
-            message: '통계가 초기화되었습니다.'
+            message: '실제 데이터베이스의 통계는 초기화할 수 없습니다.'
           }
         });
 
       case 'initializeStats':
-        // 더미 데이터로 초기화
-        statsState = {
-          stats: {
-            totalUsers: 1250,
-            totalExperts: 85,
-            totalConsultations: 3200,
-            totalRevenue: 12500000,
-            averageConsultationRating: 4.7,
-            averageMatchingTimeMinutes: 3,
-            monthlyActiveUsers: 450,
-            monthlyActiveExperts: 65,
-            consultationCompletionRate: 92,
-            userSatisfactionScore: 4.6,
-            lastUpdated: new Date().toISOString(),
-          },
-          matchingRecords: [
-            {
-              id: 'matching_1',
-              userId: 'user_1',
-              expertId: 'expert_1',
-              matchingTimeMinutes: 2,
-              createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-            },
-            {
-              id: 'matching_2',
-              userId: 'user_2',
-              expertId: 'expert_2',
-              matchingTimeMinutes: 5,
-              createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-            },
-            {
-              id: 'matching_3',
-              userId: 'user_3',
-              expertId: 'expert_3',
-              matchingTimeMinutes: 1,
-              createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-            }
-          ],
-        };
-        
-        // 평균 매칭 시간 계산
-        if (statsState.matchingRecords.length > 0) {
-          const totalTime = statsState.matchingRecords.reduce(
-            (sum, record) => sum + record.matchingTimeMinutes,
-            0
-          );
-          statsState.stats.averageMatchingTimeMinutes = Math.round(totalTime / statsState.matchingRecords.length);
-        }
-        
+        // 실제 데이터베이스에서는 더미 데이터 초기화가 불필요
         return NextResponse.json({
           success: true,
           data: {
-            stats: statsState.stats,
-            matchingRecords: statsState.matchingRecords,
-            message: '통계가 더미 데이터로 초기화되었습니다.'
+            message: '실제 데이터베이스에서는 더미 데이터 초기화가 불필요합니다.'
           }
         });
 
@@ -332,57 +297,56 @@ export async function POST(request: NextRequest) {
 // PATCH: 통계 부분 업데이트
 export async function PATCH(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { updates } = body;
+    await initializeDatabase();
     
-    // 통계 업데이트
-    Object.assign(statsState.stats, updates);
-    statsState.stats.lastUpdated = new Date().toISOString();
-    
+    const authUser = await getAuthenticatedUser(request);
+    if (!authUser || authUser.role !== 'admin') {
+      return NextResponse.json(
+        { success: false, message: '관리자 권한이 필요합니다.' },
+        { status: 403 }
+      );
+    }
+
+    // 통계는 실시간으로 계산되므로 수동 업데이트 불필요
     return NextResponse.json({
       success: true,
       data: {
-        stats: statsState.stats,
-        message: '통계가 업데이트되었습니다.'
+        message: '통계는 실시간으로 계산됩니다.'
       }
     });
   } catch (error) {
+    console.error('통계 업데이트 실패:', error);
     return NextResponse.json(
-      { success: false, error: '통계 업데이트 실패' },
+      { success: false, message: '통계 업데이트에 실패했습니다.' },
       { status: 500 }
     );
   }
 }
 
 // DELETE: 통계 초기화
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
   try {
-    statsState = {
-      stats: {
-        totalUsers: 0,
-        totalExperts: 0,
-        totalConsultations: 0,
-        totalRevenue: 0,
-        averageConsultationRating: 0,
-        averageMatchingTimeMinutes: 0,
-        monthlyActiveUsers: 0,
-        monthlyActiveExperts: 0,
-        consultationCompletionRate: 0,
-        userSatisfactionScore: 0,
-        lastUpdated: new Date().toISOString(),
-      },
-      matchingRecords: [],
-    };
+    await initializeDatabase();
     
+    const authUser = await getAuthenticatedUser(request);
+    if (!authUser || authUser.role !== 'admin') {
+      return NextResponse.json(
+        { success: false, message: '관리자 권한이 필요합니다.' },
+        { status: 403 }
+      );
+    }
+
+    // 실제 데이터베이스의 통계는 삭제할 수 없음
     return NextResponse.json({
-      success: true,
+      success: false,
       data: {
-        message: '모든 통계가 초기화되었습니다.'
+        message: '실제 데이터베이스의 통계는 삭제할 수 없습니다.'
       }
     });
   } catch (error) {
+    console.error('통계 초기화 실패:', error);
     return NextResponse.json(
-      { success: false, error: '통계 초기화 실패' },
+      { success: false, message: '통계 초기화에 실패했습니다.' },
       { status: 500 }
     );
   }

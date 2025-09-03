@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRequestsByExpert, getRequestStats } from '@/data/dummy/consultationRequests';
-import { expertDataService } from '@/services/ExpertDataService';
-import { getConsultationsByExpert } from '@/data/dummy/consultationHistory';
+import { Expert, User, Consultation, Review, Payment } from '@/lib/db/models';
+import { initializeDatabase } from '@/lib/db/init';
+import { getAuthenticatedUser } from '@/lib/auth';
+// import { getRequestsByExpert, getRequestStats } from '@/data/dummy/consultationRequests'; // 더미 데이터 제거
+// import { expertDataService } from '@/services/ExpertDataService'; // 더미 데이터 제거
+// import { getConsultationsByExpert } from '@/data/dummy/consultationHistory'; // 더미 데이터 제거
 
 // 기간 타입 정의
 type PeriodKey = "today" | "last7" | "last30" | "thisMonth" | "lastWeek";
@@ -54,6 +57,16 @@ interface ExpertDashboardData {
 
 export async function GET(request: NextRequest) {
   try {
+    await initializeDatabase();
+    
+    const authUser = await getAuthenticatedUser(request);
+    if (!authUser) {
+      return NextResponse.json(
+        { error: '인증이 필요합니다.' },
+        { status: 401 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const expertIdParam = searchParams.get('expertId');
     const period = (searchParams.get('period') || 'lastWeek') as PeriodKey;
@@ -73,51 +86,95 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // 권한 확인 (본인 또는 관리자만 접근 가능)
+    if (authUser.role !== 'admin') {
+      const expert = await Expert.findOne({ where: { userId: authUser.id } });
+      if (!expert || expert.id !== expertId) {
+        return NextResponse.json(
+          { error: '접근 권한이 없습니다.' },
+          { status: 403 }
+        );
+      }
+    }
+
     // 전문가 프로필 정보 조회
-    const expertProfile = expertDataService.getExpertProfileById(expertId);
-    if (!expertProfile) {
+    const expert = await Expert.findByPk(expertId, {
+      include: [
+        {
+          model: User,
+          as: 'user',
+          required: false,
+          attributes: ['id', 'name', 'email']
+        }
+      ]
+    });
+
+    if (!expert) {
       return NextResponse.json(
         { error: 'Expert not found' },
         { status: 404 }
       );
     }
 
-    // 상담 요청 통계
-    const requestStats = getRequestStats(expertId);
-    const pendingRequests = getRequestsByExpert(expertId).filter(req => req.status === 'pending');
-
     // 상담 내역 조회
-    const consultationHistory = getConsultationsByExpert(expertId);
+    const consultations = await Consultation.findAll({
+      where: { expertId },
+      include: [
+        {
+          model: User,
+          as: 'user',
+          required: false,
+          attributes: ['id', 'name', 'email']
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    // 리뷰 조회
+    const reviews = await Review.findAll({
+      where: { expertId, isDeleted: false }
+    });
+
+    // 결제 내역 조회
+    const payments = await Payment.findAll({
+      where: { 
+        consultationId: consultations.map(c => c.id),
+        status: 'completed'
+      }
+    });
     
     // 기간별 수익 계산
     const { currentRevenue, previousRevenue, currentSessions, previousSessions } = calculatePeriodStats(
-      consultationHistory,
+      consultations,
+      payments,
       period
     );
 
     // 오늘 일정
     const today = new Date();
-    const todaySchedule = consultationHistory.filter(item => {
-      const itemDate = new Date(item.createdAt);
-      return item.status === 'completed' && 
+    const todaySchedule = consultations.filter(item => {
+      const itemDate = new Date(item.scheduledTime || item.createdAt);
+      return item.status === 'scheduled' && 
              itemDate.toDateString() === today.toDateString();
     }).slice(0, 3);
 
     // 최근 활동
-    const recentActivities = consultationHistory
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    const recentActivities = consultations
+      .filter(item => item.status === 'completed')
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
       .slice(0, 8)
       .map(item => ({
-        ts: new Date(item.createdAt).getTime(),
-        label: `상담 완료 · ${item.clientName} · ${item.topic}`,
+        ts: new Date(item.updatedAt).getTime(),
+        label: `상담 완료 · ${item.user?.name || '알 수 없음'} · ${item.title}`,
       }));
 
-    // 주제별 성과
+    // 주제별 성과 (카테고리별)
     const topicMap = new Map<string, { revenue: number; count: number }>();
-    consultationHistory.forEach((item) => {
-      const key = (item.topic || "기타").split(" ")[0];
+    consultations.forEach((consultation) => {
+      const key = consultation.categoryId?.toString() || "기타";
       const entry = topicMap.get(key) || { revenue: 0, count: 0 };
-      entry.revenue += item.expertGrossKrw || 0;
+      const consultationPayment = payments.find(p => p.consultationId === consultation.id);
+      entry.revenue += consultationPayment?.amount || 0;
       entry.count += 1;
       topicMap.set(key, entry);
     });
@@ -125,30 +182,37 @@ export async function GET(request: NextRequest) {
       .sort((a, b) => b[1].revenue - a[1].revenue)
       .slice(0, 3);
 
+    // 통계 계산
+    const totalSessions = consultations.length;
+    const completedSessions = consultations.filter(c => c.status === 'completed').length;
+    const avgRating = reviews.length > 0 ? 
+      reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length : 0;
+    const totalRevenue = payments.reduce((sum, payment) => sum + payment.amount, 0);
+
     const dashboardData: ExpertDashboardData = {
       profile: {
-        id: expertProfile.id,
-        name: expertProfile.name,
-        specialty: expertProfile.specialty,
-        level: expertProfile.level,
-        pricePerMinute: expertProfile.pricePerMinute,
-        totalSessions: expertProfile.totalSessions,
-        avgRating: expertProfile.avgRating,
-        email: expertProfile.contactInfo?.email,
+        id: expert.id,
+        name: expert.user?.name || '알 수 없음',
+        specialty: expert.specialty || '일반',
+        level: expert.level || 1,
+        pricePerMinute: expert.pricePerMinute || 0,
+        totalSessions,
+        avgRating: Math.round(avgRating * 100) / 100,
+        email: expert.user?.email,
       },
       stats: {
-        totalRequests: requestStats.totalRequests,
-        pendingRequests: requestStats.pendingRequests,
-        acceptedRequests: requestStats.acceptedRequests,
-        completedRequests: requestStats.completedRequests,
-        rejectedRequests: requestStats.rejectedRequests,
-        urgentRequests: requestStats.urgentRequests,
-        totalBudget: requestStats.totalBudget,
-        avgBudget: requestStats.avgBudget,
-        acceptanceRate: requestStats.acceptanceRate,
+        totalRequests: consultations.length,
+        pendingRequests: consultations.filter(c => c.status === 'scheduled').length,
+        acceptedRequests: consultations.filter(c => c.status === 'scheduled').length,
+        completedRequests: completedSessions,
+        rejectedRequests: consultations.filter(c => c.status === 'cancelled').length,
+        urgentRequests: 0, // TODO: 긴급 요청 로직 구현
+        totalBudget: totalRevenue,
+        avgBudget: consultations.length > 0 ? Math.round(totalRevenue / consultations.length) : 0,
+        acceptanceRate: consultations.length > 0 ? Math.round((completedSessions / consultations.length) * 100) : 0,
       },
       consultations: {
-        items: consultationHistory,
+        items: consultations.slice(0, 10), // 최근 10개만
         revenue: {
           current: currentRevenue,
           previous: previousRevenue,
@@ -165,7 +229,7 @@ export async function GET(request: NextRequest) {
           change: 0, // 계산됨
         },
       },
-      requests: pendingRequests.slice(0, 5),
+      requests: consultations.filter(c => c.status === 'scheduled').slice(0, 5),
       todaySchedule,
       recentActivities,
       topTopics,
@@ -194,7 +258,7 @@ export async function GET(request: NextRequest) {
 }
 
 // 기간별 통계 계산 헬퍼 함수
-function calculatePeriodStats(consultations: any[], period: PeriodKey) {
+function calculatePeriodStats(consultations: any[], payments: any[], period: PeriodKey) {
   const now = new Date();
   const { start: currentStart, end: currentEnd } = getDateRange(period, now);
   
@@ -209,16 +273,28 @@ function calculatePeriodStats(consultations: any[], period: PeriodKey) {
   prevEnd.setDate(currentStart.getDate() - 1);
 
   const currentPeriodItems = consultations.filter(item => 
-    item.status === 'completed' && inDateRange(item.createdAt, currentStart, currentEnd)
+    item.status === 'completed' && inDateRange(item.updatedAt, currentStart, currentEnd)
   );
   
   const previousPeriodItems = consultations.filter(item => 
-    item.status === 'completed' && inDateRange(item.createdAt, prevStart, prevEnd)
+    item.status === 'completed' && inDateRange(item.updatedAt, prevStart, prevEnd)
   );
 
+  // 현재 기간 수익 계산
+  const currentRevenue = currentPeriodItems.reduce((sum, item) => {
+    const payment = payments.find(p => p.consultationId === item.id);
+    return sum + (payment?.amount || 0);
+  }, 0);
+
+  // 이전 기간 수익 계산
+  const previousRevenue = previousPeriodItems.reduce((sum, item) => {
+    const payment = payments.find(p => p.consultationId === item.id);
+    return sum + (payment?.amount || 0);
+  }, 0);
+
   return {
-    currentRevenue: currentPeriodItems.reduce((sum, item) => sum + (item.expertGrossKrw || 0), 0),
-    previousRevenue: previousPeriodItems.reduce((sum, item) => sum + (item.expertGrossKrw || 0), 0),
+    currentRevenue,
+    previousRevenue,
     currentSessions: currentPeriodItems.length,
     previousSessions: previousPeriodItems.length,
   };
@@ -257,7 +333,7 @@ function getDateRange(period: PeriodKey, now: Date): { start: Date; end: Date } 
 }
 
 // 날짜 범위 체크
-function inDateRange(dateString: string, start: Date, end: Date): boolean {
+function inDateRange(dateString: string | Date, start: Date, end: Date): boolean {
   const date = new Date(dateString);
   return date >= start && date <= end;
 }

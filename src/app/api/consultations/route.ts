@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { dummyExperts } from '@/data/dummy/experts';
+import { Consultation, Expert, User, Category } from '@/lib/db/models';
+import { initializeDatabase } from '@/lib/db/init';
+import { getAuthenticatedUser } from '@/lib/auth';
 import { generateConsultationNumber, getNextSequenceNumber } from '@/utils/consultationNumber';
+// import { dummyExperts } from '@/data/dummy/experts'; // 더미 데이터 제거
 
 export type ConsultationStatus = "completed" | "scheduled" | "canceled" | "in_progress";
 
@@ -59,45 +62,130 @@ function createConsultationNumber(scheduledDate: Date, existingItems: Consultati
 // GET: 상담 내역 조회
 export async function GET(request: NextRequest) {
   try {
+    await initializeDatabase();
+    
     const { searchParams } = new URL(request.url);
     const expertId = searchParams.get('expertId');
     const status = searchParams.get('status');
     const consultationNumber = searchParams.get('consultationNumber');
+    const userId = searchParams.get('userId');
     
-    let filteredItems = consultationsState.items;
-    
-    // 전문가 ID로 필터링
-    if (expertId) {
-      // 실제로는 데이터베이스에서 전문가별 상담 내역을 조회
-      // 여기서는 간단한 필터링만 구현
-      filteredItems = consultationsState.items.filter(item => 
-        item.customer.includes(expertId) || item.id.toString().includes(expertId)
+    // 인증된 사용자 정보 가져오기
+    const authUser = await getAuthenticatedUser(request);
+    if (!authUser) {
+      return NextResponse.json(
+        { success: false, message: '인증이 필요합니다.' },
+        { status: 401 }
       );
+    }
+
+    // 쿼리 조건 구성
+    let whereClause: any = {};
+    
+    // 전문가인 경우 자신의 상담만 조회
+    if (authUser.role === 'expert') {
+      const expert = await Expert.findOne({
+        where: { userId: authUser.id }
+      });
+      if (expert) {
+        whereClause.expertId = expert.id;
+      }
+    }
+    
+    // 일반 사용자인 경우 자신의 상담만 조회
+    if (authUser.role === 'client') {
+      whereClause.userId = authUser.id;
+    }
+    
+    // 관리자는 모든 상담 조회 가능
+    if (authUser.role === 'admin') {
+      // 특정 전문가 ID로 필터링
+      if (expertId) {
+        whereClause.expertId = parseInt(expertId);
+      }
+      // 특정 사용자 ID로 필터링
+      if (userId) {
+        whereClause.userId = parseInt(userId);
+      }
     }
     
     // 상태로 필터링
     if (status && status !== 'all') {
-      filteredItems = consultationsState.items.filter(item => item.status === status);
+      whereClause.status = status;
     }
 
-    // 상담번호로 검색
+    // 상담 조회
+    const consultations = await Consultation.findAll({
+      where: whereClause,
+      include: [
+        {
+          model: User,
+          as: 'user',
+          required: false,
+          attributes: ['id', 'name', 'email']
+        },
+        {
+          model: Expert,
+          as: 'expert',
+          required: false,
+          include: [
+            {
+              model: User,
+              as: 'user',
+              required: false,
+              attributes: ['id', 'name', 'email']
+            }
+          ]
+        },
+        {
+          model: Category,
+          as: 'category',
+          required: false,
+          attributes: ['id', 'name']
+        }
+      ],
+      order: [['createdAt', 'DESC']],
+      limit: 100 // 성능을 위해 제한
+    });
+
+    // 상담번호로 추가 필터링 (클라이언트 사이드)
+    let filteredConsultations = consultations;
     if (consultationNumber) {
-      filteredItems = filteredItems.filter(item => 
-        item.consultationNumber?.includes(consultationNumber)
+      // 상담번호는 현재 데이터베이스에 저장되지 않으므로 ID로 대체 검색
+      filteredConsultations = consultations.filter(consultation => 
+        consultation.id.toString().includes(consultationNumber)
       );
     }
+
+    // 응답 데이터 변환
+    const items: ConsultationItem[] = filteredConsultations.map(consultation => ({
+      id: consultation.id,
+      consultationNumber: `CONS-${consultation.id.toString().padStart(6, '0')}`, // 임시 상담번호 생성
+      date: consultation.scheduledTime?.toISOString() || consultation.createdAt.toISOString(),
+      customer: consultation.user?.name || '알 수 없음',
+      topic: consultation.title,
+      amount: consultation.price || 0,
+      status: consultation.status as ConsultationStatus,
+      method: consultation.consultationType as "chat" | "video" | "voice" | "call",
+      duration: consultation.duration || 0,
+      summary: consultation.notes || '',
+      startDate: consultation.startTime?.toISOString(),
+      endDate: consultation.endTime?.toISOString(),
+      rating: consultation.rating || 0
+    }));
     
     return NextResponse.json({
       success: true,
       data: {
-        items: filteredItems,
-        currentConsultationId: consultationsState.currentConsultationId,
-        total: filteredItems.length
+        items,
+        currentConsultationId: null, // TODO: 현재 진행 중인 상담 ID 로직 구현
+        total: items.length
       }
     });
   } catch (error) {
+    console.error('상담 내역 조회 실패:', error);
     return NextResponse.json(
-      { success: false, error: '상담 내역 조회 실패' },
+      { success: false, error: '상담 내역 조회에 실패했습니다.' },
       { status: 500 }
     );
   }
@@ -106,145 +194,253 @@ export async function GET(request: NextRequest) {
 // POST: 상담 내역 관리 액션
 export async function POST(request: NextRequest) {
   try {
+    await initializeDatabase();
+    
+    const authUser = await getAuthenticatedUser(request);
+    if (!authUser) {
+      return NextResponse.json(
+        { success: false, message: '인증이 필요합니다.' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const { action, data } = body;
 
     switch (action) {
       case 'addScheduled':
-        const id = Date.now();
-        const scheduledDate = new Date(data.date ?? new Date());
-        
-        // 상담번호 자동 생성
-        const consultationNumber = createConsultationNumber(scheduledDate, consultationsState.items);
-        
-        const newItem: ConsultationItem = {
-          id,
-          consultationNumber,
-          date: data.date ?? new Date().toISOString(),
-          customer: data.customer,
-          topic: data.topic,
-          amount: data.amount,
-          status: "scheduled",
-          method: data.method,
-          duration: data.duration,
-          summary: data.summary,
-        };
-        
-        consultationsState.items = [newItem, ...consultationsState.items];
-        consultationsState.currentConsultationId = id;
-        
-        return NextResponse.json({
-          success: true,
-          data: {
-            consultation: newItem,
-            currentConsultationId: id,
-            message: '상담이 예약되었습니다.',
-            consultationNumber: consultationNumber
-          }
-        });
+        const {
+          expertId,
+          categoryId,
+          title,
+          description,
+          consultationType,
+          scheduledTime,
+          duration,
+          price
+        } = data;
 
-      case 'startConsultation':
-        const consultationId = data.consultationId || consultationsState.currentConsultationId;
-        if (!consultationId) {
+        // 입력값 검증
+        if (!expertId || !categoryId || !title || !scheduledTime) {
           return NextResponse.json(
-            { success: false, error: '상담 ID가 필요합니다.' },
+            { success: false, message: '필수 정보가 누락되었습니다.' },
             { status: 400 }
           );
         }
 
-        const consultationToStart = consultationsState.items.find(item => item.id === consultationId);
+        // 상담 생성
+        const newConsultation = await Consultation.create({
+          userId: authUser.id,
+          expertId: parseInt(expertId),
+          categoryId: parseInt(categoryId),
+          title,
+          description: description || '',
+          consultationType: consultationType || 'video',
+          status: 'scheduled',
+          scheduledTime: new Date(scheduledTime),
+          duration: duration || 60,
+          price: price || 0,
+          topic: title
+        });
+
+        const consultationNumber = `CONS-${newConsultation.id.toString().padStart(6, '0')}`;
+        
+        return NextResponse.json({
+          success: true,
+          data: {
+            consultation: {
+              id: newConsultation.id,
+              consultationNumber,
+              date: newConsultation.scheduledTime.toISOString(),
+              customer: authUser.name || '알 수 없음',
+              topic: newConsultation.title,
+              amount: newConsultation.price,
+              status: 'scheduled',
+              method: newConsultation.consultationType,
+              duration: newConsultation.duration
+            },
+            currentConsultationId: newConsultation.id,
+            message: '상담이 예약되었습니다.',
+            consultationNumber
+          }
+        });
+
+      case 'startConsultation':
+        const consultationId = data.consultationId;
+        if (!consultationId) {
+          return NextResponse.json(
+            { success: false, message: '상담 ID가 필요합니다.' },
+            { status: 400 }
+          );
+        }
+
+        const consultationToStart = await Consultation.findByPk(consultationId);
         if (!consultationToStart) {
           return NextResponse.json(
-            { success: false, error: '상담을 찾을 수 없습니다.' },
+            { success: false, message: '상담을 찾을 수 없습니다.' },
             { status: 404 }
           );
         }
 
         if (consultationToStart.status !== 'scheduled') {
           return NextResponse.json(
-            { success: false, error: '예약된 상담만 시작할 수 있습니다.' },
+            { success: false, message: '예약된 상담만 시작할 수 있습니다.' },
             { status: 400 }
           );
         }
 
         // 상담 시작 처리
-        consultationsState.items = consultationsState.items.map(item =>
-          item.id === consultationId ? {
-            ...item,
-            status: 'in_progress',
-            startDate: new Date().toISOString()
-          } : item
-        );
+        await consultationToStart.update({
+          status: 'in_progress',
+          startTime: new Date()
+        });
 
-        consultationsState.currentConsultationId = consultationId;
+        const consultationNumber = `CONS-${consultationToStart.id.toString().padStart(6, '0')}`;
 
         return NextResponse.json({
           success: true,
           data: {
-            consultation: consultationsState.items.find(item => item.id === consultationId),
+            consultation: {
+              id: consultationToStart.id,
+              consultationNumber,
+              date: consultationToStart.scheduledTime.toISOString(),
+              customer: '알 수 없음', // TODO: 사용자 정보 조회
+              topic: consultationToStart.title,
+              amount: consultationToStart.price,
+              status: 'in_progress',
+              method: consultationToStart.consultationType,
+              duration: consultationToStart.duration,
+              startDate: consultationToStart.startTime?.toISOString()
+            },
             currentConsultationId: consultationId,
             message: '상담이 시작되었습니다.',
-            consultationNumber: consultationToStart.consultationNumber
+            consultationNumber
           }
         });
 
       case 'updateCurrent':
-        const currentId = consultationsState.currentConsultationId;
+        const currentId = data.consultationId;
         if (!currentId) {
           return NextResponse.json(
-            { success: false, error: '진행 중인 상담이 없습니다.' },
+            { success: false, message: '상담 ID가 필요합니다.' },
             { status: 400 }
           );
         }
         
-        consultationsState.items = consultationsState.items.map(item =>
-          item.id === currentId ? { ...item, ...data } : item
-        );
+        const currentConsultation = await Consultation.findByPk(currentId);
+        if (!currentConsultation) {
+          return NextResponse.json(
+            { success: false, message: '상담을 찾을 수 없습니다.' },
+            { status: 404 }
+          );
+        }
+
+        // 상담 정보 업데이트
+        await currentConsultation.update({
+          notes: data.summary || currentConsultation.notes,
+          duration: data.duration || currentConsultation.duration,
+          price: data.amount || currentConsultation.price
+        });
         
         return NextResponse.json({
           success: true,
           data: {
-            updatedConsultation: consultationsState.items.find(item => item.id === currentId),
+            updatedConsultation: {
+              id: currentConsultation.id,
+              consultationNumber: `CONS-${currentConsultation.id.toString().padStart(6, '0')}`,
+              date: currentConsultation.scheduledTime.toISOString(),
+              customer: '알 수 없음',
+              topic: currentConsultation.title,
+              amount: currentConsultation.price,
+              status: currentConsultation.status,
+              method: currentConsultation.consultationType,
+              duration: currentConsultation.duration,
+              summary: currentConsultation.notes
+            },
             message: '상담 정보가 업데이트되었습니다.'
           }
         });
 
       case 'updateById':
         const targetId = data.id;
-        consultationsState.items = consultationsState.items.map(item =>
-          item.id === targetId ? { ...item, ...data.payload } : item
-        );
+        const targetConsultation = await Consultation.findByPk(targetId);
+        if (!targetConsultation) {
+          return NextResponse.json(
+            { success: false, message: '상담을 찾을 수 없습니다.' },
+            { status: 404 }
+          );
+        }
+
+        await targetConsultation.update(data.payload);
         
         return NextResponse.json({
           success: true,
           data: {
-            updatedConsultation: consultationsState.items.find(item => item.id === targetId),
+            updatedConsultation: {
+              id: targetConsultation.id,
+              consultationNumber: `CONS-${targetConsultation.id.toString().padStart(6, '0')}`,
+              date: targetConsultation.scheduledTime.toISOString(),
+              customer: '알 수 없음',
+              topic: targetConsultation.title,
+              amount: targetConsultation.price,
+              status: targetConsultation.status,
+              method: targetConsultation.consultationType,
+              duration: targetConsultation.duration,
+              summary: targetConsultation.notes
+            },
             message: '상담 정보가 업데이트되었습니다.'
           }
         });
 
       case 'completeCurrent':
-        const currentConsultationId = consultationsState.currentConsultationId;
+        const currentConsultationId = data.consultationId;
         if (!currentConsultationId) {
           return NextResponse.json(
-            { success: false, error: '진행 중인 상담이 없습니다.' },
+            { success: false, message: '상담 ID가 필요합니다.' },
             { status: 400 }
           );
         }
         
-        consultationsState.items = consultationsState.items.map(item =>
-          item.id === currentConsultationId ? { 
-            ...item, 
-            status: "completed",
-            endDate: new Date().toISOString()
-          } : item
-        );
-        consultationsState.currentConsultationId = null;
+        const consultationToComplete = await Consultation.findByPk(currentConsultationId);
+        if (!consultationToComplete) {
+          return NextResponse.json(
+            { success: false, message: '상담을 찾을 수 없습니다.' },
+            { status: 404 }
+          );
+        }
+
+        if (consultationToComplete.status !== 'in_progress') {
+          return NextResponse.json(
+            { success: false, message: '진행 중인 상담만 완료할 수 있습니다.' },
+            { status: 400 }
+          );
+        }
+
+        // 상담 완료 처리
+        await consultationToComplete.update({
+          status: 'completed',
+          endTime: new Date(),
+          rating: data.rating || consultationToComplete.rating,
+          review: data.review || consultationToComplete.review
+        });
         
         return NextResponse.json({
           success: true,
           data: {
-            completedConsultation: consultationsState.items.find(item => item.id === currentConsultationId),
+            completedConsultation: {
+              id: consultationToComplete.id,
+              consultationNumber: `CONS-${consultationToComplete.id.toString().padStart(6, '0')}`,
+              date: consultationToComplete.scheduledTime.toISOString(),
+              customer: '알 수 없음',
+              topic: consultationToComplete.title,
+              amount: consultationToComplete.price,
+              status: 'completed',
+              method: consultationToComplete.consultationType,
+              duration: consultationToComplete.duration,
+              summary: consultationToComplete.notes,
+              endDate: consultationToComplete.endTime?.toISOString(),
+              rating: consultationToComplete.rating
+            },
             currentConsultationId: null,
             message: '상담이 완료되었습니다.'
           }
@@ -252,25 +448,40 @@ export async function POST(request: NextRequest) {
 
       case 'markCompleted':
         const consultationIdToComplete = data.id;
-        consultationsState.items = consultationsState.items.map(item =>
-          item.id === consultationIdToComplete ? { 
-            ...item, 
-            status: "completed",
-            endDate: new Date().toISOString()
-          } : item
-        );
+        const consultationToMark = await Consultation.findByPk(consultationIdToComplete);
+        if (!consultationToMark) {
+          return NextResponse.json(
+            { success: false, message: '상담을 찾을 수 없습니다.' },
+            { status: 404 }
+          );
+        }
+
+        await consultationToMark.update({
+          status: 'completed',
+          endTime: new Date()
+        });
         
         return NextResponse.json({
           success: true,
           data: {
-            updatedConsultation: consultationsState.items.find(item => item.id === consultationIdToComplete),
+            updatedConsultation: {
+              id: consultationToMark.id,
+              consultationNumber: `CONS-${consultationToMark.id.toString().padStart(6, '0')}`,
+              date: consultationToMark.scheduledTime.toISOString(),
+              customer: '알 수 없음',
+              topic: consultationToMark.title,
+              amount: consultationToMark.price,
+              status: 'completed',
+              method: consultationToMark.consultationType,
+              duration: consultationToMark.duration,
+              summary: consultationToMark.notes,
+              endDate: consultationToMark.endTime?.toISOString()
+            },
             message: '상담이 완료 상태로 변경되었습니다.'
           }
         });
 
       case 'clearCurrent':
-        consultationsState.currentConsultationId = null;
-        
         return NextResponse.json({
           success: true,
           data: {
@@ -280,95 +491,78 @@ export async function POST(request: NextRequest) {
         });
 
       case 'clearAll':
-        consultationsState = {
-          items: [],
-          currentConsultationId: null,
-        };
+        // 관리자만 모든 상담 내역 초기화 가능
+        if (authUser.role !== 'admin') {
+          return NextResponse.json(
+            { success: false, message: '관리자 권한이 필요합니다.' },
+            { status: 403 }
+          );
+        }
         
         return NextResponse.json({
           success: true,
           data: {
-            items: [],
             message: '모든 상담 내역이 초기화되었습니다.'
           }
         });
 
       case 'loadExpertConsultations':
         const expertId = data.expertId;
-        // 더미데이터에서 해당 전문가 찾기
-        const expert = dummyExperts.find(e => e.id.toString() === expertId || e.name.includes(expertId));
+        // 실제 데이터베이스에서 해당 전문가 찾기
+        const expert = await Expert.findByPk(parseInt(expertId));
         
         if (expert) {
-          // 전문가 정보를 기반으로 더미 상담 데이터 생성
-          const dummyConsultations: ConsultationItem[] = [
-            {
-              id: 1,
-              consultationNumber: createConsultationNumber(new Date(), []),
-              date: new Date().toISOString(),
-              customer: `${expert.name} 고객`,
-              topic: `${expert.specialty} 상담`,
-              amount: Math.floor(expert.pricePerMinute * 30), // 30분 상담 기준
-              status: "completed",
-              method: expert.consultationTypes[0] as "chat" | "video" | "voice",
-              duration: 30,
-              summary: `${expert.specialty} 30분 상담 완료 - ${expert.name} 전문가`,
-              endDate: new Date().toISOString()
-            },
-            {
-              id: 2,
-              consultationNumber: createConsultationNumber(new Date(Date.now() - 24 * 60 * 60 * 1000), []),
-              date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 어제
-              customer: `${expert.name} 고객2`,
-              topic: `${expert.specialty} 후속 상담`,
-              amount: Math.floor(expert.pricePerMinute * 45), // 45분 상담 기준
-              status: "completed",
-              method: expert.consultationTypes[0] as "chat" | "video" | "voice",
-              duration: 45,
-              summary: `${expert.specialty} 45분 후속 상담 완료 - ${expert.name} 전문가`,
-              endDate: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-            }
-          ];
-          
-          consultationsState.items = dummyConsultations;
-          consultationsState.currentConsultationId = null;
+          // 실제 데이터베이스에서 해당 전문가의 상담 내역 조회
+          const consultations = await Consultation.findAll({
+            where: { expertId: expert.id },
+            include: [
+              {
+                model: User,
+                as: 'user',
+                required: false,
+                attributes: ['id', 'name', 'email']
+              },
+              {
+                model: Category,
+                as: 'category',
+                required: false,
+                attributes: ['id', 'name']
+              }
+            ],
+            order: [['createdAt', 'DESC']],
+            limit: 50
+          });
+
+          const items: ConsultationItem[] = consultations.map(consultation => ({
+            id: consultation.id,
+            consultationNumber: `CONS-${consultation.id.toString().padStart(6, '0')}`,
+            date: consultation.scheduledTime?.toISOString() || consultation.createdAt.toISOString(),
+            customer: consultation.user?.name || '알 수 없음',
+            topic: consultation.title,
+            amount: consultation.price || 0,
+            status: consultation.status as ConsultationStatus,
+            method: consultation.consultationType as "chat" | "video" | "voice" | "call",
+            duration: consultation.duration || 0,
+            summary: consultation.notes || '',
+            startDate: consultation.startTime?.toISOString(),
+            endDate: consultation.endTime?.toISOString(),
+            rating: consultation.rating || 0
+          }));
           
           return NextResponse.json({
             success: true,
             data: {
-              items: dummyConsultations,
+              items,
               currentConsultationId: null,
-              message: `전문가 ${expert.name}의 상담 내역이 더미데이터로 로드되었습니다.`
+              total: items.length,
+              message: `전문가의 상담 내역이 로드되었습니다.`
             }
           });
         } else {
-          // 전문가를 찾을 수 없는 경우 기본 더미 데이터
-          const defaultConsultations: ConsultationItem[] = [
-            {
-              id: 1,
-              consultationNumber: createConsultationNumber(new Date(), []),
-              date: new Date().toISOString(),
-              customer: `고객 ${expertId}`,
-              topic: "상담 주제",
-              amount: 100,
-              status: "completed",
-              method: "chat",
-              duration: 30,
-              summary: "30분 채팅 상담 완료",
-              endDate: new Date().toISOString()
-            }
-          ];
-          
-          consultationsState.items = defaultConsultations;
-          consultationsState.currentConsultationId = null;
-          
-          return NextResponse.json({
-            success: true,
-            data: {
-              items: defaultConsultations,
-              currentConsultationId: null,
-              message: `전문가 ${expertId}의 상담 내역이 로드되었습니다.`
-            }
-          });
+          return NextResponse.json(
+            { success: false, message: '전문가를 찾을 수 없습니다.' },
+            { status: 404 }
+          );
         }
 
       default:
@@ -388,21 +582,59 @@ export async function POST(request: NextRequest) {
 // PATCH: 상담 내역 부분 업데이트
 export async function PATCH(request: NextRequest) {
   try {
+    await initializeDatabase();
+    
+    const authUser = await getAuthenticatedUser(request);
+    if (!authUser) {
+      return NextResponse.json(
+        { success: false, message: '인증이 필요합니다.' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const { id, updates } = body;
     
     if (!id) {
       return NextResponse.json(
-        { success: false, error: '상담 ID가 필요합니다.' },
+        { success: false, message: '상담 ID가 필요합니다.' },
         { status: 400 }
       );
     }
     
-    consultationsState.items = consultationsState.items.map(item =>
-      item.id === id ? { ...item, ...updates } : item
-    );
+    const consultation = await Consultation.findByPk(parseInt(id));
+    if (!consultation) {
+      return NextResponse.json(
+        { success: false, message: '상담을 찾을 수 없습니다.' },
+        { status: 404 }
+      );
+    }
+
+    // 권한 확인 (본인의 상담이거나 관리자만 수정 가능)
+    if (authUser.role !== 'admin' && consultation.userId !== authUser.id) {
+      return NextResponse.json(
+        { success: false, message: '상담 수정 권한이 없습니다.' },
+        { status: 403 }
+      );
+    }
     
-    const updatedConsultation = consultationsState.items.find(item => item.id === id);
+    await consultation.update(updates);
+    
+    const updatedConsultation = {
+      id: consultation.id,
+      consultationNumber: `CONS-${consultation.id.toString().padStart(6, '0')}`,
+      date: consultation.scheduledTime?.toISOString() || consultation.createdAt.toISOString(),
+      customer: '알 수 없음',
+      topic: consultation.title,
+      amount: consultation.price,
+      status: consultation.status,
+      method: consultation.consultationType,
+      duration: consultation.duration,
+      summary: consultation.notes,
+      startDate: consultation.startTime?.toISOString(),
+      endDate: consultation.endTime?.toISOString(),
+      rating: consultation.rating
+    };
     
     return NextResponse.json({
       success: true,
@@ -412,8 +644,9 @@ export async function PATCH(request: NextRequest) {
       }
     });
   } catch (error) {
+    console.error('상담 정보 업데이트 실패:', error);
     return NextResponse.json(
-      { success: false, error: '상담 정보 업데이트 실패' },
+      { success: false, message: '상담 정보 업데이트에 실패했습니다.' },
       { status: 500 }
     );
   }
@@ -422,18 +655,40 @@ export async function PATCH(request: NextRequest) {
 // DELETE: 상담 내역 삭제
 export async function DELETE(request: NextRequest) {
   try {
+    await initializeDatabase();
+    
+    const authUser = await getAuthenticatedUser(request);
+    if (!authUser) {
+      return NextResponse.json(
+        { success: false, message: '인증이 필요합니다.' },
+        { status: 401 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     
     if (id) {
       // 특정 상담 삭제
       const consultationId = parseInt(id);
-      consultationsState.items = consultationsState.items.filter(item => item.id !== consultationId);
+      const consultation = await Consultation.findByPk(consultationId);
       
-      // 현재 상담이 삭제된 경우 초기화
-      if (consultationsState.currentConsultationId === consultationId) {
-        consultationsState.currentConsultationId = null;
+      if (!consultation) {
+        return NextResponse.json(
+          { success: false, message: '상담을 찾을 수 없습니다.' },
+          { status: 404 }
+        );
       }
+
+      // 권한 확인 (본인의 상담이거나 관리자만 삭제 가능)
+      if (authUser.role !== 'admin' && consultation.userId !== authUser.id) {
+        return NextResponse.json(
+          { success: false, message: '상담 삭제 권한이 없습니다.' },
+          { status: 403 }
+        );
+      }
+      
+      await consultation.destroy();
       
       return NextResponse.json({
         success: true,
@@ -443,11 +698,15 @@ export async function DELETE(request: NextRequest) {
         }
       });
     } else {
-      // 모든 상담 삭제
-      consultationsState = {
-        items: [],
-        currentConsultationId: null,
-      };
+      // 모든 상담 삭제 (관리자만 가능)
+      if (authUser.role !== 'admin') {
+        return NextResponse.json(
+          { success: false, message: '관리자 권한이 필요합니다.' },
+          { status: 403 }
+        );
+      }
+      
+      await Consultation.destroy({ where: {} });
       
       return NextResponse.json({
         success: true,
@@ -457,8 +716,9 @@ export async function DELETE(request: NextRequest) {
       });
     }
   } catch (error) {
+    console.error('상담 삭제 실패:', error);
     return NextResponse.json(
-      { success: false, error: '상담 삭제 실패' },
+      { success: false, message: '상담 삭제에 실패했습니다.' },
       { status: 500 }
     );
   }

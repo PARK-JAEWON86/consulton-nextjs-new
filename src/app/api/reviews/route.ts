@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Review, User, Expert, Consultation } from '@/lib/db/models';
+import { initializeDatabase } from '@/lib/db/init';
+import { getAuthenticatedUser } from '@/lib/auth';
 
-// 리뷰 타입 정의
-interface Review {
+// 리뷰 타입 정의 (API 응답용)
+interface ReviewResponse {
   id: string;
   consultationId: string;
   userId: string;
@@ -21,10 +24,7 @@ interface Review {
   };
 }
 
-import { dummyReviews } from '@/data/dummy/reviews';
-
-// 임시 저장소 (실제로는 데이터베이스 사용)
-let reviews: Review[] = [...dummyReviews];
+// import { dummyReviews } from '@/data/dummy/reviews'; // 더미 데이터 제거
 
 // 전문가 통계 업데이트 헬퍼 함수
 async function updateExpertStatsAfterReview(
@@ -112,6 +112,8 @@ async function updateExpertStatsAfterReview(
 // GET: 리뷰 목록 조회
 export async function GET(request: NextRequest) {
   try {
+    await initializeDatabase();
+    
     const { searchParams } = new URL(request.url);
     const consultationId = searchParams.get('consultationId');
     const expertId = searchParams.get('expertId');
@@ -119,30 +121,78 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    let filteredReviews = [...reviews];
+    // 쿼리 조건 구성
+    let whereClause: any = {
+      isDeleted: false
+    };
 
-    // 필터링
     if (consultationId) {
-      filteredReviews = filteredReviews.filter(review => review.consultationId === consultationId);
+      whereClause.consultationId = parseInt(consultationId);
     }
     if (expertId) {
-      filteredReviews = filteredReviews.filter(review => review.expertId === expertId);
+      whereClause.expertId = parseInt(expertId);
     }
     if (isPublic !== null) {
-      filteredReviews = filteredReviews.filter(review => review.isPublic === (isPublic === 'true'));
+      whereClause.isPublic = isPublic === 'true';
     }
 
-    // 정렬 (최신순)
-    filteredReviews.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    // 리뷰 조회
+    const { rows: reviews, count: totalCount } = await Review.findAndCountAll({
+      where: whereClause,
+      include: [
+        {
+          model: User,
+          as: 'user',
+          required: false,
+          attributes: ['id', 'name', 'email', 'profileImage']
+        },
+        {
+          model: Expert,
+          as: 'expert',
+          required: false,
+          include: [
+            {
+              model: User,
+              as: 'user',
+              required: false,
+              attributes: ['id', 'name', 'email']
+            }
+          ]
+        },
+        {
+          model: Consultation,
+          as: 'consultation',
+          required: false,
+          attributes: ['id', 'title', 'categoryId']
+        }
+      ],
+      order: [['createdAt', 'DESC']],
+      limit,
+      offset
+    });
 
-    // 페이지네이션
-    const paginatedReviews = filteredReviews.slice(offset, offset + limit);
+    // 응답 데이터 변환
+    const reviewResponses: ReviewResponse[] = reviews.map(review => ({
+      id: review.id.toString(),
+      consultationId: review.consultationId.toString(),
+      userId: review.userId.toString(),
+      userName: review.user?.name || '익명',
+      userAvatar: review.user?.profileImage || null,
+      expertId: review.expertId.toString(),
+      expertName: review.expert?.user?.name || '알 수 없음',
+      rating: review.rating,
+      content: review.content,
+      category: review.consultation?.categoryId?.toString() || '기타',
+      date: review.createdAt.toISOString(),
+      isVerified: review.isVerified,
+      isPublic: review.isPublic
+    }));
 
     return NextResponse.json({
       success: true,
       data: {
-        reviews: paginatedReviews,
-        total: filteredReviews.length,
+        reviews: reviewResponses,
+        total: totalCount,
         limit,
         offset
       }
@@ -159,21 +209,28 @@ export async function GET(request: NextRequest) {
 // POST: 새 리뷰 생성
 export async function POST(request: NextRequest) {
   try {
+    await initializeDatabase();
+    
+    const authUser = await getAuthenticatedUser(request);
+    if (!authUser) {
+      return NextResponse.json(
+        { success: false, message: '인증이 필요합니다.' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const {
       consultationId,
-      userId,
-      userName,
-      userAvatar,
       expertId,
-      expertName,
       rating,
       content,
-      category
+      title,
+      isAnonymous = false
     } = body;
 
     // 필수 필드 검증
-    if (!consultationId || !userId || !userName || !expertId || !expertName || !rating || !content || !category) {
+    if (!consultationId || !expertId || !rating || !content) {
       return NextResponse.json(
         { success: false, message: '필수 필드가 누락되었습니다.' },
         { status: 400 }
@@ -188,10 +245,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 상담 존재 확인
+    const consultation = await Consultation.findByPk(parseInt(consultationId));
+    if (!consultation) {
+      return NextResponse.json(
+        { success: false, message: '상담을 찾을 수 없습니다.' },
+        { status: 404 }
+      );
+    }
+
+    // 상담이 완료되었는지 확인
+    if (consultation.status !== 'completed') {
+      return NextResponse.json(
+        { success: false, message: '완료된 상담에만 리뷰를 작성할 수 있습니다.' },
+        { status: 400 }
+      );
+    }
+
     // 중복 리뷰 검증 (같은 상담에 대해 한 사용자가 하나의 리뷰만 작성 가능)
-    const existingReview = reviews.find(
-      review => review.consultationId === consultationId && review.userId === userId
-    );
+    const existingReview = await Review.findOne({
+      where: {
+        consultationId: parseInt(consultationId),
+        userId: authUser.id
+      }
+    });
 
     if (existingReview) {
       return NextResponse.json(
@@ -201,39 +278,62 @@ export async function POST(request: NextRequest) {
     }
 
     // 새 리뷰 생성
-    const newReview: Review = {
-      id: Date.now().toString(),
-      consultationId,
-      userId,
-      userName,
-      userAvatar,
-      expertId,
-      expertName,
+    const newReview = await Review.create({
+      consultationId: parseInt(consultationId),
+      userId: authUser.id,
+      expertId: parseInt(expertId),
       rating,
+      title: title || '',
       content,
-      category,
-      date: new Date().toISOString(),
-      isVerified: false, // 기본적으로 미검증
-      isPublic: true // 기본적으로 공개
-    };
+      isAnonymous,
+      isVerified: true, // 실제 상담 완료 후 작성이므로 검증됨
+      isPublic: true,
+      helpfulCount: 0,
+      reportCount: 0,
+      isDeleted: false
+    });
 
-    reviews.push(newReview);
-
-    // 전문가 통계 업데이트
+    // 전문가 통계 업데이트 (Expert 테이블의 reviewCount와 avgRating 업데이트)
     try {
-      await updateExpertStatsAfterReview(expertId, 'add', rating);
-      
-      // 전문가 데이터 업데이트 이벤트 발생 (클라이언트에서 감지)
-      // 이 이벤트는 클라이언트 측에서 전문가 찾기 페이지의 데이터를 새로고침하는 데 사용됨
-      console.log(`전문가 ${expertId}의 리뷰 추가로 인한 통계 업데이트 완료`);
+      const expert = await Expert.findByPk(parseInt(expertId));
+      if (expert) {
+        // 해당 전문가의 모든 리뷰 조회하여 평균 평점 계산
+        const allReviews = await Review.findAll({
+          where: { expertId: parseInt(expertId), isDeleted: false }
+        });
+        
+        const totalRating = allReviews.reduce((sum, review) => sum + review.rating, 0);
+        const avgRating = allReviews.length > 0 ? totalRating / allReviews.length : 0;
+        
+        await expert.update({
+          reviewCount: allReviews.length,
+          avgRating: Math.round(avgRating * 100) / 100
+        });
+      }
     } catch (error) {
       console.error('전문가 통계 업데이트 실패:', error);
-      // 리뷰는 성공했지만 통계 업데이트는 실패한 경우
     }
+
+    // 응답 데이터 변환
+    const reviewResponse: ReviewResponse = {
+      id: newReview.id.toString(),
+      consultationId: newReview.consultationId.toString(),
+      userId: newReview.userId.toString(),
+      userName: authUser.name || '익명',
+      userAvatar: null,
+      expertId: newReview.expertId.toString(),
+      expertName: '알 수 없음',
+      rating: newReview.rating,
+      content: newReview.content,
+      category: consultation.categoryId?.toString() || '기타',
+      date: newReview.createdAt.toISOString(),
+      isVerified: newReview.isVerified,
+      isPublic: newReview.isPublic
+    };
 
     return NextResponse.json({
       success: true,
-      data: newReview,
+      data: reviewResponse,
       message: '리뷰가 성공적으로 작성되었습니다.'
     });
   } catch (error) {
@@ -248,8 +348,18 @@ export async function POST(request: NextRequest) {
 // PUT: 리뷰 수정
 export async function PUT(request: NextRequest) {
   try {
+    await initializeDatabase();
+    
+    const authUser = await getAuthenticatedUser(request);
+    if (!authUser) {
+      return NextResponse.json(
+        { success: false, message: '인증이 필요합니다.' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
-    const { id, rating, content, isPublic, expertReply } = body;
+    const { id, rating, content, isPublic } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -258,15 +368,27 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const reviewIndex = reviews.findIndex(review => review.id === id);
-    if (reviewIndex === -1) {
+    const review = await Review.findByPk(parseInt(id));
+    if (!review) {
       return NextResponse.json(
         { success: false, message: '리뷰를 찾을 수 없습니다.' },
         { status: 404 }
       );
     }
 
+    // 권한 확인 (본인이 작성한 리뷰만 수정 가능)
+    if (review.userId !== authUser.id && authUser.role !== 'admin') {
+      return NextResponse.json(
+        { success: false, message: '리뷰 수정 권한이 없습니다.' },
+        { status: 403 }
+      );
+    }
+
+    const oldRating = review.rating;
+
     // 수정 가능한 필드만 업데이트
+    const updateData: any = {};
+    
     if (rating !== undefined) {
       if (rating < 1 || rating > 5) {
         return NextResponse.json(
@@ -274,29 +396,37 @@ export async function PUT(request: NextRequest) {
           { status: 400 }
         );
       }
-      reviews[reviewIndex].rating = rating;
+      updateData.rating = rating;
     }
 
     if (content !== undefined) {
-      reviews[reviewIndex].content = content;
+      updateData.content = content;
     }
 
     if (isPublic !== undefined) {
-      reviews[reviewIndex].isPublic = isPublic;
+      updateData.isPublic = isPublic;
     }
 
-    if (expertReply !== undefined) {
-      reviews[reviewIndex].expertReply = expertReply;
-    }
-
-    reviews[reviewIndex].date = new Date().toISOString();
+    await review.update(updateData);
 
     // 평점이 변경된 경우 전문가 통계 업데이트
-    if (rating !== undefined) {
+    if (rating !== undefined && rating !== oldRating) {
       try {
-        const oldRating = reviews[reviewIndex].rating;
-        const expertId = reviews[reviewIndex].expertId;
-        await updateExpertStatsAfterReview(expertId, 'update', rating, oldRating);
+        const expert = await Expert.findByPk(review.expertId);
+        if (expert) {
+          // 해당 전문가의 모든 리뷰 조회하여 평균 평점 재계산
+          const allReviews = await Review.findAll({
+            where: { expertId: review.expertId, isDeleted: false }
+          });
+          
+          const totalRating = allReviews.reduce((sum, review) => sum + review.rating, 0);
+          const avgRating = allReviews.length > 0 ? totalRating / allReviews.length : 0;
+          
+          await expert.update({
+            reviewCount: allReviews.length,
+            avgRating: Math.round(avgRating * 100) / 100
+          });
+        }
       } catch (error) {
         console.error('전문가 통계 업데이트 실패:', error);
       }
@@ -304,7 +434,16 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: reviews[reviewIndex],
+      data: {
+        id: review.id.toString(),
+        consultationId: review.consultationId.toString(),
+        userId: review.userId.toString(),
+        expertId: review.expertId.toString(),
+        rating: review.rating,
+        content: review.content,
+        isPublic: review.isPublic,
+        date: review.updatedAt.toISOString()
+      },
       message: '리뷰가 성공적으로 수정되었습니다.'
     });
   } catch (error) {
@@ -319,6 +458,16 @@ export async function PUT(request: NextRequest) {
 // DELETE: 리뷰 삭제
 export async function DELETE(request: NextRequest) {
   try {
+    await initializeDatabase();
+    
+    const authUser = await getAuthenticatedUser(request);
+    if (!authUser) {
+      return NextResponse.json(
+        { success: false, message: '인증이 필요합니다.' },
+        { status: 401 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -329,28 +478,52 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const reviewIndex = reviews.findIndex(review => review.id === id);
-    if (reviewIndex === -1) {
+    const review = await Review.findByPk(parseInt(id));
+    if (!review) {
       return NextResponse.json(
         { success: false, message: '리뷰를 찾을 수 없습니다.' },
         { status: 404 }
       );
     }
 
-    const deletedReview = reviews.splice(reviewIndex, 1)[0];
+    // 권한 확인 (본인이 작성한 리뷰만 삭제 가능)
+    if (review.userId !== authUser.id && authUser.role !== 'admin') {
+      return NextResponse.json(
+        { success: false, message: '리뷰 삭제 권한이 없습니다.' },
+        { status: 403 }
+      );
+    }
+
+    // 소프트 삭제 (isDeleted = true로 설정)
+    await review.update({ isDeleted: true });
 
     // 전문가 통계 업데이트
     try {
-      await updateExpertStatsAfterReview(deletedReview.expertId, 'delete');
+      const expert = await Expert.findByPk(review.expertId);
+      if (expert) {
+        // 해당 전문가의 모든 리뷰 조회하여 평균 평점 재계산
+        const allReviews = await Review.findAll({
+          where: { expertId: review.expertId, isDeleted: false }
+        });
+        
+        const totalRating = allReviews.reduce((sum, review) => sum + review.rating, 0);
+        const avgRating = allReviews.length > 0 ? totalRating / allReviews.length : 0;
+        
+        await expert.update({
+          reviewCount: allReviews.length,
+          avgRating: Math.round(avgRating * 100) / 100
+        });
+      }
     } catch (error) {
       console.error('전문가 통계 업데이트 실패:', error);
-      // 리뷰는 삭제했지만 통계 업데이트는 실패한 경우
     }
 
     return NextResponse.json({
       success: true,
-      data: deletedReview,
-      message: '리뷰가 성공적으로 삭제되었습니다.'
+      data: {
+        id: review.id.toString(),
+        message: '리뷰가 성공적으로 삭제되었습니다.'
+      }
     });
   } catch (error) {
     console.error('리뷰 삭제 실패:', error);

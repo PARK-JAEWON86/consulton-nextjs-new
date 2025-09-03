@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Notification } from '@/types';
-
-// 임시 메모리 저장소 (실제로는 데이터베이스 사용)
-let notifications: Notification[] = [];
+import { Notification, User } from '@/lib/db/models';
+import { initializeDatabase } from '@/lib/db/init';
+import { Op } from 'sequelize';
 
 // 알림 목록 조회
 export async function GET(request: NextRequest) {
   try {
+    await initializeDatabase();
+    
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
     const type = searchParams.get('type');
@@ -21,50 +22,57 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 사용자별 알림 필터링
-    let filteredNotifications = notifications.filter(notification => 
-      notification.userId === userId
-    );
+    // 검색 조건 설정
+    const whereConditions: any = {
+      userId: parseInt(userId)
+    };
 
     // 타입별 필터링
     if (type) {
-      filteredNotifications = filteredNotifications.filter(notification => 
-        notification.type === type
-      );
+      whereConditions.type = type;
     }
 
     // 읽음 상태별 필터링
     if (isRead !== null) {
-      const readStatus = isRead === 'true';
-      filteredNotifications = filteredNotifications.filter(notification => 
-        notification.isRead === readStatus
-      );
+      whereConditions.isRead = isRead === 'true';
     }
 
-    // 만료된 알림 제거
-    const now = new Date();
-    filteredNotifications = filteredNotifications.filter(notification => 
-      !notification.expiresAt || notification.expiresAt > now
-    );
+    // 만료되지 않은 알림만 조회
+    whereConditions[Op.or] = [
+      { expiresAt: null },
+      { expiresAt: { [Op.gt]: new Date() } }
+    ];
 
-    // 최신순 정렬
-    filteredNotifications.sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    // 알림 조회
+    const { rows: notifications, count: totalCount } = await Notification.findAndCountAll({
+      where: whereConditions,
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'name', 'email']
+        }
+      ],
+      order: [['createdAt', 'DESC']],
+      limit,
+      offset
+    });
 
-    // 페이징
-    const paginatedNotifications = filteredNotifications.slice(offset, offset + limit);
-
-    // 읽지 않은 알림 개수 계산
-    const unreadCount = filteredNotifications.filter(n => !n.isRead).length;
+    // 읽지 않은 알림 개수 계산 (단순화)
+    const unreadCount = await Notification.count({
+      where: {
+        userId: parseInt(userId),
+        isRead: false
+      }
+    });
 
     return NextResponse.json({
       success: true,
       data: {
-        notifications: paginatedNotifications,
-        totalCount: filteredNotifications.length,
+        notifications,
+        totalCount,
         unreadCount,
-        hasMore: offset + limit < filteredNotifications.length
+        hasMore: offset + limit < totalCount
       }
     });
 
@@ -80,6 +88,8 @@ export async function GET(request: NextRequest) {
 // 새 알림 생성
 export async function POST(request: NextRequest) {
   try {
+    await initializeDatabase();
+    
     const body = await request.json();
     const { userId, type, title, message, data, priority = 'medium' } = body;
 
@@ -91,28 +101,47 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 사용자 존재 확인
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: '사용자를 찾을 수 없습니다.' },
+        { status: 404 }
+      );
+    }
+
+    // 만료 시간 설정
+    let expiresAt = null;
+    if (type === 'consultation_request') {
+      expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24시간 후 만료
+    }
+
     // 새 알림 생성
-    const newNotification: Notification = {
-      id: `notification_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      userId,
+    const newNotification = await Notification.create({
+      userId: parseInt(userId),
       type,
       title,
       message,
       data,
       isRead: false,
       priority,
-      createdAt: new Date(),
-      expiresAt: type === 'consultation_request' ? 
-        new Date(Date.now() + 24 * 60 * 60 * 1000) : // 상담 신청은 24시간 후 만료
-        undefined
-    };
+      expiresAt: expiresAt || undefined
+    });
 
-    // 알림 저장
-    notifications.push(newNotification);
+    // 생성된 알림을 사용자 정보와 함께 조회
+    const notificationWithUser = await Notification.findByPk(newNotification.id, {
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'name', 'email']
+        }
+      ]
+    });
 
     return NextResponse.json({
       success: true,
-      data: newNotification
+      data: notificationWithUser
     });
 
   } catch (error) {
@@ -127,6 +156,8 @@ export async function POST(request: NextRequest) {
 // 알림 읽음 처리
 export async function PATCH(request: NextRequest) {
   try {
+    await initializeDatabase();
+    
     const body = await request.json();
     const { notificationId, userId, markAllAsRead = false } = body;
 
@@ -139,15 +170,18 @@ export async function PATCH(request: NextRequest) {
         );
       }
 
-      const updatedCount = notifications
-        .filter(notification => 
-          notification.userId === userId && !notification.isRead
-        )
-        .map(notification => {
-          notification.isRead = true;
-          notification.readAt = new Date();
-          return notification;
-        }).length;
+      const [updatedCount] = await Notification.update(
+        { 
+          isRead: true,
+          readAt: new Date()
+        },
+        {
+          where: {
+            userId: parseInt(userId),
+            isRead: false
+          }
+        }
+      );
 
       return NextResponse.json({
         success: true,
@@ -163,7 +197,7 @@ export async function PATCH(request: NextRequest) {
         );
       }
 
-      const notification = notifications.find(n => n.id === notificationId);
+      const notification = await Notification.findByPk(notificationId);
       if (!notification) {
         return NextResponse.json(
           { success: false, error: '알림을 찾을 수 없습니다.' },
@@ -171,12 +205,25 @@ export async function PATCH(request: NextRequest) {
         );
       }
 
-      notification.isRead = true;
-      notification.readAt = new Date();
+      await notification.update({
+        isRead: true,
+        readAt: new Date()
+      });
+
+      // 업데이트된 알림을 사용자 정보와 함께 조회
+      const updatedNotification = await Notification.findByPk(notificationId, {
+        include: [
+          {
+            model: User,
+            as: 'user',
+            attributes: ['id', 'name', 'email']
+          }
+        ]
+      });
 
       return NextResponse.json({
         success: true,
-        data: notification
+        data: updatedNotification
       });
     }
 
@@ -192,6 +239,8 @@ export async function PATCH(request: NextRequest) {
 // 알림 삭제
 export async function DELETE(request: NextRequest) {
   try {
+    await initializeDatabase();
+    
     const { searchParams } = new URL(request.url);
     const notificationId = searchParams.get('id');
     const userId = searchParams.get('userId');
@@ -203,8 +252,8 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const notificationIndex = notifications.findIndex(n => n.id === notificationId);
-    if (notificationIndex === -1) {
+    const notification = await Notification.findByPk(notificationId);
+    if (!notification) {
       return NextResponse.json(
         { success: false, error: '알림을 찾을 수 없습니다.' },
         { status: 404 }
@@ -212,14 +261,14 @@ export async function DELETE(request: NextRequest) {
     }
 
     // 사용자 권한 확인 (선택사항)
-    if (userId && notifications[notificationIndex].userId !== userId) {
+    if (userId && notification.userId !== parseInt(userId)) {
       return NextResponse.json(
         { success: false, error: '알림을 삭제할 권한이 없습니다.' },
         { status: 403 }
       );
     }
 
-    notifications.splice(notificationIndex, 1);
+    await notification.destroy();
 
     return NextResponse.json({
       success: true,

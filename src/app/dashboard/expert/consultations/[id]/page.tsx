@@ -19,8 +19,8 @@ import {
   Star,
   ExternalLink,
 } from "lucide-react";
-import { dummyConsultations } from "@/data/dummy/consultations";
-import { dummyReviews } from "@/data/dummy/reviews";
+// import { dummyConsultations } from "@/data/dummy/consultations"; // 더미 데이터 제거
+// import { dummyReviews } from "@/data/dummy/reviews"; // 더미 데이터 제거
 
 type DetailItem = {
   id: number;

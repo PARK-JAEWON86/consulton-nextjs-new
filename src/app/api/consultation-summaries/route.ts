@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { dummyConsultationSummaries } from "@/data/dummy/consultations";
+import { ConsultationSummary, Consultation, User, Expert } from "@/lib/db/models";
+import { initializeDatabase } from "@/lib/db/init";
+import { getAuthenticatedUser } from "@/lib/auth";
 import { sortByConsultationNumber } from "@/utils/consultationNumber";
-import { ConsultationSummary } from "@/types";
+import { ConsultationSummary as ConsultationSummaryType } from "@/types";
+// import { dummyConsultationSummaries } from "@/data/dummy/consultations"; // 더미 데이터 제거
 
 // ToDo 상태 타입 확장
 interface TodoStatus {
@@ -23,6 +26,16 @@ interface ConsultationSummaryWithTodos extends ConsultationSummary {
 
 export async function GET(request: NextRequest) {
   try {
+    await initializeDatabase();
+    
+    const authUser = await getAuthenticatedUser(request);
+    if (!authUser) {
+      return NextResponse.json(
+        { success: false, message: '인증이 필요합니다.' },
+        { status: 401 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
     const search = searchParams.get("search");
@@ -30,29 +43,95 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "10");
     const userId = searchParams.get("userId");
 
-    let filteredSummaries = [...dummyConsultationSummaries];
-
-    // 상담번호가 이미 있는 경우 그대로 사용 (상담 시작 시 부여된 번호)
-    // 상담번호가 없는 경우에만 임시 생성 (기존 데이터 호환성)
-    filteredSummaries = filteredSummaries.map((summary, index) => {
-      if (!summary.consultationNumber) {
-        // 상담 날짜를 기준으로 임시 상담번호 생성
-        const consultationDate = new Date(summary.date);
-        const sequence = index + 1;
-        // 임시 번호는 'TEMP-' 접두사 사용
-        summary.consultationNumber = `TEMP-${consultationDate.getFullYear()}${String(consultationDate.getMonth() + 1).padStart(2, '0')}${String(consultationDate.getDate()).padStart(2, '0')}-${String(sequence).padStart(3, '0')}`;
+    // 쿼리 조건 구성
+    let whereClause: any = {};
+    
+    // 사용자별 필터링 (본인의 상담 요약만 조회)
+    if (authUser.role === 'client') {
+      whereClause['$consultation.userId$'] = authUser.id;
+    } else if (authUser.role === 'expert') {
+      const expert = await Expert.findOne({ where: { userId: authUser.id } });
+      if (expert) {
+        whereClause['$consultation.expertId$'] = expert.id;
       }
-      return summary;
+    }
+    // 관리자는 모든 요약 조회 가능
+
+    // 상담 요약 조회
+    const { rows: summaries, count: totalCount } = await ConsultationSummary.findAndCountAll({
+      where: whereClause,
+      include: [
+        {
+          model: Consultation,
+          as: 'consultation',
+          required: true,
+          include: [
+            {
+              model: User,
+              as: 'user',
+              required: false,
+              attributes: ['id', 'name', 'email']
+            },
+            {
+              model: Expert,
+              as: 'expert',
+              required: false,
+              include: [
+                {
+                  model: User,
+                  as: 'user',
+                  required: false,
+                  attributes: ['id', 'name', 'email']
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      order: [['createdAt', 'DESC']],
+      limit,
+      offset: (page - 1) * limit
     });
 
-    // 상태별 필터링
+    // 응답 데이터 변환
+    const summaryResponses: ConsultationSummaryType[] = summaries.map(summary => ({
+      id: summary.id.toString(),
+      consultationNumber: `CONS-${summary.consultationId.toString().padStart(6, '0')}`,
+      title: summary.summaryTitle || summary.consultation.title,
+      date: summary.consultation.scheduledTime?.toISOString() || summary.createdAt.toISOString(),
+      status: summary.consultation.status,
+      expert: {
+        id: summary.consultation.expert?.id.toString() || '',
+        name: summary.consultation.expert?.user?.name || '알 수 없음',
+        specialty: summary.consultation.expert?.specialty || '',
+        avatar: null
+      },
+      client: {
+        id: summary.consultation.user?.id.toString() || '',
+        name: summary.consultation.user?.name || '알 수 없음',
+        avatar: null
+      },
+      summary: summary.summaryContent || '',
+      keyPoints: summary.keyPoints ? JSON.parse(summary.keyPoints) : [],
+      actionItems: summary.actionItems ? JSON.parse(summary.actionItems) : [],
+      recommendations: summary.recommendations ? JSON.parse(summary.recommendations) : [],
+      followUpPlan: summary.followUpPlan || '',
+      tags: [], // TODO: 태그 시스템 구현
+      attachments: summary.attachments ? JSON.parse(summary.attachments) : [],
+      isPublic: summary.isPublic
+    }));
+
+    // 검색 필터링 (클라이언트 사이드)
+    let filteredSummaries = summaryResponses;
+
+    // 상태별 필터링 (클라이언트 사이드)
     if (status && status !== "all") {
       filteredSummaries = filteredSummaries.filter(
         (summary) => summary.status === status
       );
     }
 
-    // 검색 필터링
+    // 검색 필터링 (클라이언트 사이드)
     if (search) {
       const searchLower = search.toLowerCase();
       filteredSummaries = filteredSummaries.filter(
@@ -60,38 +139,19 @@ export async function GET(request: NextRequest) {
           summary.title.toLowerCase().includes(searchLower) ||
           summary.expert.name.toLowerCase().includes(searchLower) ||
           summary.client.name.toLowerCase().includes(searchLower) ||
-          summary.consultationNumber?.toLowerCase().includes(searchLower) ||
-          summary.tags.some((tag) => tag.toLowerCase().includes(searchLower))
+          summary.consultationNumber?.toLowerCase().includes(searchLower)
       );
     }
 
-    // 상담번호 기준으로 정렬 (최신순)
-    filteredSummaries.sort(sortByConsultationNumber);
-
-    // 페이지네이션
+    // 페이지네이션 (클라이언트 사이드)
     const startIndex = (page - 1) * limit;
     const endIndex = startIndex + limit;
     const paginatedSummaries = filteredSummaries.slice(startIndex, endIndex);
 
-    // ToDo 상태 정보 추가 (사용자 ID가 있는 경우)
-    if (userId) {
-      for (const summary of paginatedSummaries) {
-        try {
-          const todoResponse = await fetch(`${request.nextUrl.origin}/api/consultation-summaries/${summary.id}/todo-status?userId=${userId}`);
-          if (todoResponse.ok) {
-            const todoResult = await todoResponse.json();
-            if (todoResult.success) {
-              (summary as ConsultationSummaryWithTodos).todoStatuses = todoResult.data;
-            }
-          }
-        } catch (error) {
-          console.error(`ToDo 상태 조회 실패 (${summary.id}):`, error);
-        }
-      }
-    }
+    // ToDo 상태는 현재 별도 구현이 필요하므로 일단 제외
+    // TODO: ToDo 상태 시스템 구현
 
-    const totalCount = filteredSummaries.length;
-    const totalPages = Math.ceil(totalCount / limit);
+    const totalPages = Math.ceil(filteredSummaries.length / limit);
 
     return NextResponse.json({
       success: true,
@@ -99,10 +159,10 @@ export async function GET(request: NextRequest) {
       pagination: {
         page,
         limit,
-        totalCount,
+        totalCount: filteredSummaries.length,
         totalPages,
-        hasNextPage: page < totalPages,
-        hasPrevPage: page > 1,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
       },
     });
   } catch (error) {
@@ -116,67 +176,93 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // TODO: 실제 인증 로직 구현
+    await initializeDatabase();
+    
+    const authUser = await getAuthenticatedUser(request);
+    if (!authUser) {
+      return NextResponse.json(
+        { success: false, message: '인증이 필요합니다.' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const {
       consultationId,
-      title,
-      expertId,
-      expertName,
-      expertTitle,
-      duration,
-      summary,
-      tags,
-      recordingUrl,
-      recordingDuration
+      summaryTitle,
+      summaryContent,
+      keyPoints,
+      actionItems,
+      recommendations,
+      followUpPlan,
+      attachments
     } = body;
 
     // 필수 필드 검증
-    if (!consultationId || !title || !expertId || !summary) {
+    if (!consultationId || !summaryContent) {
       return NextResponse.json(
-        { success: false, message: '필수 필드가 누락되었습니다.' },
+        { success: false, message: '상담 ID와 요약 내용은 필수입니다.' },
         { status: 400 }
       );
     }
 
-    // TODO: 실제 데이터베이스에 상담 요약 저장
-    // 현재는 더미 응답만 반환
-    
-    const newSummary = {
-      id: `summary_${Date.now()}`,
-      consultationId,
-      title,
-      date: new Date(),
-      duration: duration || 0,
-      expert: {
-        id: expertId,
-        name: expertName || "전문가",
-        title: expertTitle || "전문가",
-        avatar: null
-      },
-      client: {
-        id: "user_001", // TODO: 실제 사용자 ID
-        name: "사용자",
-        company: null
-      },
-      status: "processing" as const,
-      summary,
-      tags: tags || [],
-      recordingUrl,
-      recordingDuration,
-      creditsUsed: 0,
-      rating: null,
-      hasRecording: !!recordingUrl
-    };
+    // 상담 존재 확인
+    const consultation = await Consultation.findByPk(parseInt(consultationId));
+    if (!consultation) {
+      return NextResponse.json(
+        { success: false, message: '상담을 찾을 수 없습니다.' },
+        { status: 404 }
+      );
+    }
 
-    // TODO: 데이터베이스에 저장
-    console.log('새 상담 요약 생성:', newSummary);
+    // 권한 확인 (상담 참여자만 요약 생성 가능)
+    if (authUser.role === 'client' && consultation.userId !== authUser.id) {
+      return NextResponse.json(
+        { success: false, message: '상담 요약 생성 권한이 없습니다.' },
+        { status: 403 }
+      );
+    }
+
+    if (authUser.role === 'expert') {
+      const expert = await Expert.findOne({ where: { userId: authUser.id } });
+      if (!expert || consultation.expertId !== expert.id) {
+        return NextResponse.json(
+          { success: false, message: '상담 요약 생성 권한이 없습니다.' },
+          { status: 403 }
+        );
+      }
+    }
+
+    // 상담 요약 생성
+    const newSummary = await ConsultationSummary.create({
+      consultationId: parseInt(consultationId),
+      summaryTitle: summaryTitle || consultation.title,
+      summaryContent,
+      keyPoints: keyPoints ? JSON.stringify(keyPoints) : JSON.stringify([]),
+      actionItems: actionItems ? JSON.stringify(actionItems) : JSON.stringify([]),
+      recommendations: recommendations ? JSON.stringify(recommendations) : JSON.stringify([]),
+      followUpPlan: followUpPlan || '',
+      attachments: attachments ? JSON.stringify(attachments) : JSON.stringify([]),
+      isPublic: false // 기본적으로 비공개
+    });
 
     return NextResponse.json({
       success: true,
-      message: '상담 요약이 생성되었습니다.',
-      data: newSummary
-    }, { status: 201 });
+      data: {
+        id: newSummary.id.toString(),
+        consultationId: newSummary.consultationId.toString(),
+        summaryTitle: newSummary.summaryTitle,
+        summaryContent: newSummary.summaryContent,
+        keyPoints: JSON.parse(newSummary.keyPoints),
+        actionItems: JSON.parse(newSummary.actionItems),
+        recommendations: JSON.parse(newSummary.recommendations),
+        followUpPlan: newSummary.followUpPlan,
+        attachments: JSON.parse(newSummary.attachments),
+        isPublic: newSummary.isPublic,
+        createdAt: newSummary.createdAt.toISOString()
+      },
+      message: '상담 요약이 성공적으로 생성되었습니다.'
+    });
 
   } catch (error) {
     console.error('상담 요약 생성 실패:', error);

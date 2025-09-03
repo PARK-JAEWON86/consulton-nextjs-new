@@ -213,15 +213,7 @@ export interface ExpertProfile {
   portfolioFiles: PortfolioFile[];
   portfolioItems?: PortfolioItem[];
   socialProof?: SocialProof;
-  // 상담 관련 세부 정보 필드들
-  consultationStyle?: string;
-  successStories?: number;
-  nextAvailableSlot?: string;
-  profileViews?: number;
-  lastActiveAt?: Date;
-  joinedAt?: Date;
-  reschedulePolicy?: string;
-  pricingTiers?: PricingTier[];
+  // 상담 관련 세부 정보 필드들 (ConsultationDetails에서 상속됨)
   tags: string[];
   targetAudience: string[];
   isOnline: boolean;
@@ -238,11 +230,7 @@ export interface ExpertProfile {
   profileViews?: number;
   lastActiveAt?: Date;
   joinedAt?: Date;
-  socialProof?: {
-    linkedIn?: string;
-    website?: string;
-    publications: string[];
-  };
+  // socialProof는 위에서 이미 정의됨
   pricingTiers?: Array<{
     duration: number;
     price: number;

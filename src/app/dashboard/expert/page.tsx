@@ -28,8 +28,8 @@ interface ConsultationItem {
   summary: string;
   notes: string;
 }
-import { getRequestsByExpert, getRequestStats, getRequestsByStatus, type ConsultationRequest } from "@/data/dummy/consultationRequests";
-import { expertDataService } from "@/services/ExpertDataService";
+// import { getRequestsByExpert, getRequestStats, getRequestsByStatus, type ConsultationRequest } from "@/data/dummy/consultationRequests"; // 더미 데이터 제거
+// API를 통한 전문가 데이터 처리로 변경
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 // 전문가 프로필은 전용 라우트에서 관리합니다
@@ -234,7 +234,8 @@ export default function ExpertDashboardProfilePage() {
   const changeSold = percentChange(sold, prevSold);
 
   useEffect(() => {
-    try {
+    const loadData = async () => {
+      try {
       const stored = localStorage.getItem("approvedExpertProfile");
       if (stored) {
         const parsed = JSON.parse(stored);
@@ -280,15 +281,20 @@ export default function ExpertDashboardProfilePage() {
     if (user && user.role === 'expert') {
       const expertId = parseInt(user.id?.replace('expert_', '') || '0');
       if (expertId > 0) {
-        // 중앙 서비스에서 최신 전문가 데이터 확인
-        const latestProfile = expertDataService.getExpertProfileById(expertId);
-        if (latestProfile) {
-          console.log('🔄 전문가 대시보드 - 중앙 서비스 데이터 동기화:', {
-            expertId,
-            name: latestProfile.name,
-            experience: latestProfile.experience,
-            totalSessions: latestProfile.totalSessions
-          });
+        // API를 통한 최신 전문가 데이터 확인
+        try {
+          const response = await fetch(`/api/expert-profiles/${expertId}`);
+          if (response.ok) {
+            const latestProfile = await response.json();
+            console.log('🔄 전문가 대시보드 - API 데이터 동기화:', {
+              expertId,
+              name: latestProfile.name,
+              experience: latestProfile.experience,
+              totalSessions: latestProfile.totalSessions
+            });
+          }
+        } catch (error) {
+          console.error('전문가 프로필 로드 실패:', error);
         }
         
         const expertRequests = getRequestsByExpert(expertId);
@@ -297,6 +303,9 @@ export default function ExpertDashboardProfilePage() {
         setRequestStats(stats);
       }
     }
+    };
+    
+    loadData();
   }, [user]);
 
   // 프로필 편집은 전용 페이지에서 처리합니다.

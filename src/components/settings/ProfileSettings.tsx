@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { User, Camera, Save, AlertCircle, Check, Plus, X, Target, Brain, DollarSign, Scale, BookOpen, Heart, Users, Briefcase, Code, Palette, Languages, Music, Trophy, Plane, ChefHat, Scissors, PawPrint, Sprout, TrendingUp, Receipt, Building2, Baby, School, UserCheck, Phone, Clock, Shield } from "lucide-react";
-import { getExtendedCategories } from "@/data/dummy/categories";
+// import { getExtendedCategories } from "@/data/dummy/categories"; // 더미 데이터 제거
 
 interface Profile {
   firstName: string; // 전체 이름 (성+이름)
@@ -48,19 +48,31 @@ const ProfileSettings = () => {
     originalPhone: "" // 원본 전화번호 저장
   });
 
-  // 확장된 카테고리 목록 (아이콘 포함)
-  const extendedCategories = getExtendedCategories({
+  // 카테고리 목록 상태
+  const [categories, setCategories] = useState<any[]>([]);
+  
+  // 아이콘 매핑
+  const iconMap: { [key: string]: any } = {
     Target, Brain, DollarSign, Scale, BookOpen, Heart, Users, Briefcase, 
     Code, Palette, Languages, Music, Trophy, Plane, ChefHat, Scissors, 
     PawPrint, Sprout, TrendingUp, Receipt, Building2, Baby, School, UserCheck
-  });
+  };
 
-  // 사용자 프로필 정보 로드
+  // 사용자 프로필 정보 및 카테고리 로드
   useEffect(() => {
     const loadUserProfile = async () => {
       try {
         setIsLoading(true);
         setError(null);
+        
+        // 카테고리 정보 로드
+        const categoriesResponse = await fetch('/api/categories');
+        if (categoriesResponse.ok) {
+          const categoriesData = await categoriesResponse.json();
+          if (categoriesData.success) {
+            setCategories(categoriesData.data || []);
+          }
+        }
         
         // 새로운 프로필 API에서 정보 가져오기
         const response = await fetch('/api/profile');
@@ -181,9 +193,9 @@ const ProfileSettings = () => {
     }
   };
 
-  // 카테고리 이름 가져오기 (확장 카테고리에서 찾거나 그대로 반환)
+  // 카테고리 이름 가져오기 (카테고리에서 찾거나 그대로 반환)
   const getCategoryName = (categoryId: string) => {
-    const category = extendedCategories.find((c) => c.id === categoryId);
+    const category = categories.find((c) => c.id === categoryId);
     return category ? category.name : categoryId;
   };
 
@@ -793,7 +805,7 @@ const ProfileSettings = () => {
                   <option value="" disabled>
                     관심분야 추가하기
                   </option>
-                  {extendedCategories
+                  {categories
                     .filter((category) => !profile.interestedCategories.includes(category.id))
                     .map((category) => (
                       <option key={category.id} value={category.id}>

@@ -68,7 +68,6 @@ export default function ConsultationSummary({
       // });
       
       // 리뷰 제출 성공 시 전문가 데이터 업데이트 이벤트 발생
-<<<<<<< HEAD
       try {
         window.dispatchEvent(new CustomEvent('expertDataUpdated', {
           detail: { 
@@ -81,16 +80,6 @@ export default function ConsultationSummary({
       } catch (error) {
         console.error('이벤트 발생 실패:', error);
       }
-=======
-      window.dispatchEvent(new CustomEvent('expertDataUpdated', {
-        detail: { 
-          expertId: consultation.id, // consultation.id를 expertId로 사용
-          action: 'reviewSubmitted',
-          rating,
-          review 
-        }
-      }));
->>>>>>> 6615aeb (expert profile update)
       
       setShowReviewForm(false);
       

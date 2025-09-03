@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { CreditCard, Wallet, History, Plus, Trash2, Edit } from 'lucide-react';
-import { 
-  PaymentMethod, 
-  PaymentHistory, 
-  getUserPaymentMethods, 
-  getUserPaymentHistory,
-  getUserCreditTransactions 
-} from '@/data/dummy/payment';
+// import { 
+//   PaymentMethod, 
+//   PaymentHistory, 
+//   getUserPaymentMethods, 
+//   getUserPaymentHistory,
+//   getUserCreditTransactions 
+// } from '@/data/dummy/payment'; // 더미 데이터 제거
 
 export default function PaymentSettings() {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);

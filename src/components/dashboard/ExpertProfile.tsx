@@ -681,7 +681,7 @@ const ExpertProfile = forwardRef<any, ExpertProfileProps>(({
         
         // 상담방식 검증 (배열이 비어있거나 모든 요소가 빈 문자열인 경우)
         if (field === 'consultationTypes') {
-          return !value || !Array.isArray(value) || value.length === 0 || value.every(item => !item || item.trim() === '');
+          return !value || !Array.isArray(value) || value.length === 0 || value.every(item => !item || (typeof item === 'string' && item.trim() === ''));
         }
         
         // 상담 가능시간 검증 (모든 요일이 비활성화되어 있는 경우)

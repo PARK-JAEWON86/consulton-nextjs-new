@@ -104,12 +104,7 @@ export default function DashboardContent() {
   // 이벤트 기반 새로고침 등록
   useEffect(() => {
     // 크레딧 관련 이벤트에 새로고침 함수 등록
-    registerRefreshFunction(CREDIT_EVENTS.CREDITS_UPDATED, refreshData);
-    registerRefreshFunction(CREDIT_EVENTS.CREDITS_PURCHASED, refreshData);
-    registerRefreshFunction(CREDIT_EVENTS.CREDITS_DEDUCTED, refreshData);
-    
-    // 사용자 관련 이벤트에 새로고침 함수 등록
-    registerRefreshFunction(USER_EVENTS.USER_PROFILE_UPDATED, refreshData);
+    registerRefreshFunction(refreshData);
   }, [registerRefreshFunction, refreshData]);
 
   // 수동 새로고침 핸들러

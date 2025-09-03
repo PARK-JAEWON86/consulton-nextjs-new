@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { expertDataService } from "@/services/ExpertDataService";
-import { userDataService } from "@/services/UserDataService";
+// API를 통한 로그인 처리로 변경
 import Link from "next/link";
 
 interface User {
@@ -112,12 +111,9 @@ const LoginForm = () => {
   };
 
   useEffect(() => {
-    // 개발 환경에서 계정 정보 출력
+    // 개발 환경에서 계정 정보는 API를 통해 확인
     if (process.env.NODE_ENV === 'development') {
-      setTimeout(() => {
-        expertDataService.printLoginCredentials();
-        userDataService.printDummyUsers();
-      }, 1000);
+      console.log('🔐 개발 환경: 로그인 API를 통해 계정 정보를 확인하세요');
     }
   }, []);
 
@@ -166,99 +162,55 @@ const LoginForm = () => {
     setIsLoading(true);
 
     try {
-      // 중앙 데이터 서비스를 통한 전문가 계정 검증
-      const account = expertDataService.validateLogin(formData.email, formData.password);
-      
-      if (account) {
-        // 전문가 로그인 처리
-        // 로그인 시뮬레이션 딜레이
-        await new Promise((resolve) => setTimeout(resolve, 1500));
+      // API를 통한 로그인 처리
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
 
-        // 중앙 서비스에서 완전한 사용자 데이터 생성
-        const userData = expertDataService.createUserFromExpert(account.id);
+      const data = await response.json();
 
-        if (userData) {
-          // 로그인 성공 처리: 전역 스토어 업데이트 및 리다이렉트
-          setAuthenticated(true);
-          setUser(userData);
-          
-          // Navbar 상태 즉시 업데이트
-          updateNavbarState(userData);
-          
-          // 전문가로 로그인하면 viewMode를 expert로 설정 (가장 먼저)
+      if (response.ok && data.success) {
+        // 로그인 성공 처리
+        const userData = data.user;
+        
+        // 로그인 성공 처리: 전역 스토어 업데이트 및 리다이렉트
+        setAuthenticated(true);
+        setUser(userData);
+        
+        // Navbar 상태 즉시 업데이트
+        updateNavbarState(userData);
+        
+        // 전문가로 로그인하면 viewMode를 expert로 설정
+        if (userData.role === 'expert') {
           console.log('전문가 로그인: viewMode를 expert로 설정');
           await setViewMode('expert');
           
-          enterService();
-          
           // 전문가 상담 내역 로드
-          loadExpertConsultations(account.id.toString());
+          loadExpertConsultations(userData.id.toString());
           
           // redirect 파라미터가 있으면 해당 URL로, 없으면 전문가 대시보드로 이동
           const redirectUrl = searchParams.get('redirect') || "/dashboard/expert";
           router.push(redirectUrl);
         } else {
-          setErrors({ general: "전문가 데이터를 불러올 수 없습니다." });
-          return;
+          // 일반 사용자 로그인
+          await setViewMode('user');
+          enterService();
+          
+          // redirect 파라미터가 있으면 해당 URL로, 없으면 대시보드로 이동
+          const redirectUrl = searchParams.get('redirect') || "/dashboard";
+          router.push(redirectUrl);
         }
       } else {
-        // 일반 사용자 로그인 처리
-        // 기존 더미 사용자 찾기
-        let userData = userDataService.getUserByEmail(formData.email);
-        
-        if (userData) {
-          // 기존 사용자가 있는 경우 비밀번호 검증
-          if (userData.password === formData.password) {
-            // 비밀번호 일치 - 로그인 성공
-            console.log('✅ 기존 더미 사용자 로그인:', userData);
-            
-            await new Promise((resolve) => setTimeout(resolve, 1500));
-            
-            setAuthenticated(true);
-            setUser({
-              id: userData.id,
-              email: userData.email,
-              name: userData.name,
-              credits: userData.credits,
-              expertLevel: null,
-              role: 'client',
-              expertProfile: null
-            });
-            
-            // Navbar 상태 즉시 업데이트
-            updateNavbarState({
-              id: userData.id,
-              email: userData.email,
-              name: userData.name,
-              credits: userData.credits,
-              expertLevel: null,
-              role: 'client',
-              expertProfile: null
-            });
-            
-            // 일반 사용자로 로그인하면 viewMode를 user로 설정 (가장 먼저)
-            console.log('일반 사용자 로그인: viewMode를 user로 설정');
-            await setViewMode('user');
-            
-            enterService();
-            
-            // redirect 파라미터가 있으면 해당 URL로, 없으면 일반 사용자 대시보드로 이동
-            const redirectUrl = searchParams.get('redirect') || "/dashboard";
-            router.push(redirectUrl);
-          } else {
-            // 비밀번호 불일치
-            setErrors({
-              general: "이메일 또는 비밀번호가 올바르지 않습니다.",
-            });
-            return;
-          }
-        } else {
-          // 사용자를 찾을 수 없는 경우
-          setErrors({
-            general: "등록되지 않은 이메일입니다.",
-          });
-          return;
-        }
+        // 로그인 실패
+        setErrors({ general: data.error || "로그인에 실패했습니다." });
+        return;
       }
     } catch (error) {
       setErrors({

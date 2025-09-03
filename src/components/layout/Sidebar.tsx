@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-import { expertDataService } from "@/services/ExpertDataService";
+// expertDataService는 서버 사이드에서만 사용
 import PasswordChangeModal from "@/components/settings/PasswordChangeModal";
 
 import {

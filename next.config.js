@@ -5,15 +5,42 @@ const nextConfig = {
 
   // 웹팩 설정
   webpack: (config, { dev, isServer }) => {
-    if (dev && !isServer) {
-      // 개발 환경에서 react-refresh 관련 설정
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
-      };
+    // Node.js 모듈들을 위한 fallback 설정
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      net: false,
+      tls: false,
+      crypto: false,
+      stream: false,
+      url: false,
+      zlib: false,
+      http: false,
+      https: false,
+      assert: false,
+      os: false,
+      path: false,
+    };
+
+    // 데이터베이스 관련 모듈들을 빌드 시에 제외
+    config.externals = config.externals || [];
+    if (Array.isArray(config.externals)) {
+      config.externals.push({
+        'mysql2': 'commonjs mysql2',
+        'sequelize': 'commonjs sequelize',
+        'pg': 'commonjs pg',
+        'pg-hstore': 'commonjs pg-hstore',
+        'sqlite3': 'commonjs sqlite3',
+        'tedious': 'commonjs tedious',
+      });
     }
 
-    // alias는 사용하지 않음 (빌드 아티팩트 충돌 방지)
+    // TypeScript 경로 매핑을 위한 alias 설정
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@': require('path').resolve(__dirname, 'src'),
+      '@/lib': require('path').resolve(__dirname, 'lib'),
+    };
 
     return config;
   },
