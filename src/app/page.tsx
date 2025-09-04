@@ -16,8 +16,8 @@ import PopularCategoriesSection from "../components/home/PopularCategoriesSectio
 import UserReviewsSection from "../components/home/UserReviewsSection";
 import AIChatPromoSection from "../components/home/AIChatPromoSection";
 import Footer from "../components/layout/Footer";
-import { convertExpertItemToProfile } from "../data/dummy/experts";
-import { dummyExperts } from "../data/dummy/experts";
+// import { convertExpertItemToProfile } from "../data/dummy/experts"; // 더미 데이터 제거
+// import { dummyExperts } from "../data/dummy/experts"; // 더미 데이터 제거
 import {
   Users,
   Target,
@@ -176,11 +176,11 @@ export default function HomePage() {
             contactInfo: {
               phone: '',
               email: apiExpert.email || '',
-              location: '서울특별시',
+              location: apiExpert.location || '위치 미설정',
               website: ''
             },
-            location: '서울특별시',
-            timeZone: 'Asia/Seoul',
+            location: apiExpert.location || '위치 미설정',
+            timeZone: apiExpert.timeZone || 'UTC',
             profileImage: apiExpert.profileImage || null,
             portfolioFiles: [],
             portfolioItems: [],
@@ -190,7 +190,7 @@ export default function HomePage() {
             isProfileComplete: true,
             createdAt: new Date(apiExpert.createdAt),
             updatedAt: new Date(apiExpert.updatedAt),
-            price: '₩50,000',
+            price: apiExpert.hourlyRate ? `₩${apiExpert.hourlyRate.toLocaleString()}` : '가격 문의',
             image: apiExpert.profileImage || null,
             consultationStyle: '체계적이고 전문적인 접근',
             successStories: 50,
@@ -203,10 +203,10 @@ export default function HomePage() {
               website: undefined,
               publications: []
             },
-            pricingTiers: [
-              { duration: 30, price: 25000, description: '기본 상담' },
-              { duration: 60, price: 45000, description: '상세 상담' },
-              { duration: 90, price: 65000, description: '종합 상담' }
+            pricingTiers: apiExpert.pricingTiers || [
+              { duration: 30, price: Math.round((apiExpert.hourlyRate || 50000) * 0.5), description: '기본 상담' },
+              { duration: 60, price: apiExpert.hourlyRate || 50000, description: '상세 상담' },
+              { duration: 90, price: Math.round((apiExpert.hourlyRate || 50000) * 1.5), description: '종합 상담' }
             ],
             reschedulePolicy: '12시간 전 일정 변경 가능'
           }));
@@ -215,16 +215,14 @@ export default function HomePage() {
           setAllExperts(convertedExperts);
         } else {
           console.error('랜딩페이지: API 응답 실패:', result);
-          // API 호출 실패 시 더미 데이터를 fallback으로 사용
-          const fallbackExperts = dummyExperts.map(expert => convertExpertItemToProfile(expert));
-          setAllExperts(fallbackExperts);
+          // API 호출 실패 시 빈 배열 사용
+          setAllExperts([]);
         }
       })
       .catch(error => {
         console.error('랜딩페이지: 전문가 프로필 로드 실패:', error);
-        // API 호출 실패 시 더미 데이터를 fallback으로 사용
-        const fallbackExperts = dummyExperts.map(expert => convertExpertItemToProfile(expert));
-        setAllExperts(fallbackExperts);
+        // API 호출 실패 시 빈 배열 사용
+        setAllExperts([]);
       });
     };
 

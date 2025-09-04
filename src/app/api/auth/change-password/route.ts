@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     await initializeDatabase();
     
     // 인증된 사용자 확인
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
       return NextResponse.json(
         { error: '인증이 필요합니다.' },

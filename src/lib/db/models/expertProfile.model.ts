@@ -29,6 +29,20 @@ interface ExpertProfileAttributes {
   profileImage: string; // 프로필 이미지 URL
   portfolioFiles: string; // 포트폴리오 파일 (JSON 배열)
   tags: string; // 태그 (JSON 배열)
+  consultationTypes: string; // 상담 유형 (JSON 배열)
+  languages: string; // 언어 (JSON 배열)
+  hourlyRate: number; // 시간당 요금
+  pricePerMinute: number; // 분당 요금
+  totalSessions: number; // 총 상담 수
+  avgRating: number; // 평균 평점
+  reviewCount: number; // 리뷰 수
+  completionRate: number; // 완료율
+  responseTime: string; // 응답 시간
+  level: number; // 전문가 레벨
+  profileViews: number; // 프로필 조회수
+  lastActiveAt: string; // 마지막 활동 시간
+  joinedAt: string; // 가입일
+  availability: string; // 주간 가용성 (JSON 객체)
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -59,6 +73,20 @@ type ExpertProfileCreationAttributes = Optional<
   | "profileImage"
   | "portfolioFiles"
   | "tags"
+  | "consultationTypes"
+  | "languages"
+  | "hourlyRate"
+  | "pricePerMinute"
+  | "totalSessions"
+  | "avgRating"
+  | "reviewCount"
+  | "completionRate"
+  | "responseTime"
+  | "level"
+  | "profileViews"
+  | "lastActiveAt"
+  | "joinedAt"
+  | "availability"
 >;
 
 export class ExpertProfile
@@ -91,6 +119,20 @@ export class ExpertProfile
   public profileImage!: string;
   public portfolioFiles!: string;
   public tags!: string;
+  public consultationTypes!: string;
+  public languages!: string;
+  public hourlyRate!: number;
+  public pricePerMinute!: number;
+  public totalSessions!: number;
+  public avgRating!: number;
+  public reviewCount!: number;
+  public completionRate!: number;
+  public responseTime!: string;
+  public level!: number;
+  public profileViews!: number;
+  public lastActiveAt!: string;
+  public joinedAt!: string;
+  public availability!: string;
 
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
@@ -251,6 +293,88 @@ ExpertProfile.init(
       allowNull: false,
       defaultValue: "[]",
       comment: '태그 (JSON 배열)'
+    },
+    consultationTypes: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      defaultValue: "[]",
+      comment: '상담 유형 (JSON 배열)'
+    },
+    languages: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      defaultValue: "[]",
+      comment: '언어 (JSON 배열)'
+    },
+    hourlyRate: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+      defaultValue: 0,
+      comment: '시간당 요금'
+    },
+    pricePerMinute: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+      defaultValue: 0,
+      comment: '분당 요금'
+    },
+    totalSessions: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+      defaultValue: 0,
+      comment: '총 상담 수'
+    },
+    avgRating: {
+      type: DataTypes.DECIMAL(3, 2),
+      allowNull: false,
+      defaultValue: 0.00,
+      comment: '평균 평점'
+    },
+    reviewCount: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+      defaultValue: 0,
+      comment: '리뷰 수'
+    },
+    completionRate: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+      defaultValue: 0,
+      comment: '완료율'
+    },
+    responseTime: {
+      type: DataTypes.STRING(100),
+      allowNull: false,
+      defaultValue: "",
+      comment: '응답 시간'
+    },
+    level: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+      defaultValue: 1,
+      comment: '전문가 레벨'
+    },
+    profileViews: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+      defaultValue: 0,
+      comment: '프로필 조회수'
+    },
+    lastActiveAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: '마지막 활동 시간'
+    },
+    joinedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: '가입일'
+    },
+    availability: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      defaultValue: "{}",
+      comment: '주간 가용성 (JSON 객체)'
     },
   },
   {

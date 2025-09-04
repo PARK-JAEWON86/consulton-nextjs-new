@@ -11,8 +11,8 @@ import { CreditCard, Wallet, History, Plus, Trash2, Edit } from 'lucide-react';
 // } from '@/data/dummy/payment'; // 더미 데이터 제거
 
 export default function PaymentSettings() {
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
-  const [paymentHistory, setPaymentHistory] = useState<PaymentHistory[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
+  const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
   const [creditTransactions, setCreditTransactions] = useState<any[]>([]);
   const [showAddMethod, setShowAddMethod] = useState(false);
 
@@ -49,9 +49,17 @@ export default function PaymentSettings() {
           console.log('사용할 userId:', userId); // 디버깅용
           
           try {
-            const methods = getUserPaymentMethods(userId);
-            const history = getUserPaymentHistory(userId);
-            const transactions = getUserCreditTransactions(userId);
+            setIsLoading(true);
+            // 실제 API에서 결제 정보를 가져오기
+            const [methodsResponse, historyResponse, transactionsResponse] = await Promise.all([
+              fetch('/api/payment-methods'),
+              fetch('/api/payment-history'),
+              fetch('/api/credit-transactions')
+            ]);
+
+            const methods = methodsResponse.ok ? (await methodsResponse.json()).paymentMethods || [] : [];
+            const history = historyResponse.ok ? (await historyResponse.json()).payments || [] : [];
+            const transactions = transactionsResponse.ok ? (await transactionsResponse.json()).transactions || [] : [];
             
             console.log('로드된 결제 수단:', methods); // 디버깅용
             console.log('로드된 결제 내역:', history); // 디버깅용
@@ -129,7 +137,7 @@ export default function PaymentSettings() {
       return;
     }
 
-    const newCard: PaymentMethod = {
+    const newCard: any = {
       id: `pm_${Date.now()}`,
       userId: 'client_1',
       type: 'card',

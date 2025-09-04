@@ -244,11 +244,11 @@ export default function ExpertProfilePage() {
             contactInfo: {
               phone: '',
               email: apiProfile.email || '',
-              location: apiProfile.location || '서울특별시',
+              location: apiProfile.location || '위치 미설정',
               website: ''
             },
-            location: apiProfile.location || '서울특별시',
-            timeZone: apiProfile.timeZone || 'Asia/Seoul',
+            location: apiProfile.location || '위치 미설정',
+            timeZone: apiProfile.timeZone || 'UTC',
             profileImage: apiProfile.profileImage || null,
             portfolioFiles: [],
             portfolioItems: [],
@@ -258,7 +258,7 @@ export default function ExpertProfilePage() {
             isProfileComplete: true,
             createdAt: new Date(apiProfile.createdAt),
             updatedAt: new Date(apiProfile.updatedAt),
-            price: '₩50,000',
+            price: apiProfile.hourlyRate ? `₩${apiProfile.hourlyRate.toLocaleString()}` : '가격 문의',
             image: apiProfile.profileImage || null,
             consultationStyle: '체계적이고 전문적인 접근',
             successStories: 50,
@@ -271,10 +271,10 @@ export default function ExpertProfilePage() {
               website: undefined,
               publications: []
             },
-            pricingTiers: [
-              { duration: 30, price: 25000, description: '기본 상담' },
-              { duration: 60, price: 45000, description: '상세 상담' },
-              { duration: 90, price: 65000, description: '종합 상담' }
+            pricingTiers: apiProfile.pricingTiers || [
+              { duration: 30, price: Math.round((apiProfile.hourlyRate || 50000) * 0.5), description: '기본 상담' },
+              { duration: 60, price: apiProfile.hourlyRate || 50000, description: '상세 상담' },
+              { duration: 90, price: Math.round((apiProfile.hourlyRate || 50000) * 1.5), description: '종합 상담' }
             ],
             reschedulePolicy: '12시간 전 일정 변경 가능'
           }));
@@ -282,8 +282,8 @@ export default function ExpertProfilePage() {
         }
       } catch (error) {
         console.error('전문가 프로필 로드 실패:', error);
-        // API 실패 시 더미 데이터 사용
-        setAllExperts(dummyExperts.map(convertExpertItemToProfile));
+        // API 실패 시 빈 배열 사용
+        setAllExperts([]);
       }
     };
 
@@ -506,11 +506,11 @@ export default function ExpertProfilePage() {
               contactInfo: {
                 phone: '',
                 email: apiProfile.email || '',
-                location: apiProfile.location || '서울특별시',
+                location: apiProfile.location || '위치 미설정',
                 website: ''
               },
-              location: apiProfile.location || '서울특별시',
-              timeZone: apiProfile.timeZone || 'Asia/Seoul',
+              location: apiProfile.location || '위치 미설정',
+              timeZone: apiProfile.timeZone || 'UTC',
               profileImage: apiProfile.profileImage || null,
               portfolioFiles: [],
               portfolioItems: [],
@@ -520,7 +520,7 @@ export default function ExpertProfilePage() {
               isProfileComplete: true,
               createdAt: new Date(apiProfile.createdAt),
               updatedAt: new Date(apiProfile.updatedAt),
-              price: '₩50,000',
+              price: apiProfile.hourlyRate ? `₩${apiProfile.hourlyRate.toLocaleString()}` : '가격 문의',
               image: apiProfile.profileImage || null,
               consultationStyle: '체계적이고 전문적인 접근',
               successStories: 50,
@@ -548,9 +548,18 @@ export default function ExpertProfilePage() {
             
             // 좋아요 상태는 useEffect에서 자동으로 로드됨
             
-            // 해당 전문가의 리뷰 로드 (통합된 더미 데이터 사용)
-            const expertIdString = `expert-${foundExpert.id.toString().padStart(3, '0')}`;
-            const expertReviews = getReviewsByExpert(expertIdString);
+            // 해당 전문가의 리뷰 로드 (실제 API 연동)
+            let expertReviews: any[] = [];
+            try {
+              const reviewsResponse = await fetch(`/api/reviews?expertId=${expertId}`);
+              if (reviewsResponse.ok) {
+                const reviewsData = await reviewsResponse.json();
+                expertReviews = reviewsData.reviews || [];
+              }
+            } catch (error) {
+              console.error('리뷰 로드 실패:', error);
+              expertReviews = [];
+            }
             
             // 리뷰 데이터를 Review 타입으로 변환
             const transformedReviews: Review[] = expertReviews.map(review => ({
@@ -589,12 +598,9 @@ export default function ExpertProfilePage() {
         // API 실패 시 allExperts에서 찾기
         let foundExpert = allExperts.find(exp => exp.id === expertId);
         
-        // allExperts에서 찾을 수 없으면 더미 데이터에서 찾아서 변환
+        // allExperts에서 찾을 수 없으면 undefined 처리
         if (!foundExpert) {
-          const dummyExpert = dummyExperts.find(exp => exp.id === expertId);
-          if (dummyExpert) {
-            foundExpert = convertExpertItemToProfile(dummyExpert);
-          }
+          foundExpert = undefined;
         }
         
         if (foundExpert) {
@@ -605,9 +611,18 @@ export default function ExpertProfilePage() {
           
           // 좋아요 상태는 useEffect에서 자동으로 로드됨
           
-          // 해당 전문가의 리뷰 로드 (통합된 더미 데이터 사용)
-          const expertIdString = `expert-${foundExpert.id.toString().padStart(3, '0')}`;
-          const expertReviews = getReviewsByExpert(expertIdString);
+          // 해당 전문가의 리뷰 로드 (실제 API 연동)
+          let expertReviews: any[] = [];
+          try {
+            const reviewsResponse = await fetch(`/api/reviews?expertId=${expertId}`);
+            if (reviewsResponse.ok) {
+              const reviewsData = await reviewsResponse.json();
+              expertReviews = reviewsData.reviews || [];
+            }
+          } catch (error) {
+            console.error('리뷰 로드 실패:', error);
+            expertReviews = [];
+          }
           
           // 리뷰 데이터를 Review 타입으로 변환
           const transformedReviews: Review[] = expertReviews.map(review => ({
@@ -646,10 +661,7 @@ export default function ExpertProfilePage() {
         let foundExpert = allExperts.find(exp => exp.id === expertId);
         
         if (!foundExpert) {
-          const dummyExpert = dummyExperts.find(exp => exp.id === expertId);
-          if (dummyExpert) {
-            foundExpert = convertExpertItemToProfile(dummyExpert);
-          }
+          foundExpert = undefined;
         }
         
         if (foundExpert) {
@@ -692,9 +704,12 @@ export default function ExpertProfilePage() {
   if (!expert) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <div className="text-gray-400 mb-6">
+            <Users className="h-16 w-16 mx-auto" />
+          </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">전문가를 찾을 수 없습니다</h2>
-          <p className="text-gray-600 mb-4">요청하신 전문가 정보가 존재하지 않습니다.</p>
+          <p className="text-gray-600 mb-6">요청하신 전문가 정보가 존재하지 않거나 삭제되었습니다.</p>
           <button
             onClick={() => router.back()}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"

@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Expert, ExpertProfile, User } from '@/lib/db/models';
+import { Expert, ExpertProfile as ExpertProfileModel, User } from '@/lib/db/models';
 import { initializeDatabase } from '@/lib/db/init';
 import { getAuthenticatedUser } from '@/lib/auth';
+import { 
+  searchExpertProfiles, 
+  calculatePagination,
+  logQueryPerformance 
+} from '@/lib/db/queryOptimizations';
 // import { dummyExperts, convertExpertItemToProfile } from '@/data/dummy/experts'; // 더미 데이터 제거
 
 interface ExpertProfile {
@@ -50,7 +55,7 @@ export async function GET(request: NextRequest) {
       const expert = await Expert.findByPk(parseInt(id), {
         include: [
           {
-            model: ExpertProfile,
+            model: ExpertProfileModel,
             as: 'profile',
             required: false
           },
@@ -118,7 +123,7 @@ export async function GET(request: NextRequest) {
         where: { userId: authUser.id },
         include: [
           {
-            model: ExpertProfile,
+            model: ExpertProfileModel,
             as: 'profile',
             required: false
           },
@@ -187,7 +192,7 @@ export async function GET(request: NextRequest) {
       where: whereClause,
       include: [
         {
-          model: ExpertProfile,
+          model: ExpertProfileModel,
           as: 'profile',
           required: false
         },
@@ -295,7 +300,7 @@ export async function POST(request: NextRequest) {
       where: { userId: authUser.id },
       include: [
         {
-          model: ExpertProfile,
+          model: ExpertProfileModel,
           as: 'profile',
           required: false
         }
@@ -330,7 +335,7 @@ export async function POST(request: NextRequest) {
       expertProfile = expert.profile;
     } else {
       // 새 프로필 생성
-      expertProfile = await ExpertProfile.create({
+      expertProfile = await ExpertProfileModel.create({
         expertId: expert.id,
         fullName,
         jobTitle,
@@ -356,7 +361,7 @@ export async function POST(request: NextRequest) {
     const updatedExpert = await Expert.findByPk(expert.id, {
       include: [
         {
-          model: ExpertProfile,
+          model: ExpertProfileModel,
           as: 'profile',
           required: false
         },
@@ -434,7 +439,7 @@ export async function PATCH(request: NextRequest) {
     const expert = await Expert.findByPk(parseInt(id), {
       include: [
         {
-          model: ExpertProfile,
+          model: ExpertProfileModel,
           as: 'profile',
           required: false
         },

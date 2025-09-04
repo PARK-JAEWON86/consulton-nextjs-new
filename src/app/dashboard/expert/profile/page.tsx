@@ -88,6 +88,7 @@ export default function ExpertProfilePage() {
     user: null
   });
   const [currentExpertId, setCurrentExpertId] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const expertProfileRef = useRef<any>(null);
   
   // 앱 상태 로드
@@ -104,6 +105,8 @@ export default function ExpertProfilePage() {
         }
       } catch (error) {
         console.error('앱 상태 로드 실패:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -137,7 +140,9 @@ export default function ExpertProfilePage() {
     // initializeExpertProfiles();
     
     // 로그인한 전문가의 ID 추출
-    const expertId = parseInt(user.id?.replace('expert_', '') || '0');
+    const expertId = user.id && typeof user.id === 'string' 
+      ? parseInt(user.id.replace('expert_', '')) 
+      : 0;
     if (expertId > 0) {
       setCurrentExpertId(expertId);
     }
@@ -297,6 +302,7 @@ export default function ExpertProfilePage() {
       isProfileComplete: expertProfile?.isProfileComplete === true,
     };
     setInitialData(convertedData);
+    setIsLoading(false); // 데이터 로딩 완료
   }, [user]);
 
   const handleSave = (
@@ -442,16 +448,84 @@ export default function ExpertProfilePage() {
 
 
 
-  // 로딩 상태 표시
-  if (!initialData) {
+  // 스켈레톤 UI 컴포넌트
+  const SkeletonLoader = () => (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <div className="h-8 bg-gray-200 rounded w-48 mb-2 animate-pulse"></div>
+            <div className="h-4 bg-gray-200 rounded w-64 animate-pulse"></div>
+          </div>
+          <div className="h-10 bg-gray-200 rounded w-32 animate-pulse"></div>
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* 메인 컨텐츠 스켈레톤 */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* 기본 정보 카드 */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-start space-x-6">
+                <div className="w-36 h-48 bg-gray-200 rounded-lg animate-pulse"></div>
+                <div className="flex-1 space-y-4">
+                  <div className="h-6 bg-gray-200 rounded w-3/4 animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2 animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded w-2/3 animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/3 animate-pulse"></div>
+                </div>
+              </div>
+            </div>
+            
+            {/* 상세 정보 카드들 */}
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="h-6 bg-gray-200 rounded w-1/4 mb-4 animate-pulse"></div>
+                <div className="space-y-3">
+                  <div className="h-4 bg-gray-200 rounded w-full animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded w-5/6 animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded w-4/6 animate-pulse"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          {/* 사이드바 스켈레톤 */}
+          <div className="space-y-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="h-6 bg-gray-200 rounded w-1/3 mb-4 animate-pulse"></div>
+                <div className="space-y-3">
+                  <div className="h-4 bg-gray-200 rounded w-full animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // 로딩 중일 때 스켈레톤 표시
+  if (isLoading) {
+    return <SkeletonLoader />;
+  }
+
+  // 인증되지 않은 사용자는 리다이렉트 (로그인 필요 메시지 제거)
+  if (!appState.isAuthenticated || !user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">전문가 프로필을 로딩 중입니다...</p>
+          <p className="text-gray-600">인증 정보를 확인 중입니다...</p>
         </div>
       </div>
     );
+  }
+
+  // 프로필 데이터 로딩 중일 때 스켈레톤 표시
+  if (!initialData) {
+    return <SkeletonLoader />;
   }
 
   return (

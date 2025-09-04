@@ -87,6 +87,7 @@ export async function createExpertExample(userId: number) {
       languages: JSON.stringify(['한국어', '영어']),
       consultationTypes: JSON.stringify(['video', 'chat']),
       hourlyRate: 75000,
+      level: 1,
       pricePerMinute: 1250,
       profileViews: 0,
       lastActiveAt: new Date(),

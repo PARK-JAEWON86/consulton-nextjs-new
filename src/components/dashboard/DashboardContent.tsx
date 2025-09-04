@@ -207,7 +207,7 @@ export default function DashboardContent() {
     credits: loggedInUser.credits || 0,
     email: loggedInUser.email || "user@example.com",
     phone: "010-0000-0000", // 기본값
-    location: "서울특별시", // 기본값
+    location: "위치 미설정", // 기본값
     birthDate: "1990-01-01", // 기본값
     interests: ["심리상담", "진로상담"], // 기본값
     bio: "전문가들과의 상담을 통해 성장하고 있습니다.",

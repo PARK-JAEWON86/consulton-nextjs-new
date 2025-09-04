@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Review, User, Expert, Consultation } from '@/lib/db/models';
 import { initializeDatabase } from '@/lib/db/init';
 import { getAuthenticatedUser } from '@/lib/auth';
+import { 
+  getReviewsByExpert, 
+  calculatePagination,
+  logQueryPerformance 
+} from '@/lib/db/queryOptimizations';
 
 // 리뷰 타입 정의 (API 응답용)
 interface ReviewResponse {
@@ -136,53 +141,68 @@ export async function GET(request: NextRequest) {
       whereClause.isPublic = isPublic === 'true';
     }
 
-    // 리뷰 조회
-    const { rows: reviews, count: totalCount } = await Review.findAndCountAll({
-      where: whereClause,
-      include: [
-        {
-          model: User,
-          as: 'user',
-          required: false,
-          attributes: ['id', 'name', 'email', 'profileImage']
-        },
-        {
-          model: Expert,
-          as: 'expert',
-          required: false,
-          include: [
-            {
-              model: User,
-              as: 'user',
-              required: false,
-              attributes: ['id', 'name', 'email']
-            }
-          ]
-        },
-        {
-          model: Consultation,
-          as: 'consultation',
-          required: false,
-          attributes: ['id', 'title', 'categoryId']
-        }
-      ],
-      order: [['createdAt', 'DESC']],
-      limit,
-      offset
-    });
+    // 최적화된 리뷰 조회
+    const startTime = Date.now();
+    let result;
+    
+    if (expertId) {
+      // 전문가별 리뷰 조회 최적화
+      result = await getReviewsByExpert(parseInt(expertId), {
+        isPublic: isPublic !== null ? isPublic === 'true' : undefined,
+        pagination: { page: Math.floor(offset / limit) + 1, limit }
+      });
+    } else {
+      // 일반 리뷰 조회
+      result = await Review.findAndCountAll({
+        where: whereClause,
+        include: [
+          {
+            model: User,
+            as: 'user',
+            required: false,
+            attributes: ['id', 'name', 'email', 'profileImage']
+          },
+          {
+            model: Expert,
+            as: 'expert',
+            required: false,
+            include: [
+              {
+                model: User,
+                as: 'user',
+                required: false,
+                attributes: ['id', 'name', 'email']
+              }
+            ]
+          },
+          {
+            model: Consultation,
+            as: 'consultation',
+            required: false,
+            attributes: ['id', 'title', 'categoryId']
+          }
+        ],
+        order: [['createdAt', 'DESC']],
+        limit,
+        offset
+      });
+    }
+    
+    const { rows: reviews, count: totalCount } = result;
+    logQueryPerformance('getReviews', startTime, reviews.length);
 
     // 응답 데이터 변환
     const reviewResponses: ReviewResponse[] = reviews.map(review => ({
       id: review.id.toString(),
       consultationId: review.consultationId.toString(),
       userId: review.userId.toString(),
-      userName: review.user?.name || '익명',
-      userAvatar: review.user?.profileImage || null,
+      userName: (review as any).user?.name || '익명',
+      userAvatar: (review as any).user?.profileImage || null,
       expertId: review.expertId.toString(),
-      expertName: review.expert?.user?.name || '알 수 없음',
+      expertName: (review as any).expert?.user?.name || '알 수 없음',
       rating: review.rating,
       content: review.content,
-      category: review.consultation?.categoryId?.toString() || '기타',
+      category: (review as any).consultation?.categoryId?.toString() || '기타',
       date: review.createdAt.toISOString(),
       isVerified: review.isVerified,
       isPublic: review.isPublic

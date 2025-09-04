@@ -46,7 +46,7 @@ export async function verifyPassword(password: string, hashedPassword: string): 
  * JWT 토큰 생성
  */
 export async function generateToken(user: AuthUser): Promise<string> {
-  const payload: JWTPayload = {
+  const payload: any = {
     userId: user.id,
     email: user.email,
     role: user.role,
@@ -74,7 +74,7 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
       audience: 'consulton-users'
     });
     
-    return payload as JWTPayload;
+    return payload as any;
   } catch (error) {
     console.error('JWT 토큰 검증 실패:', error);
     return null;

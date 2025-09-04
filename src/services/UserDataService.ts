@@ -53,82 +53,11 @@ export class UserDataService {
   }
 
   /**
-   * 클라이언트 사용자 초기화 (더미 데이터)
+   * 클라이언트 사용자 초기화 (실제 데이터베이스 연동 필요)
    */
   private initializeClientUsers(): void {
-    // 기본 클라이언트 사용자들 (로그인 테스트용)
-    const defaultClients: ClientUser[] = [
-      {
-        id: 'client_1',
-        name: '김민수',
-        email: 'minsu.kim@example.com',
-        password: 'client123!',
-        credits: 5000,
-        role: 'client',
-        phone: '010-1234-5678',
-        location: '서울시 강남구',
-        birthDate: '1990-05-15',
-        interests: ['심리상담', '커리어상담'],
-        bio: '새로운 도전을 좋아하는 개발자입니다.',
-        totalConsultations: 3,
-        averageRating: 4.8,
-        joinDate: '2024-01-15',
-        lastActiveAt: new Date().toISOString(),
-        preferences: {
-          language: 'ko',
-          timezone: 'Asia/Seoul',
-          notifications: true
-        }
-      },
-      {
-        id: 'client_2',
-        name: '이지은',
-        email: 'jieun.lee@example.com',
-        password: 'client456!',
-        credits: 3000,
-        role: 'client',
-        phone: '010-2345-6789',
-        location: '서울시 서초구',
-        birthDate: '1988-12-03',
-        interests: ['법률상담', '재무상담'],
-        bio: '법무팀에서 일하는 직장인입니다.',
-        totalConsultations: 1,
-        averageRating: 5.0,
-        joinDate: '2024-02-20',
-        lastActiveAt: new Date().toISOString(),
-        preferences: {
-          language: 'ko',
-          timezone: 'Asia/Seoul',
-          notifications: true
-        }
-      },
-      {
-        id: 'client_3',
-        name: '박서준',
-        email: 'seojun.park@example.com',
-        password: 'client789!',
-        credits: 8000,
-        role: 'client',
-        phone: '010-3456-7890',
-        location: '서울시 마포구',
-        birthDate: '1995-08-22',
-        interests: ['비즈니스상담', '마케팅상담'],
-        bio: '스타트업 창업을 준비하고 있습니다.',
-        totalConsultations: 5,
-        averageRating: 4.6,
-        joinDate: '2024-01-10',
-        lastActiveAt: new Date().toISOString(),
-        preferences: {
-          language: 'ko',
-          timezone: 'Asia/Seoul',
-          notifications: false
-        }
-      }
-    ];
-
-    defaultClients.forEach(client => {
-      this.clientUsers.set(client.id, client);
-    });
+    // TODO: 실제 데이터베이스에서 클라이언트 사용자 데이터를 가져와야 함
+    // 현재는 빈 상태로 유지
   }
 
   /**
@@ -167,7 +96,7 @@ export class UserDataService {
       lastActiveAt: userData.lastActiveAt || new Date().toISOString(),
       preferences: userData.preferences || {
         language: 'ko',
-        timezone: 'Asia/Seoul',
+        timezone: 'UTC', // 기본값을 UTC로 변경
         notifications: true
       }
     };

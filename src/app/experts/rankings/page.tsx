@@ -133,8 +133,7 @@ export default function ExpertRankingsPage() {
   const loadRankingList = async (type: 'overall' | 'specialty' | 'tier', specialty?: string, tier?: string) => {
     setIsLoading(true);
     try {
-      // 더미데이터에서 랭킹 점수 계산
-      const updatedStats = updateAllRankingScores();
+      // 실제 API에서 랭킹 점수를 가져오기 (이미 API 호출로 처리됨)
       
       // API에서 추가 정보 가져오기
       let url = `/api/expert-stats?rankingType=${type}`;
@@ -148,28 +147,23 @@ export default function ExpertRankingsPage() {
       if (result.success) {
         const apiRankings = result.data.rankings || [];
         
-        // 더미데이터와 API 데이터를 병합
-        const mergedRankings = updatedStats.map((stats, index) => {
-          const apiData = apiRankings.find((api: any) => api.expertId === stats.expertId);
-          const expertProfile = allExpertProfiles.find(exp => exp.id.toString() === stats.expertId);
-          
-          // API에서 계산된 레벨과 티어 정보를 우선 사용
-          const finalLevel = apiData?.level || 1;
-          const finalTierInfo = apiData?.tierInfo || null;
+        // API 데이터만 사용 (더미데이터 제거)
+        const mergedRankings = apiRankings.map((apiData: any, index: number) => {
+          const expertProfile = allExpertProfiles.find(exp => exp.id.toString() === apiData.expertId);
           
           return {
-            expertId: stats.expertId,
-            expertName: expertProfile?.fullName || `전문가 ${stats.expertId}`,
-            rankingScore: stats.rankingScore || 0,
-            totalSessions: stats.totalSessions,
-            avgRating: stats.avgRating,
-            reviewCount: stats.reviewCount,
-            likeCount: stats.likeCount,
-            specialty: stats.specialty,
+            expertId: apiData.expertId,
+            expertName: expertProfile?.fullName || `전문가 ${apiData.expertId}`,
+            rankingScore: apiData.rankingScore || 0,
+            totalSessions: apiData.totalSessions,
+            avgRating: apiData.avgRating,
+            reviewCount: apiData.reviewCount,
+            likeCount: apiData.likeCount,
+            specialty: apiData.specialty,
             // API에서 계산된 레벨 우선 사용
-            level: finalLevel,
+            level: apiData?.level || 1,
             ranking: apiData?.ranking || index + 1,
-            tierInfo: finalTierInfo,
+            tierInfo: apiData?.tierInfo || null,
             specialtyRanking: apiData?.specialtyRanking || 0,
             specialtyTotalExperts: apiData?.specialtyTotalExperts || 0
           };
@@ -183,7 +177,7 @@ export default function ExpertRankingsPage() {
           if (selectedTierOption) {
             const [minLevel, maxLevel] = selectedTierOption.range.replace('Lv.', '').split('-').map(Number);
             
-            filteredRankings = mergedRankings.filter(ranking => {
+            filteredRankings = mergedRankings.filter((ranking: any) => {
               const level = ranking.level || 0;
               const isInRange = maxLevel ? (level >= minLevel && level <= maxLevel) : (level === minLevel);
               
@@ -193,72 +187,24 @@ export default function ExpertRankingsPage() {
         }
         
         // 랭킹 점수로 정렬
-        const sortedRankings = filteredRankings.sort((a, b) => (b.rankingScore || 0) - (a.rankingScore || 0));
+        const sortedRankings = filteredRankings.sort((a: any, b: any) => (b.rankingScore || 0) - (a.rankingScore || 0));
         
         // 순위 재계산
-        const finalRankings = sortedRankings.map((ranking, index) => ({
+        const finalRankings = sortedRankings.map((ranking: any, index: number) => ({
           ...ranking,
           ranking: index + 1
         }));
         
         setRankingList(finalRankings);
       } else {
-        // API 실패 시 더미데이터만 사용
-        const fallbackRankings = updatedStats.map((stats, index) => {
-          const expertProfile = allExpertProfiles.find(exp => exp.id.toString() === stats.expertId);
-          return {
-            expertId: stats.expertId,
-            expertName: expertProfile?.fullName || `전문가 ${stats.expertId}`,
-            rankingScore: stats.rankingScore || 0,
-            totalSessions: stats.totalSessions,
-            avgRating: stats.avgRating,
-            reviewCount: stats.reviewCount,
-            likeCount: stats.likeCount,
-            specialty: stats.specialty,
-            ranking: index + 1,
-            level: stats.level || 1, // 더미데이터 기본값
-            tierInfo: null,
-            specialtyRanking: 0,
-            specialtyTotalExperts: 0
-          };
-        });
-        
-        const sortedFallback = fallbackRankings.sort((a, b) => (b.rankingScore || 0) - (a.rankingScore || 0));
-        const finalFallback = sortedFallback.map((ranking, index) => ({
-          ...ranking,
-          ranking: index + 1
-        }));
-        
-        setRankingList(finalFallback);
+        // API 실패 시 빈 배열 사용
+        const fallbackRankings: any[] = [];
+        setRankingList(fallbackRankings);
       }
     } catch (error) {
-      // 에러 시에도 더미데이터 사용
-        const errorRankings = updateAllRankingScores().map((stats, index) => {
-          const expertProfile = allExpertProfiles.find(exp => exp.id.toString() === stats.expertId);
-        return {
-          expertId: stats.expertId,
-          expertName: expertProfile?.fullName || `전문가 ${stats.expertId}`,
-          rankingScore: stats.rankingScore || 0,
-          totalSessions: stats.totalSessions,
-          avgRating: stats.avgRating,
-          reviewCount: stats.reviewCount,
-          likeCount: stats.likeCount,
-          specialty: stats.specialty,
-          ranking: index + 1,
-                      level: stats.level || 1, // 더미데이터 기본값
-          tierInfo: null,
-          specialtyRanking: 0,
-          specialtyTotalExperts: 0
-        };
-      });
-      
-      const sortedError = errorRankings.sort((a, b) => (b.rankingScore || 0) - (a.rankingScore || 0));
-      const finalError = sortedError.map((ranking, index) => ({
-        ...ranking,
-        ranking: index + 1
-      }));
-      
-              setRankingList(finalError);
+      // 에러 시 빈 배열 사용
+      console.error('랭킹 데이터 로드 실패:', error);
+      setRankingList([]);
     } finally {
       setIsLoading(false);
     }
@@ -702,9 +648,25 @@ export default function ExpertRankingsPage() {
               <p className="text-gray-600">랭킹 정보를 불러오는 중...</p>
             </div>
           ) : sortedRankings.length === 0 ? (
-            <div className="p-8 text-center">
-              <Award className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">랭킹 정보가 없습니다.</p>
+            <div className="p-12 text-center">
+              <div className="text-gray-400 mb-6">
+                <Award className="h-16 w-16 mx-auto" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">랭킹 정보가 없습니다</h3>
+              <p className="text-gray-500 mb-4">
+                {searchQuery 
+                  ? `"${searchQuery}"에 대한 검색 결과가 없습니다.`
+                  : '현재 랭킹 데이터가 없습니다.'
+                }
+              </p>
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                >
+                  검색어 지우기
+                </button>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto">

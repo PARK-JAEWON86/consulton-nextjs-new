@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Consultation, Expert, User, Category } from '@/lib/db/models';
 import { initializeDatabase } from '@/lib/db/init';
 import { getAuthenticatedUser } from '@/lib/auth';
+import { 
+  getConsultationsByExpert, 
+  getConsultationsByUser, 
+  calculatePagination,
+  logQueryPerformance 
+} from '@/lib/db/queryOptimizations';
 import { generateConsultationNumber, getNextSequenceNumber } from '@/utils/consultationNumber';
 // import { dummyExperts } from '@/data/dummy/experts'; // 더미 데이터 제거
 
@@ -114,39 +120,65 @@ export async function GET(request: NextRequest) {
       whereClause.status = status;
     }
 
-    // 상담 조회
-    const consultations = await Consultation.findAll({
-      where: whereClause,
-      include: [
-        {
-          model: User,
-          as: 'user',
-          required: false,
-          attributes: ['id', 'name', 'email']
-        },
-        {
-          model: Expert,
-          as: 'expert',
-          required: false,
-          include: [
-            {
-              model: User,
-              as: 'user',
-              required: false,
-              attributes: ['id', 'name', 'email']
-            }
-          ]
-        },
-        {
-          model: Category,
-          as: 'category',
-          required: false,
-          attributes: ['id', 'name']
-        }
-      ],
-      order: [['createdAt', 'DESC']],
-      limit: 100 // 성능을 위해 제한
-    });
+    // 최적화된 상담 조회
+    const startTime = Date.now();
+    let result;
+    
+    if (authUser.role === 'expert') {
+      const expert = await Expert.findOne({
+        where: { userId: authUser.id }
+      });
+      if (expert) {
+        result = await getConsultationsByExpert(expert.id, {
+          status: status || undefined,
+          pagination: { page: 1, limit: 100 }
+        });
+      } else {
+        result = { rows: [], count: 0 };
+      }
+    } else if (authUser.role === 'client') {
+      result = await getConsultationsByUser(authUser.id, {
+        status: status || undefined,
+        pagination: { page: 1, limit: 100 }
+      });
+    } else {
+      // 관리자용 기존 쿼리 유지
+      result = await Consultation.findAndCountAll({
+        where: whereClause,
+        include: [
+          {
+            model: User,
+            as: 'user',
+            required: false,
+            attributes: ['id', 'name', 'email']
+          },
+          {
+            model: Expert,
+            as: 'expert',
+            required: false,
+            include: [
+              {
+                model: User,
+                as: 'user',
+                required: false,
+                attributes: ['id', 'name', 'email']
+              }
+            ]
+          },
+          {
+            model: Category,
+            as: 'category',
+            required: false,
+            attributes: ['id', 'name']
+          }
+        ],
+        order: [['createdAt', 'DESC']],
+        limit: 100
+      });
+    }
+    
+    const consultations = result.rows;
+    logQueryPerformance('getConsultations', startTime, consultations.length);
 
     // 상담번호로 추가 필터링 (클라이언트 사이드)
     let filteredConsultations = consultations;
@@ -208,7 +240,7 @@ export async function POST(request: NextRequest) {
     const { action, data } = body;
 
     switch (action) {
-      case 'addScheduled':
+      case 'addScheduled': {
         const {
           expertId,
           categoryId,
@@ -264,8 +296,9 @@ export async function POST(request: NextRequest) {
             consultationNumber
           }
         });
+      }
 
-      case 'startConsultation':
+      case 'startConsultation': {
         const consultationId = data.consultationId;
         if (!consultationId) {
           return NextResponse.json(
@@ -317,8 +350,9 @@ export async function POST(request: NextRequest) {
             consultationNumber
           }
         });
+      }
 
-      case 'updateCurrent':
+      case 'updateCurrent': {
         const currentId = data.consultationId;
         if (!currentId) {
           return NextResponse.json(
@@ -360,8 +394,9 @@ export async function POST(request: NextRequest) {
             message: '상담 정보가 업데이트되었습니다.'
           }
         });
+      }
 
-      case 'updateById':
+      case 'updateById': {
         const targetId = data.id;
         const targetConsultation = await Consultation.findByPk(targetId);
         if (!targetConsultation) {
@@ -391,8 +426,9 @@ export async function POST(request: NextRequest) {
             message: '상담 정보가 업데이트되었습니다.'
           }
         });
+      }
 
-      case 'completeCurrent':
+      case 'completeCurrent': {
         const currentConsultationId = data.consultationId;
         if (!currentConsultationId) {
           return NextResponse.json(
@@ -445,8 +481,9 @@ export async function POST(request: NextRequest) {
             message: '상담이 완료되었습니다.'
           }
         });
+      }
 
-      case 'markCompleted':
+      case 'markCompleted': {
         const consultationIdToComplete = data.id;
         const consultationToMark = await Consultation.findByPk(consultationIdToComplete);
         if (!consultationToMark) {
@@ -480,8 +517,9 @@ export async function POST(request: NextRequest) {
             message: '상담이 완료 상태로 변경되었습니다.'
           }
         });
+      }
 
-      case 'clearCurrent':
+      case 'clearCurrent': {
         return NextResponse.json({
           success: true,
           data: {
@@ -489,8 +527,9 @@ export async function POST(request: NextRequest) {
             message: '현재 상담이 초기화되었습니다.'
           }
         });
+      }
 
-      case 'clearAll':
+      case 'clearAll': {
         // 관리자만 모든 상담 내역 초기화 가능
         if (authUser.role !== 'admin') {
           return NextResponse.json(
@@ -505,8 +544,9 @@ export async function POST(request: NextRequest) {
             message: '모든 상담 내역이 초기화되었습니다.'
           }
         });
+      }
 
-      case 'loadExpertConsultations':
+      case 'loadExpertConsultations': {
         const expertId = data.expertId;
         // 실제 데이터베이스에서 해당 전문가 찾기
         const expert = await Expert.findByPk(parseInt(expertId));
@@ -564,6 +604,7 @@ export async function POST(request: NextRequest) {
             { status: 404 }
           );
         }
+      }
 
       default:
         return NextResponse.json(

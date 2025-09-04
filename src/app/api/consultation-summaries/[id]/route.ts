@@ -61,7 +61,7 @@ export async function GET(
     }
 
     // 권한 확인 (상담 참여자만 조회 가능)
-    if (authUser.role === 'client' && summary.consultation.userId !== authUser.id) {
+    if (authUser.role === 'client' && (summary as any).consultation.userId !== authUser.id) {
       return NextResponse.json(
         { success: false, message: '상담 요약 조회 권한이 없습니다.' },
         { status: 403 }
@@ -70,7 +70,7 @@ export async function GET(
 
     if (authUser.role === 'expert') {
       const expert = await Expert.findOne({ where: { userId: authUser.id } });
-      if (!expert || summary.consultation.expertId !== expert.id) {
+      if (!expert || (summary as any).consultation.expertId !== expert.id) {
         return NextResponse.json(
           { success: false, message: '상담 요약 조회 권한이 없습니다.' },
           { status: 403 }
@@ -82,18 +82,18 @@ export async function GET(
     const detailedSummary = {
       id: summary.id.toString(),
       consultationNumber: `CONS-${summary.consultationId.toString().padStart(6, '0')}`,
-      title: summary.summaryTitle || summary.consultation.title,
-      date: summary.consultation.scheduledTime?.toISOString() || summary.createdAt.toISOString(),
-      status: summary.consultation.status,
+      title: summary.summaryTitle || (summary as any).consultation.title,
+      date: (summary as any).consultation.scheduledTime?.toISOString() || summary.createdAt.toISOString(),
+      status: (summary as any).consultation.status,
       expert: {
-        id: summary.consultation.expert?.id.toString() || '',
-        name: summary.consultation.expert?.user?.name || '알 수 없음',
-        specialty: summary.consultation.expert?.specialty || '',
+        id: (summary as any).consultation.expert?.id.toString() || '',
+        name: (summary as any).consultation.expert?.user?.name || '알 수 없음',
+        specialty: (summary as any).consultation.expert?.specialty || '',
         avatar: null
       },
       client: {
-        id: summary.consultation.user?.id.toString() || '',
-        name: summary.consultation.user?.name || '알 수 없음',
+        id: (summary as any).consultation.user?.id.toString() || '',
+        name: (summary as any).consultation.user?.name || '알 수 없음',
         avatar: null
       },
       summary: summary.summaryContent || '',
@@ -169,7 +169,7 @@ export async function PUT(
     }
 
     // 권한 확인 (상담 참여자만 수정 가능)
-    if (authUser.role === 'client' && summary.consultation.userId !== authUser.id) {
+    if (authUser.role === 'client' && (summary as any).consultation.userId !== authUser.id) {
       return NextResponse.json(
         { success: false, message: '상담 요약 수정 권한이 없습니다.' },
         { status: 403 }
@@ -178,7 +178,7 @@ export async function PUT(
 
     if (authUser.role === 'expert') {
       const expert = await Expert.findOne({ where: { userId: authUser.id } });
-      if (!expert || summary.consultation.expertId !== expert.id) {
+      if (!expert || (summary as any).consultation.expertId !== expert.id) {
         return NextResponse.json(
           { success: false, message: '상담 요약 수정 권한이 없습니다.' },
           { status: 403 }

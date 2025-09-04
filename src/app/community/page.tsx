@@ -5,8 +5,8 @@ import CategorySidebar from "@/components/community/CategorySidebar";
 import PostCard from "@/components/community/PostCard";
 import SearchAndFilter from "@/components/community/SearchAndFilter";
 import CreatePostModal from "@/components/community/CreatePostModal";
-import { communityPosts, CommunityPost, getPostsByType, getPostsByCategory, sortPosts, getCategoriesWithCount, dummyReviews } from "@/data/dummy/reviews";
-import { HelpCircle, Star, Award, Bot, MessageSquare, Grid3X3, ChevronLeft, ChevronRight, Menu, X } from "lucide-react";
+// import { communityPosts, CommunityPost, getPostsByType, getPostsByCategory, sortPosts, getCategoriesWithCount, dummyReviews } from "@/data/dummy/reviews"; // 더미 데이터 제거
+import { HelpCircle, Star, Award, Bot, MessageSquare, Grid3X3, ChevronLeft, ChevronRight, Menu, X, Plus } from "lucide-react";
 
 export default function CommunityPage() {
   const [activeTab, setActiveTab] = useState("all");
@@ -205,35 +205,31 @@ export default function CommunityPage() {
     { id: "general", name: "일반글", icon: MessageSquare, color: "text-gray-600", bgColor: "bg-gray-100", hoverColor: "hover:bg-gray-200" },
   ];
 
-  // 모든 게시글 데이터 (더미 데이터에서 가져옴)
-  const allPosts = useMemo(() => {
-    // 기존 게시글에서 상담후기 제거
-    const nonReviewPosts = communityPosts.filter(post => post.postType !== 'consultation_review');
-    
-    // 상담후기 게시글을 더미 리뷰 데이터로 변환
-    const consultationReviewPosts = dummyReviews.map((review, index) => ({
-      id: `review-${review.id}`,
-      title: `${review.category} 상담후기`,
-      content: review.content,
-      author: review.userName,
-      authorAvatar: review.userAvatar,
-      createdAt: review.date,
-      updatedAt: review.date,
-      likes: Math.floor(Math.random() * 20) + 5,
-      comments: Math.floor(Math.random() * 10) + 2,
-      views: Math.floor(Math.random() * 100) + 50,
-      category: review.category,
-      tags: [review.category, '상담후기', '전문가추천'],
-      postType: 'consultation_review' as const,
-      consultationTopic: review.category,
-      rating: review.rating,
-      expertName: review.expertName,
-      isVerified: review.isVerified,
-      hasExpertReply: !!review.expertReply
-    }));
+  // 모든 게시글 데이터 (실제 API 연동)
+  const [allPosts, setAllPosts] = useState<any[]>([]);
+  const [isLoadingPosts, setIsLoadingPosts] = useState(true);
 
-    // 기존 게시글(상담후기 제외)과 새로운 상담후기 게시글을 합침
-    return [...nonReviewPosts, ...consultationReviewPosts];
+  // 게시글 데이터 로드
+  useEffect(() => {
+    const loadPosts = async () => {
+      try {
+        setIsLoadingPosts(true);
+        // TODO: 실제 커뮤니티 API가 구현되면 연동
+        // const response = await fetch('/api/community/posts');
+        // const data = await response.json();
+        // setAllPosts(data.posts || []);
+        
+        // 현재는 빈 배열로 유지
+        setAllPosts([]);
+      } catch (error) {
+        console.error('게시글 로드 실패:', error);
+        setAllPosts([]);
+      } finally {
+        setIsLoadingPosts(false);
+      }
+    };
+
+    loadPosts();
   }, []);
 
   // 필터링 및 정렬된 게시글
@@ -246,7 +242,30 @@ export default function CommunityPage() {
     ? categoryFilteredPosts 
     : categoryFilteredPosts.filter(post => post.postType === postTypeFilter);
   // 3단계: 정렬
-  const filteredPosts = sortPosts(typeFilteredPosts, sortBy);
+  const filteredPosts = useMemo(() => {
+    if (!typeFilteredPosts || typeFilteredPosts.length === 0) return [];
+    
+    const sorted = [...typeFilteredPosts].sort((a, b) => {
+      switch (sortBy) {
+        case "latest":
+          // 최신순: 생성일 기준 내림차순
+          return new Date(b.createdAt || b.created_at || 0).getTime() - new Date(a.createdAt || a.created_at || 0).getTime();
+        case "popular":
+          // 인기순: 좋아요 수 기준 내림차순
+          return (b.likes || b.likeCount || 0) - (a.likes || a.likeCount || 0);
+        case "comments":
+          // 댓글순: 댓글 수 기준 내림차순
+          return (b.comments || b.commentCount || 0) - (a.comments || a.commentCount || 0);
+        case "views":
+          // 조회순: 조회수 기준 내림차순
+          return (b.views || b.viewCount || 0) - (a.views || a.viewCount || 0);
+        default:
+          return 0;
+      }
+    });
+    
+    return sorted;
+  }, [typeFilteredPosts, sortBy]);
 
   // 페이지네이션 계산
   const totalPages = Math.ceil(filteredPosts.length / postsPerPage);
@@ -321,13 +340,22 @@ export default function CommunityPage() {
           </p>
         </div>
 
-        <div className="relative flex gap-8">
-          {/* 데스크톱 사이드바 */}
-          <div className="hidden lg:block w-72 flex-shrink-0">
-            <CategorySidebar
-              categories={categories.length > 0 ? categories : getCategoriesWithCount()}
-              activeTab={activeTab}
-              onTabChange={handleTabChange}
+        {/* 로딩 상태 */}
+        {isLoadingPosts ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">게시글을 불러오는 중...</p>
+            </div>
+          </div>
+        ) : (
+          <div className="relative flex gap-8">
+            {/* 데스크톱 사이드바 */}
+            <div className="hidden lg:block w-72 flex-shrink-0">
+              <CategorySidebar
+                categories={categories.length > 0 ? categories : []}
+                activeTab={activeTab}
+                onTabChange={handleTabChange}
               popularTags={["상담후기", "전문가추천", "진로고민", "투자조언"]}
               onTagClick={handleTagClick}
               onCreatePost={handleCreatePost}
@@ -361,7 +389,7 @@ export default function CommunityPage() {
                 {/* 사이드바 내용 */}
                 <div className="p-4">
                   <CategorySidebar
-                    categories={categories.length > 0 ? categories : getCategoriesWithCount()}
+                    categories={categories.length > 0 ? categories : []}
                     activeTab={activeTab}
                     onTabChange={(categoryId) => {
                       handleTabChange(categoryId);
@@ -469,11 +497,28 @@ export default function CommunityPage() {
 
             <div className="space-y-4">
               {filteredPosts.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="text-gray-400 mb-4">
-                    <MessageSquare className="h-12 w-12 mx-auto" />
+                <div className="text-center py-16">
+                  <div className="text-gray-400 mb-6">
+                    <MessageSquare className="h-16 w-16 mx-auto" />
                   </div>
-                  <p className="text-gray-500">선택한 타입의 게시글이 없습니다.</p>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    {allPosts.length === 0 ? '아직 게시글이 없습니다' : '선택한 조건의 게시글이 없습니다'}
+                  </h3>
+                  <p className="text-gray-500 mb-6">
+                    {allPosts.length === 0 
+                      ? '첫 번째 게시글을 작성해보세요!' 
+                      : '다른 필터를 선택하거나 첫 번째 게시글을 작성해보세요.'
+                    }
+                  </p>
+                  {isAuthenticated && (
+                    <button
+                      onClick={handleCreatePost}
+                      className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      게시글 작성하기
+                    </button>
+                  )}
                 </div>
               ) : (
                 currentPosts.map((post) => (
@@ -592,6 +637,7 @@ export default function CommunityPage() {
             )}
           </div>
         </div>
+        )}
 
         {/* 새 글 작성 모달 */}
         <CreatePostModal

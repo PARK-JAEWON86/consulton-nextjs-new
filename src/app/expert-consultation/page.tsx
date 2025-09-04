@@ -64,27 +64,8 @@ export default function ExpertConsultationPage() {
   const [categories, setCategories] = useState<any[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
 
-  // 즐겨찾기 전문가 데이터
-  const [favoriteExperts, setFavoriteExperts] = useState<FavoriteExpert[]>([
-    {
-      id: "expert_1",
-      name: "박지영",
-      avatar: "박",
-      specialty: "심리상담",
-      rating: 4.9,
-      reviewCount: 127,
-      expertLevel: 300,
-    },
-    {
-      id: "expert_2",
-      name: "이민수",
-      avatar: "이",
-      specialty: "법률상담",
-      rating: 4.8,
-      reviewCount: 89,
-      expertLevel: 200,
-    },
-  ]);
+  // 즐겨찾기 전문가 데이터 (실제 API 연동 필요)
+  const [favoriteExperts, setFavoriteExperts] = useState<FavoriteExpert[]>([]);
 
   // 카테고리 데이터 로드
   useEffect(() => {
@@ -109,57 +90,59 @@ export default function ExpertConsultationPage() {
     loadCategories();
   }, []);
 
-  // 더미 데이터 로드 (카테고리가 로드된 후)
+  // 즐겨찾기 전문가 데이터 로드
   useEffect(() => {
-    if (!isLoadingCategories) {
-      const dummyConsultations: ConsultationSession[] = [
-        {
-          id: "1",
-          expertId: "expert_1",
-          expertName: "박지영",
-          expertAvatar: "박",
-          expertSpecialty: categories.length > 0 ? categories[0]?.name || "심리상담" : "심리상담",
-          topic: "스트레스 관리 및 불안감 치료",
-          scheduledTime: "2024-01-15T14:00:00",
-          duration: 60,
-          consultationType: "video",
-          status: "scheduled",
-          expertLevel: 300,
-          description: "직장에서의 스트레스와 불안감에 대한 상담이 필요합니다.",
-        },
-        {
-          id: "2",
-          expertId: "expert_2",
-          expertName: "이민수",
-          expertAvatar: "이",
-          expertSpecialty: categories.length > 1 ? categories[1]?.name || "법률상담" : "법률상담",
-          topic: "계약서 검토 및 법적 자문",
-          scheduledTime: "2024-01-15T16:00:00",
-          duration: 45,
-          consultationType: "voice",
-          status: "scheduled",
-          expertLevel: 200,
-          description: "사업 계약서 검토와 법적 위험 요소에 대한 자문이 필요합니다.",
-        },
-        {
-          id: "3",
-          expertId: "expert_3",
-          expertName: "이소연",
-          expertAvatar: "이",
-          expertSpecialty: categories.length > 2 ? categories[2]?.name || "재무상담" : "재무상담",
-          topic: "투자 포트폴리오 구성",
-          scheduledTime: "2024-01-16T10:00:00",
-          duration: 90,
-          consultationType: "chat",
-          status: "scheduled",
-          expertLevel: 100,
-          description: "현재 자산 상황을 바탕으로 한 투자 포트폴리오 구성 상담이 필요합니다.",
-        },
-      ];
+    const loadFavoriteExperts = async () => {
+      try {
+        // 실제 API에서 즐겨찾기 전문가 데이터를 가져오기
+        try {
+          const favoritesResponse = await fetch('/api/expert-profiles?favorites=true');
+          if (favoritesResponse.ok) {
+            const favoritesData = await favoritesResponse.json();
+            setFavoriteExperts(favoritesData.experts || []);
+          } else {
+            setFavoriteExperts([]);
+          }
+        } catch (error) {
+          console.error('즐겨찾기 전문가 API 호출 실패:', error);
+          setFavoriteExperts([]);
+        }
+      } catch (error) {
+        console.error('즐겨찾기 전문가 로드 실패:', error);
+        setFavoriteExperts([]);
+      }
+    };
 
-      setConsultations(dummyConsultations);
+    loadFavoriteExperts();
+  }, []);
+
+  // 상담 데이터 로드 (실제 API 연동 필요)
+  useEffect(() => {
+    const loadConsultations = async () => {
+      try {
+        // 실제 API에서 상담 데이터를 가져오기
+        try {
+          const consultationsResponse = await fetch('/api/consultations?status=all');
+          if (consultationsResponse.ok) {
+            const consultationsData = await consultationsResponse.json();
+            setConsultations(consultationsData.consultations || []);
+          } else {
+            setConsultations([]);
+          }
+        } catch (error) {
+          console.error('상담 데이터 API 호출 실패:', error);
+          setConsultations([]);
+        }
+      } catch (error) {
+        console.error('상담 데이터 로드 실패:', error);
+        setConsultations([]);
+      }
+    };
+
+    if (!isLoadingCategories) {
+      loadConsultations();
     }
-  }, [isLoadingCategories, categories]);
+  }, [isLoadingCategories]);
 
   // 상담 시작
   const handleStartConsultation = (consultation: ConsultationSession) => {

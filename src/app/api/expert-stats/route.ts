@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Expert, User, Consultation, Review } from '@/lib/db/models';
 import { initializeDatabase } from '@/lib/db/init';
 import { getAuthenticatedUser } from '@/lib/auth';
-// import { dummyExpertStats, getStatsByExpertId, getStatsBySpecialty, getOverallStats, calculateRankingScore, updateAllRankingScores } from '@/data/dummy/expert-stats'; // 더미 데이터 제거
 
 // ExpertStats 인터페이스 정의
 interface ExpertStats {
@@ -33,104 +32,14 @@ interface ExpertStats {
   specialtyTotalExperts?: number;
 }
 
-// 더미데이터 사용 (실제 프로덕션에서는 데이터베이스 사용)
-let expertStats: ExpertStats[] = [...dummyExpertStats];
-
-// 더미데이터의 calculateRankingScore 함수 사용
-
-// 전체 랭킹 계산 및 업데이트
-const updateAllRankings = async () => {
-  // 모든 전문가의 랭킹 점수 계산
-  const expertsWithScores = expertStats.map(stats => ({
-    ...stats,
-    rankingScore: calculateRankingScore(stats)
-  }));
-  
-  // 랭킹 점수로 정렬 (높은 순)
-  expertsWithScores.sort((a, b) => (b.rankingScore || 0) - (a.rankingScore || 0));
-  
-  // 랭킹 부여
-  const totalExperts = expertsWithScores.length;
-  expertsWithScores.forEach((expert, index) => {
-    expert.ranking = index + 1;
-    expert.totalExperts = totalExperts;
-  });
-  
-  // 원본 배열 업데이트
-  expertStats = expertsWithScores;
-  
-  // 각 전문가의 레벨 계산 (expert-levels API의 로직 사용)
-  expertsWithScores.forEach(expert => {
-    const rankingScore = expert.rankingScore || 0;
-    
-    // 랭킹 점수 기반으로 레벨 계산 (더 정확한 분산)
-    let level = 1;
-    if (rankingScore >= 950) level = 999; // Legend
-    else if (rankingScore >= 900) level = 900 + Math.floor((rankingScore - 900) / 10);
-    else if (rankingScore >= 850) level = 800 + Math.floor((rankingScore - 850) / 8);
-    else if (rankingScore >= 800) level = 700 + Math.floor((rankingScore - 800) / 6);
-    else if (rankingScore >= 750) level = 600 + Math.floor((rankingScore - 750) / 5);
-    else if (rankingScore >= 700) level = 500 + Math.floor((rankingScore - 700) / 4);
-    else if (rankingScore >= 650) level = 400 + Math.floor((rankingScore - 650) / 3);
-    else if (rankingScore >= 600) level = 300 + Math.floor((rankingScore - 600) / 2);
-    else if (rankingScore >= 550) level = 200 + Math.floor((rankingScore - 550) / 1.5);
-    else if (rankingScore >= 500) level = 100 + Math.floor((rankingScore - 500) / 3); // 3으로 나누어 더 세밀한 분산
-    else if (rankingScore >= 400) level = 50 + Math.floor((rankingScore - 400) / 2); // 400-499: 50-99 레벨
-    else if (rankingScore >= 300) level = 25 + Math.floor((rankingScore - 300) / 2); // 300-399: 25-74 레벨
-    else if (rankingScore >= 200) level = 10 + Math.floor((rankingScore - 200) / 2); // 200-299: 10-59 레벨
-    else if (rankingScore >= 100) level = 5 + Math.floor((rankingScore - 100) / 2);  // 100-199: 5-54 레벨
-    else level = Math.max(1, Math.floor(rankingScore / 10)); // 1-99: 1-9 레벨
-    
-    // 레벨을 999로 제한
-    level = Math.min(999, level);
-    
-    expert.level = level;
-    
-    // 티어 정보도 계산
-    if (level >= 950) expert.tierInfo = { name: "Legend (전설)", creditsPerMinute: 600 };
-    else if (level >= 900) expert.tierInfo = { name: "Grand Master (그랜드마스터)", creditsPerMinute: 500 };
-    else if (level >= 850) expert.tierInfo = { name: "Master (마스터)", creditsPerMinute: 500 };
-    else if (level >= 800) expert.tierInfo = { name: "Expert (전문가)", creditsPerMinute: 450 };
-    else if (level >= 750) expert.tierInfo = { name: "Senior (시니어)", creditsPerMinute: 400 };
-    else if (level >= 700) expert.tierInfo = { name: "Professional (프로페셔널)", creditsPerMinute: 350 };
-    else if (level >= 650) expert.tierInfo = { name: "Skilled (숙련)", creditsPerMinute: 300 };
-    else if (level >= 600) expert.tierInfo = { name: "Core (핵심)", creditsPerMinute: 250 };
-    else if (level >= 550) expert.tierInfo = { name: "Rising Star (신성)", creditsPerMinute: 200 };
-    else if (level >= 500) expert.tierInfo = { name: "Emerging Talent (신진)", creditsPerMinute: 150 };
-    else expert.tierInfo = { name: "Fresh Mind (신예)", creditsPerMinute: 100 };
-  });
+// 랭킹 점수 계산 함수
+const calculateRankingScore = (stats: ExpertStats): number => {
+  return Math.round(
+    (stats.avgRating * 20) + // 평점 기반 (0-100)
+    (stats.totalSessions * 2) + // 상담 수 기반 (0-200)
+    (stats.reviewCount * 1) // 리뷰 수 기반 (0-100)
+  );
 };
-
-// 분야별 랭킹 계산 및 업데이트
-const updateSpecialtyRankings = (specialty: string) => {
-  // 해당 분야의 전문가들만 필터링
-  const specialtyExperts = expertStats.filter(stats => {
-    // 실제로는 전문가 프로필 정보가 필요하므로 임시로 ID 기반으로 처리
-    return stats.expertId;
-  });
-  
-  // 랭킹 점수로 정렬 (높은 순)
-  const sortedExperts = specialtyExperts.sort((a, b) => (b.rankingScore || 0) - (a.rankingScore || 0));
-  
-  // 분야별 랭킹 부여
-  sortedExperts.forEach((expert, index) => {
-    expert.specialtyRanking = index + 1;
-    expert.specialtyTotalExperts = sortedExperts.length;
-  });
-};
-
-// 더미데이터에서 통계 조회하는 함수
-const getStatsFromDummy = (expertId: string): ExpertStats | null => {
-  return getStatsByExpertId(expertId) || null;
-};
-
-  // 더미 데이터 초기화 (프로덕션에서는 사용하지 않음)
-  const initializeDummyStats = () => {
-    // 더미데이터가 이미 로드되어 있음
-    if (expertStats.length === 0) {
-      expertStats = [...dummyExpertStats];
-    }
-  };
 
 // GET: 전문가 통계 정보 조회
 export async function GET(request: NextRequest) {
@@ -242,7 +151,7 @@ export async function GET(request: NextRequest) {
         const ranking = allExpertStats.findIndex(exp => exp.expertId === parseInt(expertId)) + 1;
         
         stats.ranking = ranking;
-        stats.totalExperts = allExpertStats.length;
+        (stats as any).totalExperts = allExpertStats.length;
       }
 
       return NextResponse.json({
@@ -306,8 +215,8 @@ export async function GET(request: NextRequest) {
       // 랭킹 점수로 정렬
       allExpertStats.sort((a, b) => b.rankingScore - a.rankingScore);
       allExpertStats.forEach((stats, index) => {
-        stats.ranking = index + 1;
-        stats.totalExperts = allExpertStats.length;
+        (stats as any).ranking = index + 1;
+        (stats as any).totalExperts = allExpertStats.length;
       });
       
       return NextResponse.json({
@@ -383,8 +292,8 @@ export async function GET(request: NextRequest) {
       // 분야별 랭킹 점수로 정렬
       specialtyExpertStats.sort((a, b) => b.rankingScore - a.rankingScore);
       specialtyExpertStats.forEach((stats, index) => {
-        stats.specialtyRanking = index + 1;
-        stats.specialtyTotalExperts = specialtyExpertStats.length;
+        (stats as any).specialtyRanking = index + 1;
+        (stats as any).specialtyTotalExperts = specialtyExpertStats.length;
       });
       
       return NextResponse.json({
@@ -453,8 +362,8 @@ export async function GET(request: NextRequest) {
       if (includeRanking) {
         allExpertStats.sort((a, b) => b.rankingScore - a.rankingScore);
         allExpertStats.forEach((stats, index) => {
-          stats.ranking = index + 1;
-          stats.totalExperts = allExpertStats.length;
+          (stats as any).ranking = index + 1;
+          (stats as any).totalExperts = allExpertStats.length;
         });
       }
       

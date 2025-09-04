@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { MessageCircle } from "lucide-react";
 interface User {
   id: string;
   email: string;
@@ -92,8 +93,9 @@ export default function ExpertDashboardProfilePage() {
   const router = useRouter();
   
   // 상담 요청 데이터
-  const [requests, setRequests] = useState<ConsultationRequest[]>([]);
+  const [requests, setRequests] = useState<any[]>([]);
   const [requestStats, setRequestStats] = useState<any>(null);
+  const [isLoadingRequests, setIsLoadingRequests] = useState(true);
 
   type PeriodKey = "today" | "last7" | "last30" | "thisMonth" | "lastWeek";
   const [period, setPeriod] = useState<PeriodKey>("lastWeek");
@@ -279,7 +281,9 @@ export default function ExpertDashboardProfilePage() {
     
     // 상담 요청 데이터 로드 및 중앙 서비스 동기화
     if (user && user.role === 'expert') {
-      const expertId = parseInt(user.id?.replace('expert_', '') || '0');
+      const expertId = user.id && typeof user.id === 'string' 
+        ? parseInt(user.id.replace('expert_', '')) 
+        : 0;
       if (expertId > 0) {
         // API를 통한 최신 전문가 데이터 확인
         try {
@@ -297,10 +301,25 @@ export default function ExpertDashboardProfilePage() {
           console.error('전문가 프로필 로드 실패:', error);
         }
         
-        const expertRequests = getRequestsByExpert(expertId);
-        const stats = getRequestStats(expertId);
-        setRequests(expertRequests);
-        setRequestStats(stats);
+        // 실제 API에서 상담 요청 데이터를 가져오기
+        try {
+          setIsLoadingRequests(true);
+          const requestsResponse = await fetch(`/api/consultation-requests?expertId=${expertId}`);
+          if (requestsResponse.ok) {
+            const requestsData = await requestsResponse.json();
+            setRequests(requestsData.requests || []);
+            setRequestStats(requestsData.stats || null);
+          } else {
+            setRequests([]);
+            setRequestStats(null);
+          }
+        } catch (error) {
+          console.error('상담 요청 데이터 로드 실패:', error);
+          setRequests([]);
+          setRequestStats(null);
+        } finally {
+          setIsLoadingRequests(false);
+        }
       }
     }
     };
@@ -429,11 +448,16 @@ export default function ExpertDashboardProfilePage() {
                   </h3>
                   <span className="text-sm text-gray-500">최신순</span>
                 </div>
-                {(() => {
-                  const pendingRequests = getRequestsByStatus(
-                    parseInt(user?.id?.replace('expert_', '') || '0'), 
-                    'pending'
-                  ).slice(0, 5);
+                {isLoadingRequests ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                      <p className="text-sm text-gray-600">상담 요청을 불러오는 중...</p>
+                    </div>
+                  </div>
+                ) : (() => {
+                  // 실제 API에서 대기 중인 상담 요청을 가져오기
+                  const pendingRequests = requests.filter((req: any) => req.status === 'pending');
                   
                   return pendingRequests.length > 0 ? (
                     <ul className="divide-y divide-gray-200">
@@ -478,8 +502,12 @@ export default function ExpertDashboardProfilePage() {
                       ))}
                     </ul>
                   ) : (
-                    <div className="text-sm text-gray-500">
-                      새로운 상담 요청이 없습니다.
+                    <div className="text-center py-8">
+                      <div className="text-gray-400 mb-3">
+                        <MessageCircle className="h-12 w-12 mx-auto" />
+                      </div>
+                      <p className="text-gray-500 text-sm">새로운 상담 요청이 없습니다</p>
+                      <p className="text-gray-400 text-xs mt-1">새로운 요청이 오면 여기에 표시됩니다</p>
                     </div>
                   );
                 })()}

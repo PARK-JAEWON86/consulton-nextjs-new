@@ -244,11 +244,11 @@ const ExpertSearch = () => {
             contactInfo: {
               phone: '',
               email: apiExpert.email || '',
-              location: apiExpert.location || '서울특별시',
+              location: apiExpert.location || '위치 미설정',
               website: ''
             },
-            location: apiExpert.location || '서울특별시',
-            timeZone: apiExpert.timeZone || 'Asia/Seoul',
+            location: apiExpert.location || '위치 미설정',
+            timeZone: apiExpert.timeZone || 'UTC',
             profileImage: apiExpert.profileImage || null,
             portfolioFiles: [],
             portfolioItems: [],
@@ -258,7 +258,7 @@ const ExpertSearch = () => {
             isProfileComplete: true,
             createdAt: new Date(apiExpert.createdAt),
             updatedAt: new Date(apiExpert.updatedAt),
-            price: '₩50,000',
+            price: apiExpert.hourlyRate ? `₩${apiExpert.hourlyRate.toLocaleString()}` : '가격 문의',
             image: apiExpert.profileImage || null,
             consultationStyle: '체계적이고 전문적인 접근',
             successStories: 50,
@@ -271,10 +271,10 @@ const ExpertSearch = () => {
               website: undefined,
               publications: []
             },
-            pricingTiers: [
-              { duration: 30, price: 25000, description: '기본 상담' },
-              { duration: 60, price: 45000, description: '상세 상담' },
-              { duration: 90, price: 65000, description: '종합 상담' }
+            pricingTiers: apiExpert.pricingTiers || [
+              { duration: 30, price: Math.round((apiExpert.hourlyRate || 50000) * 0.5), description: '기본 상담' },
+              { duration: 60, price: apiExpert.hourlyRate || 50000, description: '상세 상담' },
+              { duration: 90, price: Math.round((apiExpert.hourlyRate || 50000) * 1.5), description: '종합 상담' }
             ],
             reschedulePolicy: '12시간 전 일정 변경 가능'
           }));
@@ -537,7 +537,7 @@ const ExpertSearch = () => {
           contactInfo: {
             phone: '',
             email: apiExpert.email || '',
-            location: apiExpert.location || '서울특별시',
+            location: apiExpert.location || '위치 미설정',
             website: ''
           },
           location: apiExpert.location || '서울특별시',

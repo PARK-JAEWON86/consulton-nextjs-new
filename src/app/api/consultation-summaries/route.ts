@@ -97,18 +97,18 @@ export async function GET(request: NextRequest) {
     const summaryResponses: ConsultationSummaryType[] = summaries.map(summary => ({
       id: summary.id.toString(),
       consultationNumber: `CONS-${summary.consultationId.toString().padStart(6, '0')}`,
-      title: summary.summaryTitle || summary.consultation.title,
-      date: summary.consultation.scheduledTime?.toISOString() || summary.createdAt.toISOString(),
-      status: summary.consultation.status,
+      title: summary.summaryTitle || (summary as any).consultation.title,
+      date: (summary as any).consultation.scheduledTime?.toISOString() || summary.createdAt.toISOString(),
+      status: (summary as any).consultation.status,
       expert: {
-        id: summary.consultation.expert?.id.toString() || '',
-        name: summary.consultation.expert?.user?.name || '알 수 없음',
-        specialty: summary.consultation.expert?.specialty || '',
+        id: (summary as any).consultation.expert?.id.toString() || '',
+        name: (summary as any).consultation.expert?.user?.name || '알 수 없음',
+        title: (summary as any).consultation.expert?.specialty || '',
         avatar: null
       },
       client: {
-        id: summary.consultation.user?.id.toString() || '',
-        name: summary.consultation.user?.name || '알 수 없음',
+        id: (summary as any).consultation.user?.id.toString() || '',
+        name: (summary as any).consultation.user?.name || '알 수 없음',
         avatar: null
       },
       summary: summary.summaryContent || '',
@@ -118,7 +118,9 @@ export async function GET(request: NextRequest) {
       followUpPlan: summary.followUpPlan || '',
       tags: [], // TODO: 태그 시스템 구현
       attachments: summary.attachments ? JSON.parse(summary.attachments) : [],
-      isPublic: summary.isPublic
+      isPublic: summary.isPublic,
+      duration: (summary as any).consultation.duration || 0,
+      creditsUsed: (summary as any).consultation.creditsUsed || 0
     }));
 
     // 검색 필터링 (클라이언트 사이드)

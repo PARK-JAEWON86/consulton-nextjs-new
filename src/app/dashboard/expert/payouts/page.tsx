@@ -182,7 +182,9 @@ export default function PayoutsPage() {
     
     // 로그인된 전문가 정보에서 ID 추출 및 정산 데이터 로드
     if (appState.user && appState.user.role === 'expert' && appState.user.expertProfile) {
-      const expertId = parseInt(appState.user.id?.replace('expert_', '') || '0');
+      const expertId = appState.user.id && typeof appState.user.id === 'string' 
+        ? parseInt(appState.user.id.replace('expert_', '')) 
+        : 0;
       if (expertId > 0) {
         setCurrentExpertId(expertId);
         loadSettlementData(expertId);
@@ -194,11 +196,21 @@ export default function PayoutsPage() {
     try {
       setIsLoading(true);
       
-      // 더미 데이터에서 정산 요약 정보 로드
-      const summary = getSettlementSummary(expertId);
-      setSettlementSummary(summary);
-      
-      console.log(`✅ Loaded settlement data for expert ${expertId}:`, summary);
+      // 실제 API에서 정산 요약 정보를 가져오기
+      try {
+        const settlementResponse = await fetch(`/api/payouts?expertId=${expertId}`);
+        if (settlementResponse.ok) {
+          const settlementData = await settlementResponse.json();
+          setSettlementSummary(settlementData.summary || null);
+          console.log(`✅ Loaded settlement data for expert ${expertId}:`, settlementData.summary);
+        } else {
+          setSettlementSummary(null);
+          console.log(`❌ Failed to load settlement data for expert ${expertId}`);
+        }
+      } catch (error) {
+        console.error('정산 데이터 로드 실패:', error);
+        setSettlementSummary(null);
+      }
       
     } catch (error) {
       console.error('Failed to load settlement data:', error);

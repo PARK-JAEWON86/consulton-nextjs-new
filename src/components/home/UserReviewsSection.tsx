@@ -1,6 +1,6 @@
 import { Star, Quote } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { dummyReviews } from '../../data/dummy/reviews';
+// import { dummyReviews } from '../../data/dummy/reviews'; // 더미 데이터 제거
 
 // 리뷰 타입 정의
 interface Review {
@@ -42,33 +42,13 @@ export default function UserReviewsSection() {
           
           setReviews(loadedReviews);
         } else {
-          // API에 데이터가 없으면 더미 데이터 사용
-          const loadedReviews = dummyReviews.map(review => ({
-            id: review.id,
-            userName: review.userName,
-            userAvatar: review.userAvatar || '',
-            rating: review.rating,
-            content: review.content,
-            category: review.category,
-            date: review.date
-          }));
-          
-          setReviews(loadedReviews);
+          // API에 데이터가 없으면 빈 배열 사용
+          setReviews([]);
         }
       } catch (error) {
         console.error('리뷰 로드 실패:', error);
-        // 에러 발생 시 더미 데이터 사용
-        const loadedReviews = dummyReviews.map(review => ({
-          id: review.id,
-          userName: review.userName,
-          userAvatar: review.userAvatar || '',
-          rating: review.rating,
-          content: review.content,
-          category: review.category,
-          date: review.date
-        }));
-        
-        setReviews(loadedReviews);
+        // 에러 발생 시 빈 배열 사용
+        setReviews([]);
       } finally {
         setIsLoading(false);
       }
