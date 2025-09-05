@@ -36,6 +36,10 @@ export default function RegisterPage() {
   const [verificationCode, setVerificationCode] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationError, setVerificationError] = useState("");
+  const [passwordStrength, setPasswordStrength] = useState<{
+    isValid: boolean;
+    errors: string[];
+  }>({ isValid: false, errors: [] });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -44,6 +48,12 @@ export default function RegisterPage() {
       [name]: value,
     }));
 
+    // 비밀번호 입력 시 실시간 강도 검증
+    if (name === 'password') {
+      const strength = validatePasswordStrength(value);
+      setPasswordStrength(strength);
+    }
+
     // 입력 시 에러 제거
     if (errors[name as keyof FormErrors]) {
       setErrors((prev) => ({
@@ -51,6 +61,39 @@ export default function RegisterPage() {
         [name]: "",
       }));
     }
+  };
+
+  // 비밀번호 강도 검증 함수 (서버와 동일한 규칙)
+  const validatePasswordStrength = (password: string): {
+    isValid: boolean;
+    errors: string[];
+  } => {
+    const errors: string[] = [];
+
+    if (password.length < 8) {
+      errors.push('비밀번호는 최소 8자 이상이어야 합니다.');
+    }
+
+    if (!/[A-Z]/.test(password)) {
+      errors.push('비밀번호는 대문자를 포함해야 합니다.');
+    }
+
+    if (!/[a-z]/.test(password)) {
+      errors.push('비밀번호는 소문자를 포함해야 합니다.');
+    }
+
+    if (!/[0-9]/.test(password)) {
+      errors.push('비밀번호는 숫자를 포함해야 합니다.');
+    }
+
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+      errors.push('비밀번호는 특수문자를 포함해야 합니다.');
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
   };
 
   const validateForm = () => {
@@ -70,8 +113,12 @@ export default function RegisterPage() {
 
     if (!formData.password) {
       newErrors.password = "비밀번호를 입력해주세요.";
-    } else if (formData.password.length < 6) {
-      newErrors.password = "비밀번호는 최소 6자 이상이어야 합니다.";
+    } else {
+      // 강력한 비밀번호 강도 검증 적용
+      const passwordValidation = validatePasswordStrength(formData.password);
+      if (!passwordValidation.isValid) {
+        newErrors.password = passwordValidation.errors.join(' ');
+      }
     }
 
     if (!formData.confirmPassword) {
@@ -175,15 +222,36 @@ export default function RegisterPage() {
       const isValid = await verifyEmailCode(verificationCode);
       
       if (isValid) {
-        setEmailVerificationStep("success");
-        
-        // 실제 회원가입 처리
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        
-        // 성공 후 로그인 페이지로 이동
-        setTimeout(() => {
-          window.location.href = "/auth/login?message=회원가입이 완료되었습니다. 로그인해주세요.";
-        }, 2000);
+        // 실제 회원가입 API 호출
+        try {
+          const registerResponse = await fetch("/api/auth/register", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              email: formData.email,
+              password: formData.password,
+              name: formData.name,
+              role: "client"
+            }),
+          });
+
+          const registerResult = await registerResponse.json();
+
+          if (registerResult.success) {
+            setEmailVerificationStep("success");
+            
+            // 성공 후 로그인 페이지로 이동
+            setTimeout(() => {
+              window.location.href = "/auth/login?message=회원가입이 완료되었습니다. 로그인해주세요.";
+            }, 2000);
+          } else {
+            setVerificationError(registerResult.error || "회원가입 처리 중 오류가 발생했습니다.");
+          }
+        } catch (error) {
+          setVerificationError("회원가입 처리 중 오류가 발생했습니다.");
+        }
       } else {
         setVerificationError("인증 코드가 올바르지 않습니다. 다시 확인해주세요.");
       }
@@ -403,7 +471,9 @@ export default function RegisterPage() {
                   onChange={handleInputChange}
                   disabled={showVerificationInput}
                   className={`block w-full pl-10 pr-10 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.password ? "border-red-300" : "border-gray-300"
+                    errors.password ? "border-red-300" : 
+                    formData.password && passwordStrength.isValid ? "border-green-300" : 
+                    formData.password ? "border-yellow-300" : "border-gray-300"
                   } ${showVerificationInput ? "bg-gray-100" : ""}`}
                   placeholder="비밀번호를 입력하세요"
                 />
@@ -420,6 +490,87 @@ export default function RegisterPage() {
                   )}
                 </button>
               </div>
+              
+              {/* 비밀번호 강도 표시 */}
+              {formData.password && (
+                <div className="mt-2">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <div className="flex-1 bg-gray-200 rounded-full h-2">
+                      <div 
+                        className={`h-2 rounded-full transition-all duration-300 ${
+                          passwordStrength.isValid ? 'bg-green-500' : 
+                          formData.password.length > 0 ? 'bg-yellow-500' : 'bg-gray-300'
+                        }`}
+                        style={{ 
+                          width: `${Math.min((formData.password.length / 8) * 100, 100)}%` 
+                        }}
+                      />
+                    </div>
+                    <span className={`text-xs font-medium ${
+                      passwordStrength.isValid ? 'text-green-600' : 
+                      formData.password.length > 0 ? 'text-yellow-600' : 'text-gray-500'
+                    }`}>
+                      {passwordStrength.isValid ? '강함' : 
+                       formData.password.length > 0 ? '약함' : ''}
+                    </span>
+                  </div>
+                  
+                  {/* 비밀번호 요구사항 체크리스트 */}
+                  <div className="space-y-1">
+                    <div className={`flex items-center text-xs ${
+                      formData.password.length >= 8 ? 'text-green-600' : 'text-gray-500'
+                    }`}>
+                      <div className={`w-3 h-3 rounded-full mr-2 flex items-center justify-center ${
+                        formData.password.length >= 8 ? 'bg-green-100' : 'bg-gray-100'
+                      }`}>
+                        {formData.password.length >= 8 && <div className="w-1.5 h-1.5 bg-green-600 rounded-full" />}
+                      </div>
+                      최소 8자 이상
+                    </div>
+                    <div className={`flex items-center text-xs ${
+                      /[A-Z]/.test(formData.password) ? 'text-green-600' : 'text-gray-500'
+                    }`}>
+                      <div className={`w-3 h-3 rounded-full mr-2 flex items-center justify-center ${
+                        /[A-Z]/.test(formData.password) ? 'bg-green-100' : 'bg-gray-100'
+                      }`}>
+                        {/[A-Z]/.test(formData.password) && <div className="w-1.5 h-1.5 bg-green-600 rounded-full" />}
+                      </div>
+                      대문자 포함
+                    </div>
+                    <div className={`flex items-center text-xs ${
+                      /[a-z]/.test(formData.password) ? 'text-green-600' : 'text-gray-500'
+                    }`}>
+                      <div className={`w-3 h-3 rounded-full mr-2 flex items-center justify-center ${
+                        /[a-z]/.test(formData.password) ? 'bg-green-100' : 'bg-gray-100'
+                      }`}>
+                        {/[a-z]/.test(formData.password) && <div className="w-1.5 h-1.5 bg-green-600 rounded-full" />}
+                      </div>
+                      소문자 포함
+                    </div>
+                    <div className={`flex items-center text-xs ${
+                      /[0-9]/.test(formData.password) ? 'text-green-600' : 'text-gray-500'
+                    }`}>
+                      <div className={`w-3 h-3 rounded-full mr-2 flex items-center justify-center ${
+                        /[0-9]/.test(formData.password) ? 'bg-green-100' : 'bg-gray-100'
+                      }`}>
+                        {/[0-9]/.test(formData.password) && <div className="w-1.5 h-1.5 bg-green-600 rounded-full" />}
+                      </div>
+                      숫자 포함
+                    </div>
+                    <div className={`flex items-center text-xs ${
+                      /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(formData.password) ? 'text-green-600' : 'text-gray-500'
+                    }`}>
+                      <div className={`w-3 h-3 rounded-full mr-2 flex items-center justify-center ${
+                        /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(formData.password) ? 'bg-green-100' : 'bg-gray-100'
+                      }`}>
+                        {/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(formData.password) && <div className="w-1.5 h-1.5 bg-green-600 rounded-full" />}
+                      </div>
+                      특수문자 포함
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               {errors.password && (
                 <p className="mt-1 text-sm text-red-600">{errors.password}</p>
               )}

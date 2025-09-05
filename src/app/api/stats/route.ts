@@ -64,13 +64,14 @@ export async function GET(request: NextRequest) {
   try {
     await initializeDatabase();
     
-    const authUser = await getAuthenticatedUser(request);
-    if (!authUser || authUser.role !== 'admin') {
-      return NextResponse.json(
-        { success: false, message: '관리자 권한이 필요합니다.' },
-        { status: 403 }
-      );
-    }
+    // 공개 통계 조회를 위해 인증 체크 제거
+    // const authUser = await getAuthenticatedUser(request);
+    // if (!authUser || authUser.role !== 'admin') {
+    //   return NextResponse.json(
+    //     { success: false, message: '관리자 권한이 필요합니다.' },
+    //     { status: 403 }
+    //   );
+    // }
 
     const { searchParams } = new URL(request.url);
     const includeMatchingRecords = searchParams.get('includeMatchingRecords') === 'true';

@@ -6,7 +6,6 @@ interface PlatformStats {
   totalUsers: number;
   totalExperts: number;
   totalConsultations: number;
-  totalRevenue: number;
   averageConsultationRating: number;
   averageMatchingTimeMinutes: number;
   monthlyActiveUsers: number;
@@ -85,7 +84,6 @@ export default function StatsSection() {
     totalUsers: 0,
     totalExperts: 0,
     totalConsultations: 0,
-    totalRevenue: 0,
     averageConsultationRating: 0,
     averageMatchingTimeMinutes: 0,
     monthlyActiveUsers: 0,

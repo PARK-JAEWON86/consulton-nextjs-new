@@ -64,92 +64,45 @@ export default function ExpertConsultationSessionsPage() {
     totalReviews: 0,
   });
 
-  // 더미 데이터 로드 (실제로는 API에서 가져와야 함)
+  // 상담 데이터 로드 (API에서 가져오기)
   useEffect(() => {
-    const dummyConsultations: ExpertConsultationSession[] = [
-      {
-        id: "1",
-        clientId: "client_1",
-        clientName: "김민수",
-        clientAvatar: "김",
-        topic: "스트레스 관리 및 불안감 치료",
-        scheduledTime: "2024-01-15T14:00:00",
-        duration: 60,
-        consultationType: "video",
-        status: "scheduled",
-        expertLevel: 300,
-        description: "직장에서의 스트레스와 불안감에 대한 상담이 필요합니다.",
-        price: 9000, // 60분 * 150크레딧
-      },
-      {
-        id: "2",
-        clientId: "client_2",
-        clientName: "이지영",
-        clientAvatar: "이",
-        topic: "계약서 검토 및 법적 자문",
-        scheduledTime: "2024-01-15T16:00:00",
-        duration: 45,
-        consultationType: "voice",
-        status: "scheduled",
-        expertLevel: 200,
-        description: "사업 계약서 검토와 법적 위험 요소에 대한 자문이 필요합니다.",
-        price: 6750, // 45분 * 150크레딧
-      },
-      {
-        id: "3",
-        clientId: "client_3",
-        clientName: "박서준",
-        clientAvatar: "박",
-        topic: "투자 포트폴리오 구성",
-        scheduledTime: "2024-01-16T10:00:00",
-        duration: 90,
-        consultationType: "chat",
-        status: "scheduled",
-        expertLevel: 100,
-        description: "현재 자산 상황을 바탕으로 한 투자 포트폴리오 구성 상담이 필요합니다.",
-        price: 13500, // 90분 * 150크레딧
-      },
-      {
-        id: "4",
-        clientId: "client_4",
-        clientName: "최유진",
-        clientAvatar: "최",
-        topic: "커리어 상담 및 이직 준비",
-        scheduledTime: "2024-01-14T15:30:00",
-        duration: 60,
-        consultationType: "video",
-        status: "completed",
-        expertLevel: 250,
-        description: "현재 직장에서의 커리어 발전과 이직 준비에 대한 상담이 필요합니다.",
-        price: 9000,
-        clientRating: 5,
-        clientReview: "정말 도움이 많이 되었습니다. 구체적인 조언을 해주셔서 감사합니다.",
-      },
-    ];
+    const loadConsultations = async () => {
+      try {
+        // 전문가 상담 세션 조회
+        const response = await fetch('/api/consultations-multi?expertId=current');
+        if (response.ok) {
+          const data = await response.json();
+          const consultations = data.data || [];
+          setConsultations(consultations);
 
-    setConsultations(dummyConsultations);
+          // 통계 계산
+          const totalSessions = consultations.length;
+          const completedSessions = consultations.filter((c: any) => c.status === "completed").length;
+          const scheduledSessions = consultations.filter((c: any) => c.status === "scheduled").length;
+          const totalEarnings = consultations
+            .filter((c: any) => c.status === "completed")
+            .reduce((sum: number, c: any) => sum + (c.price || 0), 0);
+          const completedWithRating = consultations.filter((c: any) => c.status === "completed" && c.clientRating);
+          const averageRating = completedWithRating.length > 0 
+            ? completedWithRating.reduce((sum: number, c: any) => sum + (c.clientRating || 0), 0) / completedWithRating.length
+            : 0;
+          const totalReviews = completedWithRating.length;
 
-    // 통계 계산
-    const totalSessions = dummyConsultations.length;
-    const completedSessions = dummyConsultations.filter(c => c.status === "completed").length;
-    const scheduledSessions = dummyConsultations.filter(c => c.status === "scheduled").length;
-    const totalEarnings = dummyConsultations
-      .filter(c => c.status === "completed")
-      .reduce((sum, c) => sum + c.price, 0);
-    const completedWithRating = dummyConsultations.filter(c => c.status === "completed" && c.clientRating);
-    const averageRating = completedWithRating.length > 0 
-      ? completedWithRating.reduce((sum, c) => sum + (c.clientRating || 0), 0) / completedWithRating.length
-      : 0;
-    const totalReviews = completedWithRating.length;
+          setStats({
+            totalSessions,
+            completedSessions,
+            scheduledSessions,
+            totalEarnings,
+            averageRating,
+            totalReviews,
+          });
+        }
+      } catch (error) {
+        console.error('상담 데이터 로드 실패:', error);
+      }
+    };
 
-    setStats({
-      totalSessions,
-      completedSessions,
-      scheduledSessions,
-      totalEarnings,
-      averageRating,
-      totalReviews,
-    });
+    loadConsultations();
   }, []);
 
   // 상담 시작

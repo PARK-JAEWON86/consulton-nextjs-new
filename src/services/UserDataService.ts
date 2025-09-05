@@ -53,11 +53,41 @@ export class UserDataService {
   }
 
   /**
-   * 클라이언트 사용자 초기화 (실제 데이터베이스 연동 필요)
+   * 클라이언트 사용자 초기화 (데이터베이스에서 로드)
    */
-  private initializeClientUsers(): void {
-    // TODO: 실제 데이터베이스에서 클라이언트 사용자 데이터를 가져와야 함
-    // 현재는 빈 상태로 유지
+  private async initializeClientUsers(): Promise<void> {
+    try {
+      // 데이터베이스에서 클라이언트 사용자 데이터를 가져오기
+      const response = await fetch('/api/user?role=client');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          // API에서 받은 데이터를 클라이언트 사용자 형식으로 변환
+          data.data.forEach((user: any) => {
+            const clientUser: ClientUser = {
+              id: user.id.toString(),
+              name: user.name,
+              email: user.email,
+              phone: user.phone || '',
+              avatar: user.avatar || null,
+              credits: user.credits || 0,
+              totalConsultations: user.totalConsultations || 0,
+              averageRating: user.averageRating || 0,
+              joinDate: user.createdAt || new Date().toISOString(),
+              lastActiveAt: user.updatedAt || new Date().toISOString(),
+              preferences: {
+                language: 'ko',
+                timezone: 'Asia/Seoul',
+                notifications: true
+              }
+            };
+            this.clientUsers.set(clientUser.id, clientUser);
+          });
+        }
+      }
+    } catch (error) {
+      console.error('클라이언트 사용자 데이터 로드 실패:', error);
+    }
   }
 
   /**

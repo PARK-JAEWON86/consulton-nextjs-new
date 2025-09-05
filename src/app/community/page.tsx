@@ -20,7 +20,20 @@ export default function CommunityPage() {
   const [user, setUser] = useState<any>(null);
   const [categories, setCategories] = useState<any[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
-  const postsPerPage = 5; // 페이지당 게시글 수
+  const [communityStats, setCommunityStats] = useState({
+    totalPosts: 0,
+    activeUsers: 0,
+    todayPosts: 0
+  });
+  const [popularTags, setPopularTags] = useState<string[]>([]);
+  const [postCounts, setPostCounts] = useState<Record<string, number>>({
+    all: 0,
+    general: 0,
+    consultation_request: 0,
+    consultation_review: 0,
+    expert_intro: 0
+  });
+  const postsPerPage = 10; // 페이지당 게시글 수
 
   // 인증 상태 확인
   useEffect(() => {
@@ -120,10 +133,10 @@ export default function CommunityPage() {
         
         if (result.success) {
           // API 응답을 커뮤니티 카테고리 형식에 맞게 변환
-          const transformedCategories = result.data.map((cat: any, index: number) => ({
+          const transformedCategories = result.data.map((cat: any) => ({
             id: cat.id,
             name: cat.name,
-            count: Math.floor(Math.random() * 50) + 10 // 임시 카운트 (실제로는 API에서 제공)
+            count: cat.consultationCount || 0 // 실제 상담 수 사용
           }));
           setCategories(transformedCategories);
         } else {
@@ -137,6 +150,55 @@ export default function CommunityPage() {
     };
 
     loadCategories();
+  }, []);
+
+  // 커뮤니티 통계 및 인기 태그 로드
+  useEffect(() => {
+    const loadCommunityData = async () => {
+      try {
+        // 커뮤니티 통계 로드
+        const statsResponse = await fetch('/api/community/stats');
+        if (statsResponse.ok) {
+          const statsData = await statsResponse.json();
+          if (statsData.success) {
+            setCommunityStats({
+              totalPosts: statsData.data.totalPosts,
+              activeUsers: statsData.data.activeUsers,
+              todayPosts: statsData.data.todayPosts
+            });
+          }
+        }
+
+        // 인기 태그 로드
+        const tagsResponse = await fetch('/api/community/popular-tags?limit=8');
+        if (tagsResponse.ok) {
+          const tagsData = await tagsResponse.json();
+          if (tagsData.success) {
+            setPopularTags(tagsData.data);
+          }
+        }
+
+        // 게시글 개수 로드
+        const countsResponse = await fetch('/api/community/post-counts');
+        if (countsResponse.ok) {
+          const countsData = await countsResponse.json();
+          if (countsData.success) {
+            setPostCounts(countsData.data);
+          }
+        }
+      } catch (error) {
+        console.error('커뮤니티 데이터 로드 실패:', error);
+        // 에러 시 기본값 설정
+        setCommunityStats({
+          totalPosts: 0,
+          activeUsers: 0,
+          todayPosts: 0
+        });
+        setPopularTags(["상담후기", "전문가추천", "진로고민", "투자조언"]);
+      }
+    };
+
+    loadCommunityData();
   }, []);
 
 
@@ -157,13 +219,6 @@ export default function CommunityPage() {
     // 필터 로직 구현
   };
 
-  const handleLike = (postId: string) => {
-    // 좋아요 로직 구현
-  };
-
-  const handleComment = (postId: string) => {
-    // 댓글 로직 구현
-  };
 
   const handleTagClick = (tag: string) => {
     // 태그 클릭 로직 구현
@@ -171,9 +226,7 @@ export default function CommunityPage() {
 
   const handlePostClick = (postId: string) => {
     // 게시글 상세 페이지로 이동
-    console.log("게시글 클릭:", postId);
-    // 실제로는 Next.js router를 사용하여 페이지 이동
-    // router.push(`/community/posts/${postId}`);
+    window.location.href = `/community/posts/${postId}`;
   };
 
   const handleCreatePost = () => {
@@ -189,11 +242,39 @@ export default function CommunityPage() {
     setIsCreateModalOpen(false);
   };
 
-  const handleSubmitPost = (postData: any) => {
-    // 새 게시글 데이터 처리 로직
-    console.log("새 게시글 데이터:", postData);
-    // 실제로는 API 호출을 통해 서버에 저장
-    // 임시로 콘솔에만 출력
+  const handleSubmitPost = async (postData: any) => {
+    try {
+      // 새 게시글 작성 API 호출
+      const response = await fetch('/api/community/posts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: postData.title,
+          content: postData.content,
+          categoryId: parseInt(postData.category),
+          postType: postData.postType,
+          tags: postData.tags,
+          isAnonymous: false
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          // 게시글 작성 성공 시 목록 새로고침
+          window.location.reload();
+        } else {
+          alert('게시글 작성에 실패했습니다: ' + result.message);
+        }
+      } else {
+        alert('게시글 작성 중 오류가 발생했습니다.');
+      }
+    } catch (error) {
+      console.error('게시글 작성 실패:', error);
+      alert('게시글 작성 중 오류가 발생했습니다.');
+    }
   };
 
   // 게시글 타입 필터 옵션
@@ -208,19 +289,46 @@ export default function CommunityPage() {
   // 모든 게시글 데이터 (실제 API 연동)
   const [allPosts, setAllPosts] = useState<any[]>([]);
   const [isLoadingPosts, setIsLoadingPosts] = useState(true);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 5,
+    totalCount: 0,
+    totalPages: 0,
+    hasNextPage: false,
+    hasPrevPage: false
+  });
 
   // 게시글 데이터 로드
   useEffect(() => {
     const loadPosts = async () => {
       try {
         setIsLoadingPosts(true);
-        // TODO: 실제 커뮤니티 API가 구현되면 연동
-        // const response = await fetch('/api/community/posts');
-        // const data = await response.json();
-        // setAllPosts(data.posts || []);
         
-        // 현재는 빈 배열로 유지
-        setAllPosts([]);
+        // 커뮤니티 게시글 API 호출
+        const params = new URLSearchParams({
+          category: activeTab === 'all' ? '' : activeTab,
+          postType: postTypeFilter === 'all' ? '' : postTypeFilter,
+          sortBy: sortBy,
+          page: currentPage.toString(),
+          limit: postsPerPage.toString()
+        });
+        
+        const response = await fetch(`/api/community/posts?${params}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            setAllPosts(data.data || []);
+            if (data.pagination) {
+              setPagination(data.pagination);
+            }
+          } else {
+            console.error('게시글 로드 실패:', data.message);
+            setAllPosts([]);
+          }
+        } else {
+          console.error('게시글 API 호출 실패:', response.status);
+          setAllPosts([]);
+        }
       } catch (error) {
         console.error('게시글 로드 실패:', error);
         setAllPosts([]);
@@ -230,56 +338,16 @@ export default function CommunityPage() {
     };
 
     loadPosts();
-  }, []);
+  }, [activeTab, postTypeFilter, sortBy, currentPage]);
 
-  // 필터링 및 정렬된 게시글
-  // 1단계: 카테고리별 필터링 (allPosts 사용)
-  const categoryFilteredPosts = activeTab === "all" 
-    ? allPosts 
-    : allPosts.filter(post => post.category === activeTab);
-  // 2단계: 게시글 타입별 필터링
-  const typeFilteredPosts = postTypeFilter === "all" 
-    ? categoryFilteredPosts 
-    : categoryFilteredPosts.filter(post => post.postType === postTypeFilter);
-  // 3단계: 정렬
-  const filteredPosts = useMemo(() => {
-    if (!typeFilteredPosts || typeFilteredPosts.length === 0) return [];
-    
-    const sorted = [...typeFilteredPosts].sort((a, b) => {
-      switch (sortBy) {
-        case "latest":
-          // 최신순: 생성일 기준 내림차순
-          return new Date(b.createdAt || b.created_at || 0).getTime() - new Date(a.createdAt || a.created_at || 0).getTime();
-        case "popular":
-          // 인기순: 좋아요 수 기준 내림차순
-          return (b.likes || b.likeCount || 0) - (a.likes || a.likeCount || 0);
-        case "comments":
-          // 댓글순: 댓글 수 기준 내림차순
-          return (b.comments || b.commentCount || 0) - (a.comments || a.commentCount || 0);
-        case "views":
-          // 조회순: 조회수 기준 내림차순
-          return (b.views || b.viewCount || 0) - (a.views || a.viewCount || 0);
-        default:
-          return 0;
-      }
-    });
-    
-    return sorted;
-  }, [typeFilteredPosts, sortBy]);
 
-  // 페이지네이션 계산
-  const totalPages = Math.ceil(filteredPosts.length / postsPerPage);
-  const startIndex = (currentPage - 1) * postsPerPage;
-  const endIndex = startIndex + postsPerPage;
-  const currentPosts = filteredPosts.slice(startIndex, endIndex);
+  // API에서 이미 필터링 및 정렬된 게시글 사용
+  const filteredPosts = allPosts;
+  const currentPosts = allPosts; // API에서 이미 페이지네이션된 데이터를 받음
 
-  // 각 필터별 게시글 개수 계산 (현재 카테고리 고려)
+  // 각 필터별 게시글 개수 계산
   const getPostCount = (filterId: string) => {
-    const categoryPosts = activeTab === "all" 
-      ? allPosts 
-      : allPosts.filter(post => post.category === activeTab);
-    if (filterId === "all") return categoryPosts.length;
-    return categoryPosts.filter(post => post.postType === filterId).length;
+    return postCounts[filterId] || 0;
   };
 
   // 페이지네이션 핸들러
@@ -296,7 +364,7 @@ export default function CommunityPage() {
   };
 
   const handleNextPage = () => {
-    if (currentPage < totalPages) {
+    if (currentPage < pagination.totalPages) {
       handlePageChange(currentPage + 1);
     }
   };
@@ -356,12 +424,13 @@ export default function CommunityPage() {
                 categories={categories.length > 0 ? categories : []}
                 activeTab={activeTab}
                 onTabChange={handleTabChange}
-              popularTags={["상담후기", "전문가추천", "진로고민", "투자조언"]}
-              onTagClick={handleTagClick}
-              onCreatePost={handleCreatePost}
-              isAuthenticated={isAuthenticated}
-              user={user}
-            />
+                popularTags={popularTags}
+                onTagClick={handleTagClick}
+                onCreatePost={handleCreatePost}
+                isAuthenticated={isAuthenticated}
+                user={user}
+                communityStats={communityStats}
+              />
           </div>
 
           {/* 모바일 사이드바 오버레이 */}
@@ -395,7 +464,7 @@ export default function CommunityPage() {
                       handleTabChange(categoryId);
                       closeSidebar(); // 카테고리 선택 후 사이드바 닫기
                     }}
-                    popularTags={["상담후기", "전문가추천", "진로고민", "투자조언"]}
+                    popularTags={popularTags}
                     onTagClick={(tag) => {
                       handleTagClick(tag);
                       closeSidebar(); // 태그 클릭 후 사이드바 닫기
@@ -406,6 +475,7 @@ export default function CommunityPage() {
                     }}
                     isAuthenticated={isAuthenticated}
                     user={user}
+                    communityStats={communityStats}
                   />
                 </div>
               </div>
@@ -449,7 +519,7 @@ export default function CommunityPage() {
                 </div>
 
                 {/* 오른쪽: 페이징 버튼 */}
-                {totalPages > 1 && (
+                {pagination.totalPages > 1 && (
                   <div className="flex items-center justify-center lg:justify-end">
                     <div className="flex items-center gap-1 bg-white rounded-lg px-3 py-2 shadow-sm border border-gray-200">
                       <button
@@ -466,14 +536,14 @@ export default function CommunityPage() {
                       </button>
                       
                       <span className="text-sm text-gray-500 px-2 min-w-[60px] text-center">
-                        {currentPage} / {totalPages}
+                        {currentPage} / {pagination.totalPages}
                       </span>
                       
                       <button
                         onClick={handleNextPage}
-                        disabled={currentPage === totalPages}
+                        disabled={currentPage === pagination.totalPages}
                         className={`flex items-center gap-1 px-2 py-1 rounded-md text-sm font-medium transition-colors ${
-                          currentPage === totalPages
+                          currentPage === pagination.totalPages
                             ? "text-gray-400 cursor-not-allowed"
                             : "text-gray-600 hover:text-blue-600 hover:bg-blue-50"
                         }`}
@@ -495,7 +565,7 @@ export default function CommunityPage() {
               />
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               {filteredPosts.length === 0 ? (
                 <div className="text-center py-16">
                   <div className="text-gray-400 mb-6">
@@ -521,20 +591,45 @@ export default function CommunityPage() {
                   )}
                 </div>
               ) : (
-                currentPosts.map((post) => (
-                  <PostCard
-                    key={post.id}
-                    post={post}
-                    onLike={handleLike}
-                    onComment={handleComment}
-                    onPostClick={handlePostClick}
-                  />
-                ))
+                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                  {/* 테이블 헤더 */}
+                  <div className="bg-gray-50 border-b border-gray-200">
+                    <div className="grid grid-cols-12 gap-3 px-4 py-3 text-sm font-medium text-gray-700">
+                      <div className="col-span-1 text-center">번호</div>
+                      <div className="col-span-5">제목</div>
+                      <div className="col-span-1 text-center">분야</div>
+                      <div className="col-span-1 text-center">게시자</div>
+                      <div className="col-span-1 text-center">날짜</div>
+                      <div className="col-span-2 text-center">좋아요-댓글</div>
+                      <div className="col-span-1 text-center">조회수</div>
+                    </div>
+                  </div>
+                  
+                  {/* 테이블 바디 */}
+                  <div className="divide-y divide-gray-200">
+                    {currentPosts.map((post, index) => {
+                      // 전체 게시글 수에서 현재 페이지의 시작 번호 계산
+                      // 최신 게시글이 더 큰 번호를 가지도록 (전체 게시글 수 - 현재 인덱스)
+                      const totalPosts = communityStats.totalPosts;
+                      const startIndex = (currentPage - 1) * postsPerPage;
+                      const postNumber = totalPosts - (startIndex + index);
+                      
+                      return (
+                        <PostCard
+                          key={post.id}
+                          post={post}
+                          index={postNumber}
+                          onPostClick={handlePostClick}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
               )}
             </div>
 
             {/* 하단 페이지네이션 - 페이지 번호 포함 */}
-            {totalPages > 1 && (
+            {pagination.totalPages > 1 && (
               <div className="flex justify-center items-center mt-8 space-x-1">
                 {/* 이전 버튼 */}
                 <button
@@ -554,7 +649,7 @@ export default function CommunityPage() {
                   const pages = [];
                   const showPages = 5; // 보여줄 페이지 수
                   let startPage = Math.max(1, currentPage - Math.floor(showPages / 2));
-                  let endPage = Math.min(totalPages, startPage + showPages - 1);
+                  let endPage = Math.min(pagination.totalPages, startPage + showPages - 1);
                   
                   // 끝 페이지가 조정되면 시작 페이지도 다시 조정
                   if (endPage - startPage + 1 < showPages) {
@@ -599,8 +694,8 @@ export default function CommunityPage() {
                   }
 
                   // 마지막 페이지 (totalPages가 범위에 없을 때)
-                  if (endPage < totalPages) {
-                    if (endPage < totalPages - 1) {
+                  if (endPage < pagination.totalPages) {
+                    if (endPage < pagination.totalPages - 1) {
                       pages.push(
                         <span key="end-ellipsis" className="px-2 py-2 text-gray-400">
                           ...
@@ -609,11 +704,11 @@ export default function CommunityPage() {
                     }
                     pages.push(
                       <button
-                        key={totalPages}
-                        onClick={() => handlePageChange(totalPages)}
+                        key={pagination.totalPages}
+                        onClick={() => handlePageChange(pagination.totalPages)}
                         className="px-3 py-2 rounded-lg text-sm font-medium transition-colors text-gray-600 hover:text-blue-600 hover:bg-blue-50 bg-white border border-gray-200"
                       >
-                        {totalPages}
+                        {pagination.totalPages}
                       </button>
                     );
                   }
@@ -624,9 +719,9 @@ export default function CommunityPage() {
                 {/* 다음 버튼 */}
                 <button
                   onClick={handleNextPage}
-                  disabled={currentPage === totalPages}
+                                          disabled={currentPage === pagination.totalPages}
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    currentPage === totalPages
+                    currentPage === pagination.totalPages
                       ? "text-gray-400 cursor-not-allowed bg-gray-100"
                       : "text-gray-600 hover:text-blue-600 hover:bg-blue-50 bg-white border border-gray-200"
                   }`}

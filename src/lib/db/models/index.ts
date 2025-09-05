@@ -19,3 +19,8 @@ export { Review } from "./review.model";
 export { Payment } from "./payment.model";
 export { Notification } from "./notification.model";
 export { PaymentMethod } from "./paymentMethod.model";
+
+// 커뮤니티 관련 모델들
+export { CommunityPost } from "./communityPost.model";
+export { CommunityComment } from "./communityComment.model";
+export { CommunityLike } from "./communityLike.model";

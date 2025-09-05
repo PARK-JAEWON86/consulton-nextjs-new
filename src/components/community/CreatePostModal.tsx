@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Image, Link, Hash } from "lucide-react";
+import { X, Image, Link, Hash, HelpCircle, Star, Award, MessageSquare } from "lucide-react";
 
 interface PostData {
   title: string;
   content: string;
   category: string;
+  postType: string;
   tags: string[];
 }
 
@@ -25,6 +26,7 @@ const CreatePostModal = ({
     title: "",
     content: "",
     category: "",
+    postType: "general",
     tags: [],
   });
 
@@ -56,13 +58,75 @@ const CreatePostModal = ({
     loadProfile();
   }, [isOpen]);
 
-  const categories = [
+  const [categories, setCategories] = useState([
     { value: "consultation", label: "상담요청" },
     { value: "review", label: "후기" },
     { value: "question", label: "질문" },
     { value: "tip", label: "팁" },
     { value: "discussion", label: "토론" },
+  ]);
+
+  // 게시글 타입 옵션
+  const postTypeOptions = [
+    { 
+      id: "general", 
+      name: "일반글", 
+      icon: MessageSquare, 
+      color: "text-gray-600", 
+      bgColor: "bg-gray-100", 
+      hoverColor: "hover:bg-gray-200",
+      description: "자유로운 주제의 일반적인 글"
+    },
+    { 
+      id: "consultation_request", 
+      name: "상담요청", 
+      icon: HelpCircle, 
+      color: "text-orange-600", 
+      bgColor: "bg-orange-100", 
+      hoverColor: "hover:bg-orange-200",
+      description: "전문가에게 상담을 요청하는 글"
+    },
+    { 
+      id: "consultation_review", 
+      name: "상담후기", 
+      icon: Star, 
+      color: "text-green-600", 
+      bgColor: "bg-green-100", 
+      hoverColor: "hover:bg-green-200",
+      description: "상담 경험에 대한 후기나 리뷰"
+    },
+    { 
+      id: "expert_intro", 
+      name: "전문가소개", 
+      icon: Award, 
+      color: "text-blue-600", 
+      bgColor: "bg-blue-100", 
+      hoverColor: "hover:bg-blue-200",
+      description: "전문가가 자신을 소개하는 글"
+    },
   ];
+
+  // 카테고리 데이터 로드
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const response = await fetch('/api/categories?activeOnly=true');
+        const result = await response.json();
+        
+        if (result.success) {
+          const transformedCategories = result.data.map((cat: any) => ({
+            value: cat.id.toString(),
+            label: cat.name
+          }));
+          setCategories(transformedCategories);
+        }
+      } catch (error) {
+        console.error('카테고리 로드 실패:', error);
+      }
+    };
+
+    loadCategories();
+  }, []);
 
   const handleInputChange = (
     field: keyof PostData,
@@ -113,13 +177,13 @@ const CreatePostModal = ({
     };
 
     onSubmit && onSubmit(postData);
-    setFormData({ title: "", content: "", category: "", tags: [] });
+    setFormData({ title: "", content: "", category: "", postType: "general", tags: [] });
     setErrors({});
     onClose();
   };
 
   const handleClose = () => {
-    setFormData({ title: "", content: "", category: "", tags: [] });
+    setFormData({ title: "", content: "", category: "", postType: "general", tags: [] });
     setErrors({});
     onClose();
   };
@@ -161,6 +225,40 @@ const CreatePostModal = ({
               </p>
             </div>
           )}
+
+          {/* 게시글 타입 선택 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              게시글 타입 <span className="text-red-500">*</span>
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {postTypeOptions.map((option) => {
+                const Icon = option.icon;
+                const isSelected = formData.postType === option.id;
+                
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => handleInputChange("postType", option.id)}
+                    className={`p-3 rounded-lg border-2 transition-all duration-200 text-center ${
+                      isSelected
+                        ? `${option.bgColor} ${option.color} border-current shadow-md`
+                        : `bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:shadow-sm`
+                    }`}
+                  >
+                    <div className="flex flex-col items-center gap-2">
+                      <Icon className={`h-5 w-5 ${isSelected ? option.color : "text-gray-400"}`} />
+                      <span className={`font-medium text-sm ${isSelected ? option.color : "text-gray-700"}`}>
+                        {option.name}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* 제목 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">

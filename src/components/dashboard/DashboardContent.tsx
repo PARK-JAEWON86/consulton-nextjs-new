@@ -233,89 +233,63 @@ export default function DashboardContent() {
 
 
 
-  // 예약된 상담 일정 데이터
-  const upcomingConsultations = [
-    {
-      id: 1,
-      expertName: "박지영",
-      specialty: "심리상담",
-      date: "2025-08-05",
-      time: "14:00",
-      type: "video",
-      status: "confirmed",
-    },
-    {
-      id: 2,
-      expertName: "이민수",
-      specialty: "법률상담",
-      date: "2025-08-12",
-      time: "10:30",
-      type: "chat",
-      status: "pending",
-    },
-    {
-      id: 3,
-      expertName: "김소연",
-      specialty: "재무상담",
-      date: "2025-08-18",
-      time: "16:00",
-      type: "video",
-      status: "confirmed",
-    },
-  ];
+  // 예약된 상담 일정 데이터 (API에서 로드)
+  const [upcomingConsultations, setUpcomingConsultations] = useState<any[]>([]);
+  const [consultationLogs, setConsultationLogs] = useState<any[]>([]);
+
+  // 상담 데이터 로드
+  useEffect(() => {
+    const loadConsultationData = async () => {
+      try {
+        // 예약된 상담 조회
+        const consultationsResponse = await fetch('/api/consultations-multi?status=scheduled');
+        if (consultationsResponse.ok) {
+          const consultationsData = await consultationsResponse.json();
+          setUpcomingConsultations(consultationsData.data || []);
+        }
+
+        // 완료된 상담 조회 (상담 일지용)
+        const completedResponse = await fetch('/api/consultations-multi?status=completed');
+        if (completedResponse.ok) {
+          const completedData = await completedResponse.json();
+          setConsultationLogs(completedData.data || []);
+        }
+      } catch (error) {
+        console.error('상담 데이터 로드 실패:', error);
+      }
+    };
+
+    if (loggedInUser) {
+      loadConsultationData();
+    }
+  }, [loggedInUser]);
 
 
 
-  // 상담 일지 데이터
-  const consultationLogs = [
-    {
-      id: 1,
-      expertName: "박지영",
-      specialty: "심리상담",
-      date: "2024-12-10",
-      duration: "45분",
-      rating: 5,
-      summary:
-        "스트레스 관리 방법에 대해 상담받았습니다. 매우 도움이 되었어요.",
-      status: "completed",
-    },
-    {
-      id: 2,
-      expertName: "이민수",
-      specialty: "법률상담",
-      date: "2024-12-08",
-      duration: "30분",
-      rating: 4,
-      summary: "계약서 검토에 대한 조언을 받았습니다.",
-      status: "completed",
-    },
-  ];
 
 
 
-  // 즐겨찾는 전문가 데이터
-  const favoriteExperts = [
-    {
-      id: 1,
-      name: "박지영",
-      specialty: "심리상담",
-      rating: 4.9,
-      consultations: 12,
-      image: null,
-      tags: ["스트레스", "우울증", "불안장애"],
-      isOnline: true,
-    },
-    {
-      id: 2,
-      name: "김소연",
-      specialty: "재무상담",
-      rating: 4.8,
-      consultations: 8,
-      image: null,
-      tags: ["투자", "자산관리", "세무"],
-      isOnline: false,
-    },
-  ];
+  // 즐겨찾는 전문가 데이터 (API에서 로드)
+  const [favoriteExperts, setFavoriteExperts] = useState<any[]>([]);
+
+  // 즐겨찾는 전문가 데이터 로드
+  useEffect(() => {
+    const loadFavoriteExperts = async () => {
+      try {
+        const response = await fetch('/api/expert-profiles?favorites=true');
+        if (response.ok) {
+          const data = await response.json();
+          setFavoriteExperts(data.data || []);
+        }
+      } catch (error) {
+        console.error('즐겨찾는 전문가 로드 실패:', error);
+      }
+    };
+
+    if (loggedInUser) {
+      loadFavoriteExperts();
+    }
+  }, [loggedInUser]);
 
   // 달력 관련 함수들
   const getDaysInMonth = (date: Date) => {
@@ -1009,7 +983,7 @@ export default function DashboardContent() {
               </h3>
             </div>
             <div className="p-6">
-              {favoriteExperts.length === 0 ? (
+              {!favoriteExperts || !Array.isArray(favoriteExperts) || favoriteExperts.length === 0 ? (
                 <div className="text-center py-8">
                   <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-500">
@@ -1021,7 +995,7 @@ export default function DashboardContent() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {favoriteExperts.map((expert) => (
+                  {favoriteExperts && Array.isArray(favoriteExperts) ? favoriteExperts.map((expert) => (
                     <div
                       key={expert.id}
                       className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
@@ -1078,7 +1052,7 @@ export default function DashboardContent() {
                         </div>
                       </div>
                     </div>
-                  ))}
+                  )) : null}
                   <div className="text-center pt-4">
                     <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">
                       모든 즐겨찾는 전문가 보기

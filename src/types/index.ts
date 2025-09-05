@@ -40,10 +40,61 @@ export type WeeklyAvailability = Record<WeekDay, string[]>;
 // 가용성 설정 타입
 export type Availability = Record<WeekDay, { available: boolean; hours: string }>;
 
-// 상담 요약 타입
+// 상담 요약 타입 (DB 구조에 맞게 수정)
 export interface ConsultationSummary {
+  id: number;
+  consultationId: number; // 상담 ID (외래키)
+  summaryTitle: string; // 요약 제목
+  summaryContent: string; // 요약 내용
+  keyPoints: string; // 핵심 포인트 (JSON 배열)
+  actionItems: string; // 액션 아이템 (JSON 배열)
+  recommendations: string; // 추천사항 (JSON 배열)
+  followUpPlan: string; // 후속 계획
+  todoStatus: string; // 할일 상태 (JSON 객체)
+  attachments: string; // 첨부 파일 (JSON 배열)
+  isPublic: boolean; // 공개 여부
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// 상담 요약과 상담 정보를 함께 포함하는 타입
+export interface ConsultationSummaryWithDetails extends ConsultationSummary {
+  consultation?: {
+    id: number;
+    title: string;
+    description: string;
+    consultationType: string;
+    status: string;
+    scheduledTime: Date;
+    duration: number;
+    price: number;
+    user?: {
+      id: number;
+      name: string;
+      email: string;
+      avatar?: string;
+    };
+    expert?: {
+      id: number;
+      user?: {
+        id: number;
+        name: string;
+        email: string;
+        avatar?: string;
+      };
+      profile?: {
+        specialty: string;
+        level: number;
+        avgRating: number;
+      };
+    };
+  };
+}
+
+// 기존 UI용 상담 요약 타입 (하위 호환성 유지)
+export interface ConsultationSummaryUI {
   id: string;
-  consultationNumber?: string; // 상담번호 추가
+  consultationNumber?: string;
   title: string;
   date: Date;
   duration: number;
@@ -61,8 +112,6 @@ export interface ConsultationSummary {
   tags: string[];
   creditsUsed: number;
   rating?: number;
-
-  // New workflow fields
   aiSummary?: {
     keyPoints: string[];
     recommendations: string[];
@@ -70,7 +119,6 @@ export interface ConsultationSummary {
     generatedAt: Date;
     aiModel: string;
   };
-
   expertReview?: {
     reviewedAt: Date;
     expertNotes: string;
@@ -82,7 +130,6 @@ export interface ConsultationSummary {
     };
     priority: 'high' | 'medium' | 'low';
   };
-
   userActions?: {
     confirmedAt: Date;
     userNotes: string;
@@ -95,6 +142,46 @@ export interface ConsultationSummary {
     };
     isCompleted: boolean;
   };
+}
+
+// AI 사용량 타입 (DB 구조에 맞게 정의)
+export interface AiUsage {
+  id: number;
+  userId: number; // 사용자 ID (외래키)
+  usedTokens: number; // 사용된 토큰 수
+  purchasedTokens: number; // 구매한 토큰 수
+  remainingPercent: number; // 남은 토큰 퍼센트
+  monthlyResetDate: Date; // 월간 리셋 날짜
+  totalTurns: number; // 총 턴 수
+  totalTokens: number; // 총 사용된 토큰 수
+  averageTokensPerTurn: number; // 턴당 평균 토큰 수
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// AI 사용량 상태 타입 (API용)
+export interface AIUsageState {
+  usedTokens: number;
+  purchasedTokens: number;
+  remainingPercent: number;
+  monthlyResetDate: string; // ISO string
+  totalTurns: number;
+  totalTokens: number;
+  averageTokensPerTurn: number;
+}
+
+// AI 사용량 요약 정보 타입
+export interface AIUsageSummary {
+  totalTokens: number; // 총 토큰 수 (무료 + 구매)
+  freeTokens: number; // 무료 토큰 수
+  remainingFreeTokens: number; // 남은 무료 토큰 수
+  remainingPurchasedTokens: number; // 남은 구매 토큰 수
+  totalEstimatedTurns: number; // 총 예상 턴 수
+  nextResetDate: string; // 다음 리셋 날짜
+  creditToTokens: number; // 크레딧당 토큰 수
+  creditToKRW: number; // 크레딧당 원화
+  tokensToKRW: number; // 토큰당 원화
+  creditDiscount: number; // 크레딧 할인율
 }
 
 // Todo 아이템 타입
@@ -271,18 +358,7 @@ export interface Expert {
   updatedAt: Date;
 }
 
-export interface Consultation {
-  id: string;
-  userId: string;
-  expertId: string;
-  status: "pending" | "confirmed" | "in-progress" | "completed" | "cancelled";
-  scheduledAt: Date;
-  duration: number;
-  type: "video" | "chat";
-  notes?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
+// 기존 Consultation 인터페이스는 아래의 새로운 다중 세션 지원 버전으로 대체됨
 
 // AI 채팅 메시지 타입 (AI 상담 어시스턴트용)
 export interface AIChatMessage {
@@ -385,38 +461,113 @@ export interface MatchingRecord {
   createdAt: Date;
 }
 
-// 상담 세션 타입
-export interface ConsultationSession {
-  id: string;
-  consultationNumber: string; // 상담 시작 시 부여되는 상담번호
-  expertId: string;
-  clientId: string;
-  title: string;
-  scheduledDate: Date;
-  startDate?: Date; // 실제 상담 시작 시간
-  endDate?: Date; // 실제 상담 종료 시간
-  duration: number; // 예약된 상담 시간 (분)
-  status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
-  category: string;
-  tags: string[];
-  notes?: string;
-  creditsUsed: number;
+// 상담 정보 타입 (상위 레벨)
+export interface Consultation {
+  id: number;
+  userId: number; // 클라이언트 ID
+  expertId: number; // 전문가 ID
+  categoryId: number; // 카테고리 ID
+  title: string; // 상담 제목
+  description: string; // 상담 설명
+  consultationType: 'video' | 'chat' | 'voice'; // 상담 유형
+  status: 'pending' | 'scheduled' | 'in_progress' | 'completed' | 'cancelled'; // 상담 상태
+  scheduledTime: Date; // 예정된 상담 시간
+  duration: number; // 상담 시간 (분)
+  price: number; // 상담 가격 (원)
+  expertLevel: number; // 전문가 레벨
+  topic: string; // 상담 주제
+  notes: string; // 상담 노트
+  startTime?: Date; // 실제 시작 시간
+  endTime?: Date; // 실제 종료 시간
+  rating?: number; // 사용자 평점 (0-5)
+  review?: string; // 사용자 리뷰
   createdAt: Date;
   updatedAt: Date;
 }
 
-// 상담번호 생성 요청 타입
-export interface CreateConsultationNumberRequest {
-  expertId: string;
-  clientId: string;
-  scheduledDate: Date;
-  category: string;
+// 상담 세션 타입 (개별 세션)
+export interface ConsultationSession {
+  id: number;
+  consultationId: number; // 상담 ID (외래키)
+  sessionNumber: number; // 세션 번호 (1, 2, 3...)
+  startTime: Date; // 세션 시작 시간
+  endTime?: Date; // 세션 종료 시간
+  duration: number; // 실제 세션 시간 (분)
+  status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled'; // 세션 상태
+  notes: string; // 세션 노트
+  transcript: string; // 대화 기록 (채팅/음성의 경우)
+  recordingUrl?: string; // 녹화/녹음 파일 URL
+  attachments: string; // 첨부 파일 (JSON 배열)
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-// 상담번호 생성 응답 타입
-export interface CreateConsultationNumberResponse {
-  consultationNumber: string;
-  sessionId: string;
+// 상담 세션과 상담 정보를 함께 포함하는 타입
+export interface ConsultationWithSessions extends Consultation {
+  sessions: ConsultationSession[];
+  expert?: {
+    id: number;
+    name: string;
+    avatar: string;
+    specialty: string;
+    level: number;
+  };
+  client?: {
+    id: number;
+    name: string;
+    avatar: string;
+  };
+  category?: {
+    id: number;
+    name: string;
+    description: string;
+  };
+}
+
+// 상담 생성 요청 타입
+export interface CreateConsultationRequest {
+  expertId: number;
+  userId: number;
+  categoryId: number;
+  title: string;
+  description: string;
+  consultationType: 'video' | 'chat' | 'voice';
+  scheduledTime: Date;
+  duration: number;
+  price: number;
+  topic: string;
+}
+
+// 상담 세션 생성 요청 타입
+export interface CreateConsultationSessionRequest {
+  consultationId: number;
+  sessionNumber: number;
+  startTime: Date;
+  notes?: string;
+}
+
+// 상담 세션 업데이트 요청 타입
+export interface UpdateConsultationSessionRequest {
+  sessionId: number;
+  endTime?: Date;
+  duration?: number;
+  status?: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+  notes?: string;
+  transcript?: string;
+  recordingUrl?: string;
+  attachments?: string;
+}
+
+// 상담 생성 응답 타입
+export interface CreateConsultationResponse {
+  consultation: Consultation;
+  success: boolean;
+  message?: string;
+}
+
+// 상담 세션 생성 응답 타입
+export interface CreateConsultationSessionResponse {
+  session: ConsultationSession;
   success: boolean;
   message?: string;
 }

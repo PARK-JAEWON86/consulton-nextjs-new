@@ -33,6 +33,11 @@ interface CategorySidebarProps {
   onCreatePost?: () => void;
   isAuthenticated?: boolean;
   user?: User | null;
+  communityStats?: {
+    totalPosts: number;
+    activeUsers: number;
+    todayPosts: number;
+  };
 }
 
 const CategorySidebar = ({
@@ -44,6 +49,7 @@ const CategorySidebar = ({
   onCreatePost,
   isAuthenticated: isAuthenticatedProp,
   user: userProp,
+  communityStats = { totalPosts: 0, activeUsers: 0, todayPosts: 0 },
 }: CategorySidebarProps) => {
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [appState, setAppState] = useState<AppState>({
@@ -288,15 +294,15 @@ const CategorySidebar = ({
         <div className="space-y-3">
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-600">전체 게시글</span>
-            <span className="text-sm font-medium text-gray-900">1,247</span>
+            <span className="text-sm font-medium text-gray-900">{communityStats.totalPosts}</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-600">활성 사용자</span>
-            <span className="text-sm font-medium text-gray-900">324</span>
+            <span className="text-sm font-medium text-gray-900">{communityStats.activeUsers}</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-600">오늘 새글</span>
-            <span className="text-sm font-medium text-blue-600">12</span>
+            <span className="text-sm font-medium text-blue-600">{communityStats.todayPosts}</span>
           </div>
         </div>
       </div>
