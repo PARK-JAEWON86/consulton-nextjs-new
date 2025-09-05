@@ -191,6 +191,121 @@ export async function PUT(
   }
 }
 
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    await initializeDatabase();
+    
+    const postId = parseInt(params.id);
+    
+    if (isNaN(postId)) {
+      return NextResponse.json(
+        { success: false, message: '유효하지 않은 게시글 ID입니다.' },
+        { status: 400 }
+      );
+    }
+
+    const body = await request.json();
+    const { 
+      title, 
+      content, 
+      categoryId, 
+      tags, 
+      postType,
+      userId,
+      isAnonymous,
+      isPinned
+    } = body;
+
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, message: '사용자 정보가 필요합니다.' },
+        { status: 400 }
+      );
+    }
+
+    // 게시글 조회
+    const post = await CommunityPost.findByPk(postId);
+
+    if (!post) {
+      return NextResponse.json(
+        { success: false, message: '게시글을 찾을 수 없습니다.' },
+        { status: 404 }
+      );
+    }
+
+    // 작성자 확인
+    if (post.userId !== userId) {
+      return NextResponse.json(
+        { success: false, message: '게시글을 수정할 권한이 없습니다.' },
+        { status: 403 }
+      );
+    }
+
+    // 부분 수정을 위한 데이터 준비 (undefined인 필드는 제외)
+    const updateData: any = {
+      updatedAt: new Date()
+    };
+
+    // 각 필드가 존재하고 유효한 경우에만 업데이트
+    if (title !== undefined && title.trim()) {
+      updateData.title = title.trim();
+    }
+
+    if (content !== undefined && content.trim()) {
+      updateData.content = content.trim();
+    }
+
+    if (categoryId !== undefined) {
+      updateData.categoryId = categoryId;
+    }
+
+    if (tags !== undefined) {
+      updateData.tags = Array.isArray(tags) ? tags.join(',') : tags;
+    }
+
+    if (postType !== undefined) {
+      updateData.postType = postType;
+    }
+
+    if (isAnonymous !== undefined) {
+      updateData.isAnonymous = isAnonymous;
+    }
+
+    if (isPinned !== undefined) {
+      updateData.isPinned = isPinned;
+    }
+
+    // 게시글 부분 수정
+    await post.update(updateData);
+
+    return NextResponse.json({
+      success: true,
+      message: '게시글이 부분 수정되었습니다.',
+      data: {
+        id: post.id,
+        title: post.title,
+        content: post.content,
+        categoryId: post.categoryId,
+        tags: post.tags,
+        postType: post.postType,
+        isAnonymous: post.isAnonymous,
+        isPinned: post.isPinned,
+        updatedAt: post.updatedAt
+      }
+    });
+
+  } catch (error) {
+    console.error('게시글 부분 수정 실패:', error);
+    return NextResponse.json(
+      { success: false, message: '게시글 부분 수정에 실패했습니다.' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
