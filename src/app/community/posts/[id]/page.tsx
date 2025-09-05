@@ -96,6 +96,11 @@ export default function PostDetailPage() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   
+  // 댓글 삭제 모달 상태
+  const [showCommentDeleteModal, setShowCommentDeleteModal] = useState(false);
+  const [commentToDelete, setCommentToDelete] = useState<number | null>(null);
+  const [isDeletingComment, setIsDeletingComment] = useState(false);
+  
   // 수정 폼 상태
   const [editForm, setEditForm] = useState({
     title: '',
@@ -259,13 +264,25 @@ export default function PostDetailPage() {
     const loadPost = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch(`/api/community/posts/${params.id}`);
+        
+        // 중복 조회 방지: 세션 스토리지에서 조회 기록 확인
+        const viewHistory = sessionStorage.getItem('postViewHistory') || '';
+        const hasViewed = viewHistory.includes(`post_${params.id}`);
+        
+        // 이미 조회한 게시글이면 조회수 증가 없이 조회
+        const response = await fetch(`/api/community/posts/${params.id}?skipView=${hasViewed}`);
         
         if (response.ok) {
           const result = await response.json();
           if (result.success) {
             setPost(result.data);
             setLikeCount(result.data.likes);
+            
+            // 조회 기록 저장 (세션 스토리지 사용)
+            if (!hasViewed) {
+              const newViewHistory = viewHistory ? `${viewHistory},post_${params.id}` : `post_${params.id}`;
+              sessionStorage.setItem('postViewHistory', newViewHistory);
+            }
           } else {
             setError(result.message || '게시글을 불러올 수 없습니다.');
           }
@@ -301,8 +318,11 @@ export default function PostDetailPage() {
         // 댓글 로드
         const commentsResponse = await fetch(`/api/community/posts/${params.id}/comments`);
         const commentsData = await commentsResponse.json();
+        console.log('댓글 API 응답:', commentsData);
         if (commentsData.success) {
           setComments(commentsData.comments);
+        } else {
+          console.error('댓글 로드 실패:', commentsData.message);
         }
       } catch (error) {
         console.error('좋아요/댓글 로드 중 오류:', error);
@@ -454,42 +474,69 @@ export default function PostDetailPage() {
     }
   };
 
-  // 댓글 삭제 핸들러
-  const handleDeleteComment = async (commentId: number) => {
+  // 댓글 삭제 모달 열기
+  const handleDeleteComment = (commentId: number) => {
     if (!user) {
       alert('로그인이 필요합니다.');
       return;
     }
+    setCommentToDelete(commentId);
+    setShowCommentDeleteModal(true);
+  };
 
-    if (!confirm('댓글을 삭제하시겠습니까?')) {
-      return;
-    }
+  // 댓글 삭제 모달 닫기
+  const handleCloseCommentDeleteModal = () => {
+    setShowCommentDeleteModal(false);
+    setCommentToDelete(null);
+  };
+
+  // 댓글 삭제 확인
+  const handleConfirmCommentDelete = async () => {
+    if (!user || !commentToDelete) return;
+
+    setIsDeletingComment(true);
 
     try {
-      const response = await fetch(`/api/community/posts/${params.id}/comments/${commentId}?userId=${user.id}`, {
+      const response = await fetch(`/api/community/posts/${params.id}/comments/${commentToDelete}?userId=${user.id}`, {
         method: 'DELETE'
       });
 
       const data = await response.json();
       
       if (data.success) {
-        setComments(comments.filter(comment => comment.id !== commentId));
+        setComments(comments.filter(comment => comment.id !== commentToDelete));
         // 게시글의 댓글 수도 업데이트
         if (post) {
           setPost({ ...post, comments: post.comments - 1 });
         }
+        setShowCommentDeleteModal(false);
+        setCommentToDelete(null);
       } else {
         alert(data.message || '댓글 삭제 중 오류가 발생했습니다.');
       }
     } catch (error) {
-      console.error('댓글 삭제 중 오류:', error);
+      console.error('댓글 삭제 실패:', error);
       alert('댓글 삭제 중 오류가 발생했습니다.');
+    } finally {
+      setIsDeletingComment(false);
     }
   };
 
   const handleShare = () => {
     // 공유 로직 구현
     console.log('공유 클릭');
+  };
+
+  // 전문가 프로필 보기 핸들러
+  const handleViewExpertProfile = (expertId: number) => {
+    // 전문가 프로필 페이지로 이동
+    router.push(`/experts/${expertId}`);
+  };
+
+  // 상담예약하기 핸들러
+  const handleBookConsultation = (expertId: number) => {
+    // 상담예약 페이지로 이동 (전문가 ID와 함께)
+    router.push(`/expert-consultation?expertId=${expertId}`);
   };
 
   // 댓글 섹션으로 스크롤하는 핸들러
@@ -774,20 +821,20 @@ export default function PostDetailPage() {
           {/* 댓글 작성 폼 */}
           {user ? (
             <div className="mb-6">
-              <div className="flex gap-3">
+              <div className="flex gap-3 items-start">
                 <div className="flex-1">
                   <textarea
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
                     placeholder="댓글을 작성해주세요..."
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    rows={2}
                   />
                 </div>
                 <button
                   onClick={handleSubmitComment}
                   disabled={isSubmittingComment || !newComment.trim()}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm h-[64px]"
                 >
                   {isSubmittingComment ? '작성 중...' : '댓글 작성'}
                 </button>
@@ -834,11 +881,38 @@ export default function PostDetailPage() {
                           전문가
                         </span>
                       )}
+                      {comment.expertInfo && (
+                        <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">
+                          {comment.expertInfo.specialty}
+                        </span>
+                      )}
+                      {comment.expertInfo && comment.expertInfo.experience && (
+                        <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full">
+                          {comment.expertInfo.experience}년 경력
+                        </span>
+                      )}
                     </div>
                     <p className="text-gray-700 whitespace-pre-wrap">{comment.content}</p>
                   </div>
-                  {user && user.id === comment.author.id && (
-                    <div className="flex-shrink-0">
+                  <div className="flex-shrink-0 flex items-center gap-2">
+                    {/* 전문가 댓글 액션 버튼들 */}
+                    {comment.author.role === 'expert' && post?.postType === 'consultation_request' && (
+                      <>
+                        <button
+                          onClick={() => handleViewExpertProfile(comment.author.id)}
+                          className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                        >
+                          프로필 보기
+                        </button>
+                        <button
+                          onClick={() => handleBookConsultation(comment.author.id)}
+                          className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors"
+                        >
+                          상담예약하기
+                        </button>
+                      </>
+                    )}
+                    {user && user.id === comment.author.id && (
                       <button
                         onClick={() => handleDeleteComment(comment.id)}
                         className="text-gray-400 hover:text-red-500 transition-colors"
@@ -846,8 +920,8 @@ export default function PostDetailPage() {
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               ))
             )}
@@ -976,6 +1050,48 @@ export default function PostDetailPage() {
                   className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                 >
                   {isDeleting ? '삭제 중...' : '삭제하기'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 댓글 삭제 확인 모달 */}
+      {showCommentDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex-shrink-0 w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">댓글 삭제</h3>
+                  <p className="text-sm text-gray-500">이 작업은 되돌릴 수 없습니다.</p>
+                </div>
+              </div>
+
+              <p className="text-gray-700 mb-6">
+                정말로 이 댓글을 삭제하시겠습니까? 삭제된 댓글은 복구할 수 없습니다.
+              </p>
+
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  onClick={handleCloseCommentDeleteModal}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                  disabled={isDeletingComment}
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleConfirmCommentDelete}
+                  disabled={isDeletingComment}
+                  className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isDeletingComment ? '삭제 중...' : '삭제하기'}
                 </button>
               </div>
             </div>

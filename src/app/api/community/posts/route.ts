@@ -12,6 +12,8 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get('sortBy') || 'latest';
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
+    const userId = searchParams.get('userId');
+    const profileMode = searchParams.get('profileMode'); // 'expert' 또는 'client'
     
     // 커뮤니티 게시글 조회
     const whereClause: any = {
@@ -24,6 +26,19 @@ export async function GET(request: NextRequest) {
     
     if (postType && postType !== 'all') {
       whereClause.postType = postType;
+    }
+    
+    if (userId) {
+      whereClause.userId = parseInt(userId);
+      
+      // 프로필 모드에 따라 게시글 타입 필터링
+      if (profileMode === 'expert') {
+        // 전문가 모드: 전문가 소개글만 표시
+        whereClause.postType = 'expert_intro';
+      } else if (profileMode === 'client') {
+        // 사용자 모드: 일반글, 상담요청, 상담후기만 표시 (전문가 소개글 제외)
+        whereClause.postType = ['general', 'consultation_request', 'consultation_review'];
+      }
     }
     
     // 정렬 옵션

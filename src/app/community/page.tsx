@@ -13,6 +13,12 @@ export default function CommunityPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"latest" | "popular" | "comments" | "views">("latest");
   const [postTypeFilter, setPostTypeFilter] = useState<"all" | "consultation_request" | "consultation_review" | "expert_intro" | "general">("all");
+  const [userFilter, setUserFilter] = useState<"all" | "my_posts">("all");
+  const [commentFilter, setCommentFilter] = useState<"all" | "my_comments">("all");
+  const [myComments, setMyComments] = useState<any[]>([]);
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
+  const [refreshStats, setRefreshStats] = useState(0);
+  const [profileMode, setProfileMode] = useState<'expert' | 'client'>('client');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -51,6 +57,12 @@ export default function CommunityPage() {
             if (isAuth) {
               setIsAuthenticated(true);
               setUser(userData);
+              // 사용자 역할에 따라 기본 프로필 모드 설정
+              if (userData.role === 'expert') {
+                setProfileMode('expert');
+              } else {
+                setProfileMode('client'); // 일반 사용자는 항상 client 모드
+              }
               return;
             }
           } catch (error) {
@@ -58,12 +70,21 @@ export default function CommunityPage() {
           }
         }
         
-        // API에서 앱 상태 로드 (백업)
-        const response = await fetch('/api/app-state');
+        // API에서 사용자 정보 로드 (백업)
+        const response = await fetch('/api/auth/me');
         const result = await response.json();
         if (result.success) {
-          setIsAuthenticated(result.data.isAuthenticated);
-          setUser(result.data.user);
+          setIsAuthenticated(true);
+          setUser(result.user);
+          // 사용자 역할에 따라 기본 프로필 모드 설정
+          if (result.user.role === 'expert') {
+            setProfileMode('expert');
+          } else {
+            setProfileMode('client'); // 일반 사용자는 항상 client 모드
+          }
+        } else {
+          setIsAuthenticated(false);
+          setUser(null);
         }
       } catch (error) {
         console.error('인증 상태 확인 실패:', error);
@@ -263,7 +284,8 @@ export default function CommunityPage() {
       if (response.ok) {
         const result = await response.json();
         if (result.success) {
-          // 게시글 작성 성공 시 목록 새로고침
+          // 게시글 작성 성공 시 목록 새로고침 및 통계 업데이트
+          setRefreshStats(prev => prev + 1);
           window.location.reload();
         } else {
           alert('게시글 작성에 실패했습니다: ' + result.message);
@@ -310,7 +332,9 @@ export default function CommunityPage() {
           postType: postTypeFilter === 'all' ? '' : postTypeFilter,
           sortBy: sortBy,
           page: currentPage.toString(),
-          limit: postsPerPage.toString()
+          limit: postsPerPage.toString(),
+          userId: userFilter === 'my_posts' && user ? user.id.toString() : '',
+          profileMode: userFilter === 'my_posts' && user && user.role === 'expert' ? profileMode : ''
         });
         
         const response = await fetch(`/api/community/posts?${params}`);
@@ -338,7 +362,7 @@ export default function CommunityPage() {
     };
 
     loadPosts();
-  }, [activeTab, postTypeFilter, sortBy, currentPage]);
+  }, [activeTab, postTypeFilter, sortBy, currentPage, userFilter, user, profileMode]);
 
 
   // API에서 이미 필터링 및 정렬된 게시글 사용
@@ -375,6 +399,69 @@ export default function CommunityPage() {
     setCurrentPage(1);
   };
 
+  // 내가 쓴 글 필터 핸들러
+  const handleMyPostsClick = () => {
+    if (!isAuthenticated) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+    setUserFilter(userFilter === 'my_posts' ? 'all' : 'my_posts');
+    setCommentFilter('all'); // 댓글 필터 초기화
+    setCurrentPage(1);
+  };
+
+  // 내가 쓴 댓글 필터 핸들러
+  const handleMyCommentsClick = () => {
+    if (!isAuthenticated) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+    setCommentFilter(commentFilter === 'my_comments' ? 'all' : 'my_comments');
+    setUserFilter('all'); // 게시글 필터 초기화
+    setCurrentPage(1);
+  };
+
+  // 프로필 모드 변경 핸들러 (전문가만 가능)
+  const handleProfileModeChange = (mode: 'expert' | 'client') => {
+    // 전문가가 아닌 경우 모드 변경 불가
+    if (user?.role !== 'expert') {
+      console.log('전문가가 아니므로 모드 변경 불가');
+      return;
+    }
+    setProfileMode(mode);
+  };
+
+  // 내가 쓴 댓글 로드
+  useEffect(() => {
+    const loadMyComments = async () => {
+      if (commentFilter !== 'my_comments' || !user) return;
+      
+      try {
+        setIsLoadingComments(true);
+        const response = await fetch(`/api/community/comments?userId=${user.id}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            setMyComments(data.comments || []);
+          } else {
+            console.error('댓글 로드 실패:', data.message);
+            setMyComments([]);
+          }
+        } else {
+          console.error('댓글 API 호출 실패:', response.status);
+          setMyComments([]);
+        }
+      } catch (error) {
+        console.error('댓글 로드 실패:', error);
+        setMyComments([]);
+      } finally {
+        setIsLoadingComments(false);
+      }
+    };
+
+    loadMyComments();
+  }, [commentFilter, user]);
+
   // 사이드바 토글 핸들러
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -399,12 +486,6 @@ export default function CommunityPage() {
           </div>
           <p className="text-gray-600">
             다른 사용자들과 경험을 공유하고 소통하세요.
-            {postTypeFilter === "consultation_request" && (
-              <span className="block mt-2 text-orange-600 font-medium">
-                💼 상담요청 목록입니다. 상담 제안 버튼을 클릭하여 고객과 연결되세요.
-              </span>
-            )}
-
           </p>
         </div>
 
@@ -430,6 +511,13 @@ export default function CommunityPage() {
                 isAuthenticated={isAuthenticated}
                 user={user}
                 communityStats={communityStats}
+                onMyPostsClick={handleMyPostsClick}
+                isMyPostsActive={userFilter === 'my_posts'}
+                onMyCommentsClick={handleMyCommentsClick}
+                isMyCommentsActive={commentFilter === 'my_comments'}
+                refreshStats={refreshStats}
+                profileMode={profileMode}
+                onProfileModeChange={handleProfileModeChange}
               />
           </div>
 
@@ -476,6 +564,19 @@ export default function CommunityPage() {
                     isAuthenticated={isAuthenticated}
                     user={user}
                     communityStats={communityStats}
+                    onMyPostsClick={() => {
+                      handleMyPostsClick();
+                      closeSidebar(); // 내가 쓴 글 클릭 후 사이드바 닫기
+                    }}
+                    isMyPostsActive={userFilter === 'my_posts'}
+                    onMyCommentsClick={() => {
+                      handleMyCommentsClick();
+                      closeSidebar(); // 내가 쓴 댓글 클릭 후 사이드바 닫기
+                    }}
+                    isMyCommentsActive={commentFilter === 'my_comments'}
+                    refreshStats={refreshStats}
+                    profileMode={profileMode}
+                    onProfileModeChange={handleProfileModeChange}
                   />
                 </div>
               </div>
@@ -566,7 +667,74 @@ export default function CommunityPage() {
             </div>
 
             <div className="space-y-3">
-              {filteredPosts.length === 0 ? (
+              {commentFilter === 'my_comments' ? (
+                // 댓글 목록 표시
+                isLoadingComments ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+                      <p className="text-gray-600">댓글을 불러오는 중...</p>
+                    </div>
+                  </div>
+                ) : myComments.length === 0 ? (
+                  <div className="text-center py-16">
+                    <div className="text-gray-400 mb-6">
+                      <MessageSquare className="h-16 w-16 mx-auto" />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      아직 작성한 댓글이 없습니다
+                    </h3>
+                    <p className="text-gray-500 mb-6">
+                      다른 사용자의 게시글에 댓글을 작성해보세요!
+                    </p>
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                    {/* 댓글 목록 헤더 */}
+                    <div className="bg-gray-50 border-b border-gray-200">
+                      <div className="grid grid-cols-12 gap-3 px-4 py-3 text-sm font-medium text-gray-700">
+                        <div className="col-span-1 text-center">번호</div>
+                        <div className="col-span-6">댓글 내용</div>
+                        <div className="col-span-2 text-center">게시글 제목</div>
+                        <div className="col-span-2 text-center">작성일</div>
+                        <div className="col-span-1 text-center">작성자</div>
+                      </div>
+                    </div>
+                    
+                    {/* 댓글 목록 바디 */}
+                    <div className="divide-y divide-gray-200">
+                      {myComments.map((comment, index) => (
+                        <div key={comment.id} className="grid grid-cols-12 gap-3 px-4 py-3 hover:bg-gray-50">
+                          <div className="col-span-1 text-center text-sm text-gray-500">
+                            {myComments.length - index}
+                          </div>
+                          <div className="col-span-6 text-sm text-gray-900 line-clamp-2">
+                            {comment.content}
+                          </div>
+                          <div className="col-span-2 text-center text-sm text-gray-600">
+                            <button 
+                              onClick={() => window.location.href = `/community/posts/${comment.postId}`}
+                              className="hover:text-blue-600 hover:underline truncate block w-full"
+                              title={comment.postTitle}
+                            >
+                              {comment.postTitle?.length > 20 
+                                ? `${comment.postTitle.substring(0, 20)}...` 
+                                : comment.postTitle
+                              }
+                            </button>
+                          </div>
+                          <div className="col-span-2 text-center text-sm text-gray-500">
+                            {new Date(comment.createdAt).toLocaleDateString()}
+                          </div>
+                          <div className="col-span-1 text-center text-sm text-gray-600">
+                            {comment.author?.name || '익명'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              ) : filteredPosts.length === 0 ? (
                 <div className="text-center py-16">
                   <div className="text-gray-400 mb-6">
                     <MessageSquare className="h-16 w-16 mx-auto" />

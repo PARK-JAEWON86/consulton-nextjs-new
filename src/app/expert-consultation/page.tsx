@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Calendar,
   Clock,
@@ -55,6 +55,7 @@ interface FavoriteExpert {
 
 export default function ExpertConsultationPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [consultations, setConsultations] = useState<ConsultationSession[]>([]);
   const [selectedConsultation, setSelectedConsultation] = useState<ConsultationSession | null>(null);
   const [isSessionActive, setIsSessionActive] = useState(false);
@@ -66,6 +67,17 @@ export default function ExpertConsultationPage() {
 
   // 즐겨찾기 전문가 데이터 (실제 API 연동 필요)
   const [favoriteExperts, setFavoriteExperts] = useState<FavoriteExpert[]>([]);
+
+  // URL 파라미터에서 전문가 ID 처리
+  useEffect(() => {
+    const expertId = searchParams.get('expertId');
+    if (expertId) {
+      // 전문가 ID가 있으면 해당 전문가를 선택된 상태로 설정
+      setSelectedExpert(expertId);
+      // 전문가 정보를 로드하는 로직 추가 가능
+      console.log('선택된 전문가 ID:', expertId);
+    }
+  }, [searchParams]);
 
   // 카테고리 데이터 로드
   useEffect(() => {

@@ -10,6 +10,8 @@ export async function GET(
     await initializeDatabase();
     
     const postId = parseInt(params.id);
+    const { searchParams } = new URL(request.url);
+    const skipView = searchParams.get('skipView') === 'true';
     
     if (isNaN(postId)) {
       return NextResponse.json(
@@ -18,7 +20,7 @@ export async function GET(
       );
     }
 
-    // 게시글 조회 (조회수 증가)
+    // 게시글 조회
     const post = await CommunityPost.findByPk(postId, {
       include: [
         {
@@ -49,27 +51,30 @@ export async function GET(
       );
     }
 
-    // 조회수 증가
-    await post.increment('views');
+    // 조회수 증가 (중복 조회가 아닌 경우에만)
+    if (!skipView) {
+      await post.increment('views');
+    }
 
-    // 게시글 데이터 변환
+    // 게시글 데이터 변환 (include로 가져온 데이터는 any 타입으로 처리)
+    const postData = post as any;
     const formattedPost = {
       id: post.id.toString(),
       title: post.title,
       content: post.content,
-      category: post.category?.name || '기타',
+      category: postData.category?.name || '기타',
       categoryId: post.categoryId?.toString() || '1',
       postType: post.postType,
       author: {
         id: post.userId || 0,
-        name: post.isAnonymous ? '익명' : (post.user?.name || '사용자'),
-        avatar: post.isAnonymous ? null : (post.user?.profileImage || null)
+        name: post.isAnonymous ? '익명' : (postData.user?.name || '사용자'),
+        avatar: post.isAnonymous ? null : (postData.user?.profileImage || null)
       },
-      authorAvatar: post.isAnonymous ? null : (post.user?.profileImage || null),
+      authorAvatar: post.isAnonymous ? null : (postData.user?.profileImage || null),
       expert: null,
       likes: post.likes,
       comments: post.comments,
-      views: post.views + 1, // 증가된 조회수
+      views: skipView ? post.views : post.views + 1, // 조회수 증가 여부에 따라 표시
       tags: post.tags || [],
       createdAt: post.createdAt,
       updatedAt: post.updatedAt,
@@ -78,7 +83,7 @@ export async function GET(
       isAnonymous: post.isAnonymous,
       consultation: null,
       // 추가 필드들
-      isExpert: post.user?.role === 'expert',
+      isExpert: postData.user?.role === 'expert',
       profileVisibility: 'experts' as const,
       urgency: post.postType === 'consultation_request' ? '보통' : undefined,
       preferredMethod: post.postType === 'consultation_request' ? '화상상담' : undefined,

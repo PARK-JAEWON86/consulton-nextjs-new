@@ -33,7 +33,7 @@ export async function GET(
     const comments = await CommunityComment.findAll({
       where: {
         postId: postId,
-        status: 'published'
+        status: 'active'
       },
       include: [
         {
@@ -44,6 +44,9 @@ export async function GET(
       ],
       order: [['createdAt', 'ASC']]
     });
+
+    console.log(`게시글 ${postId}의 댓글 조회 결과:`, comments.length, '개');
+    console.log('댓글 데이터:', comments.map(c => ({ id: c.id, content: c.content, status: c.status })));
 
     // 댓글 포맷팅
     const formattedComments = comments.map((comment: any) => ({
@@ -56,9 +59,16 @@ export async function GET(
         role: comment.user?.role || 'user'
       },
       isAnonymous: comment.isAnonymous,
+      expertInfo: comment.user?.role === 'expert' ? {
+        specialty: comment.expertSpecialty,
+        level: comment.expertLevel,
+        experience: comment.expertExperience
+      } : null,
       createdAt: comment.createdAt,
       updatedAt: comment.updatedAt
     }));
+
+    console.log('포맷팅된 댓글:', formattedComments);
 
     return NextResponse.json({
       success: true,
@@ -91,7 +101,7 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { content, userId, isAnonymous = false } = body;
+    const { content, userId, isAnonymous = false, expertSpecialty, expertLevel, expertExperience } = body;
 
     if (!content || !userId) {
       return NextResponse.json(
@@ -109,20 +119,35 @@ export async function POST(
       );
     }
 
-    // 댓글 생성
-    const comment = await CommunityComment.create({
+    // 사용자 정보 조회 (전문가 여부 확인)
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: "사용자를 찾을 수 없습니다." },
+        { status: 404 }
+      );
+    }
+
+    // 댓글 생성 데이터 준비
+    const commentData: any = {
       postId: postId,
       userId: userId,
       content: content,
       isAnonymous: isAnonymous,
-      status: 'published'
-    });
+      status: 'active'
+    };
+
+    // 전문가인 경우 전문가 정보 추가
+    if (user.role === 'expert') {
+      commentData.expertSpecialty = expertSpecialty;
+      commentData.expertLevel = expertLevel;
+      commentData.expertExperience = expertExperience;
+    }
+
+    const comment = await CommunityComment.create(commentData);
 
     // 게시글의 댓글 수 증가
     await post.increment('comments');
-
-    // 사용자 정보 조회
-    const user = await User.findByPk(userId);
 
     return NextResponse.json({
       success: true,

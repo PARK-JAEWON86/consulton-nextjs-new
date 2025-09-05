@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Image, Link, Hash, HelpCircle, Star, Award, MessageSquare } from "lucide-react";
+import { X, Hash, HelpCircle, Star, Award, MessageSquare } from "lucide-react";
 
 interface PostData {
   title: string;
@@ -346,30 +346,6 @@ const CreatePostModal = ({
             </p>
           </div>
 
-          {/* 첨부 기능 (향후 확장용) */}
-          <div className="border-t border-gray-200 pt-4">
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
-                disabled
-              >
-                <Image className="h-4 w-4" />
-                <span className="text-sm">이미지 첨부</span>
-              </button>
-              <button
-                type="button"
-                className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
-                disabled
-              >
-                <Link className="h-4 w-4" />
-                <span className="text-sm">링크 첨부</span>
-              </button>
-              <span className="text-xs text-gray-400 ml-auto">
-                곧 출시 예정
-              </span>
-            </div>
-          </div>
         </form>
 
         {/* 푸터 */}

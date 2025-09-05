@@ -53,6 +53,10 @@ export async function GET(request: NextRequest) {
       createdAt: user.createdAt,
       expert: user.expert ? {
         id: user.expert.id,
+        specialty: user.expert.specialty,
+        level: user.expert.level,
+        experience: user.expert.experience,
+        rating: user.expert.rating,
         profile: user.expert.profile
       } : null
     };

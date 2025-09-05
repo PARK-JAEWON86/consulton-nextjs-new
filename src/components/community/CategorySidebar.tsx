@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { TrendingUp, User, MessageCircle, Heart, Edit3, ChevronDown, ChevronUp, UserCheck, Briefcase, LogIn } from "lucide-react";
+import { TrendingUp, User, MessageCircle, Heart, MessageSquare, ChevronDown, ChevronUp, UserCheck, Briefcase, LogIn, ToggleLeft, ToggleRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface User {
@@ -11,6 +11,22 @@ interface User {
   credits: number;
   expertLevel: string;
   role?: 'expert' | 'client' | 'admin';
+  postCount?: number;
+  receivedLikes?: number;
+  commentCount?: number;
+  expert?: {
+    id: number;
+    specialty: string;
+    level: number;
+    experience: number;
+    rating: number;
+  };
+}
+
+interface UserStats {
+  postCount: number;
+  commentCount: number;
+  receivedLikes: number;
 }
 
 interface AppState {
@@ -32,12 +48,19 @@ interface CategorySidebarProps {
   onTagClick?: (tag: string) => void;
   onCreatePost?: () => void;
   isAuthenticated?: boolean;
-  user?: User | null;
+  user?: any;
   communityStats?: {
     totalPosts: number;
     activeUsers: number;
     todayPosts: number;
   };
+  onMyPostsClick?: () => void;
+  isMyPostsActive?: boolean;
+  onMyCommentsClick?: () => void;
+  isMyCommentsActive?: boolean;
+  refreshStats?: number;
+  profileMode?: 'expert' | 'client';
+  onProfileModeChange?: (mode: 'expert' | 'client') => void;
 }
 
 const CategorySidebar = ({
@@ -50,12 +73,27 @@ const CategorySidebar = ({
   isAuthenticated: isAuthenticatedProp,
   user: userProp,
   communityStats = { totalPosts: 0, activeUsers: 0, todayPosts: 0 },
+  onMyPostsClick,
+  isMyPostsActive = false,
+  onMyCommentsClick,
+  isMyCommentsActive = false,
+  refreshStats = 0,
+  profileMode = 'client',
+  onProfileModeChange,
 }: CategorySidebarProps) => {
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [appState, setAppState] = useState<AppState>({
     isAuthenticated: false,
     user: null
   });
+
+  const [userStats, setUserStats] = useState<UserStats>({
+    postCount: 0,
+    commentCount: 0,
+    receivedLikes: 0
+  });
+  const [isLoadingStats, setIsLoadingStats] = useState(false);
+
   const router = useRouter();
 
   // 앱 상태 로드
@@ -153,6 +191,34 @@ const CategorySidebar = ({
   // props로 전달받은 인증 상태를 우선적으로 사용, 없으면 내부 상태 사용
   const isAuthenticated = isAuthenticatedProp !== undefined ? isAuthenticatedProp : appState.isAuthenticated;
   const user = userProp || appState.user;
+
+  // 사용자 통계 로드
+  useEffect(() => {
+    const loadUserStats = async () => {
+      if (!user?.id) return;
+      
+      try {
+        setIsLoadingStats(true);
+        console.log('사용자 통계 로드 시도:', user.id, '프로필 모드:', profileMode);
+        const response = await fetch(`/api/user/stats?userId=${user.id}&profileMode=${profileMode}`);
+        console.log('사용자 통계 응답:', response.status);
+        if (response.ok) {
+          const data = await response.json();
+          console.log('사용자 통계 데이터:', data);
+          if (data.success) {
+            console.log('설정할 통계 데이터:', data.data);
+            setUserStats(data.data);
+          }
+        }
+      } catch (error) {
+        console.error('사용자 통계 로드 실패:', error);
+      } finally {
+        setIsLoadingStats(false);
+      }
+    };
+
+    loadUserStats();
+  }, [user?.id, refreshStats, profileMode]);
   
   // 상위 7개 카테고리 (전체 포함)
   const visibleCategories = showAllCategories ? categories : categories.slice(0, 7);
@@ -161,7 +227,11 @@ const CategorySidebar = ({
   return (
     <div className="w-full lg:w-72 flex-shrink-0 space-y-4">
       {/* 개인 프로필 */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div className={`rounded-lg shadow-sm border p-4 ${
+        profileMode === 'expert' 
+          ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200' 
+          : 'bg-white border-gray-200'
+      }`}>
         {isAuthenticated ? (
           <>
             <div className="flex items-center gap-3 mb-4">
@@ -170,34 +240,72 @@ const CategorySidebar = ({
               </div>
               <div className="flex-1">
                 <h3 className="font-semibold text-gray-900">{user?.name || "사용자"}</h3>
-                <p className="text-sm text-gray-500">활성 멤버</p>
+                {profileMode === 'expert' ? (
+                  <div className="text-sm text-gray-500">
+                    <p className="font-medium text-blue-600">전문가</p>
+                    {user?.expert ? (
+                      <p className="text-xs text-gray-400">{user.expert.specialty} • 레벨 {user.expert.level}</p>
+                    ) : (
+                      <p className="text-xs text-gray-400">전문가 정보 없음</p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">회원</p>
+                )}
               </div>
-              <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors">
-                <Edit3 className="h-4 w-4" />
-              </button>
+              {user?.role === 'expert' && onProfileModeChange && (
+                <button
+                  onClick={() => {
+                    const newMode = profileMode === 'expert' ? 'client' : 'expert';
+                    onProfileModeChange(newMode);
+                  }}
+                  className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                  title={profileMode === 'expert' ? '사용자 모드로 전환' : '전문가 모드로 전환'}
+                >
+                  {profileMode === 'expert' ? (
+                    <UserCheck className="h-4 w-4" />
+                  ) : (
+                    <Briefcase className="h-4 w-4" />
+                  )}
+                </button>
+              )}
             </div>
             
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              <div className="text-center">
-                <div className="flex items-center justify-center w-8 h-8 bg-blue-50 rounded-lg mx-auto mb-1">
-                  <MessageCircle className="h-4 w-4 text-blue-600" />
-                </div>
-                <p className="text-xs font-medium text-gray-900">23</p>
-                <p className="text-xs text-gray-500">게시글</p>
+            <div className={`flex items-center justify-center gap-2 mb-4 px-2 ${
+              profileMode === 'expert' 
+                ? 'bg-white/50 rounded-lg py-2' 
+                : ''
+            }`}>
+              <div 
+                className={`cursor-pointer transition-colors ${
+                  isMyPostsActive 
+                    ? 'text-blue-600 font-medium' 
+                    : 'text-gray-600 hover:text-blue-600'
+                }`}
+                onClick={onMyPostsClick}
+                title="내가 쓴 글 보기"
+              >
+                <span className="text-sm">내가 쓴 글</span>
+                <span className="ml-1 text-sm font-medium">
+                  {isLoadingStats ? '...' : userStats.postCount}
+                </span>
               </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center w-8 h-8 bg-red-50 rounded-lg mx-auto mb-1">
-                  <Heart className="h-4 w-4 text-red-600" />
-                </div>
-                <p className="text-xs font-medium text-gray-900">156</p>
-                <p className="text-xs text-gray-500">받은 좋아요</p>
-              </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center w-8 h-8 bg-green-50 rounded-lg mx-auto mb-1">
-                  <User className="h-4 w-4 text-green-600" />
-                </div>
-                <p className="text-xs font-medium text-gray-900">89</p>
-                <p className="text-xs text-gray-500">팔로워</p>
+              
+              <div className="w-px h-4 bg-gray-300"></div>
+              
+              <div 
+                className={`cursor-pointer transition-colors ${
+                  isMyCommentsActive 
+                    ? 'text-green-600 font-medium' 
+                    : 'text-gray-600 hover:text-green-600'
+                }`}
+                onClick={onMyCommentsClick}
+                title="내가 쓴 댓글 보기"
+              >
+                <span className="text-sm">내가 쓴 댓글</span>
+                <span className="ml-1 text-sm font-medium">
+                  {isLoadingStats ? '...' : userStats.commentCount}
+                </span>
               </div>
             </div>
             

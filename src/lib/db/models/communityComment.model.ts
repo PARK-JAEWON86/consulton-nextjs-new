@@ -15,12 +15,15 @@ export interface CommunityCommentAttributes {
   likes: number; // 좋아요 수
   depth: number; // 댓글 깊이 (0: 최상위, 1: 대댓글)
   order: number; // 댓글 순서 (같은 depth 내에서)
+  expertSpecialty?: string; // 전문가 전문분야 (전문가 댓글인 경우)
+  expertLevel?: 'junior' | 'senior' | 'expert' | 'master'; // 전문가 레벨
+  expertExperience?: number; // 전문가 경력 (년)
   createdAt: Date;
   updatedAt: Date;
 }
 
 // 생성 시 선택적 속성
-export interface CommunityCommentCreationAttributes extends Optional<CommunityCommentAttributes, 'id' | 'parentId' | 'isAnonymous' | 'likes' | 'depth' | 'order' | 'createdAt' | 'updatedAt'> {}
+export interface CommunityCommentCreationAttributes extends Optional<CommunityCommentAttributes, 'id' | 'parentId' | 'isAnonymous' | 'likes' | 'depth' | 'order' | 'expertSpecialty' | 'expertLevel' | 'expertExperience' | 'createdAt' | 'updatedAt'> {}
 
 // 커뮤니티 댓글 모델 클래스
 export class CommunityComment extends Model<CommunityCommentAttributes, CommunityCommentCreationAttributes> implements CommunityCommentAttributes {
@@ -34,6 +37,9 @@ export class CommunityComment extends Model<CommunityCommentAttributes, Communit
   public likes!: number;
   public depth!: number;
   public order!: number;
+  public expertSpecialty?: string;
+  public expertLevel?: 'junior' | 'senior' | 'expert' | 'master';
+  public expertExperience?: number;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 
@@ -108,6 +114,21 @@ CommunityComment.init(
       defaultValue: 0,
       comment: '댓글 순서 (같은 depth 내에서)',
     },
+    expertSpecialty: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      comment: '전문가 전문분야 (전문가 댓글인 경우에만 사용)',
+    },
+    expertLevel: {
+      type: DataTypes.ENUM('junior', 'senior', 'expert', 'master'),
+      allowNull: true,
+      comment: '전문가 레벨 (전문가 댓글인 경우에만 사용)',
+    },
+    expertExperience: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      comment: '전문가 경력 (년) (전문가 댓글인 경우에만 사용)',
+    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -129,6 +150,8 @@ CommunityComment.init(
       { fields: ['status'] },
       { fields: ['depth'] },
       { fields: ['order'] },
+      { fields: ['expertSpecialty'] },
+      { fields: ['expertLevel'] },
       { fields: ['createdAt'] },
     ],
   }
