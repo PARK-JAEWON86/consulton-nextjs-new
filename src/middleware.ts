@@ -41,6 +41,16 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // 공개 리뷰 조회는 인증 없이 허용
+  if (pathname.startsWith('/api/reviews') && request.nextUrl.searchParams.get('isPublic') === 'true') {
+    return NextResponse.next();
+  }
+
+  // 전문가 프로필 조회는 공개 허용
+  if (pathname.startsWith('/api/expert-profiles')) {
+    return NextResponse.next();
+  }
+
   // 인증이 필요한 경로인지 확인
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
   const isExpertOnlyRoute = expertOnlyRoutes.some(route => pathname.startsWith(route));

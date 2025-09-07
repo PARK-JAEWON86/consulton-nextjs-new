@@ -1,7 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Expert, User, Consultation, Review } from '@/lib/db/models';
+import { Expert, User, Consultation, Review, ExpertProfile } from '@/lib/db/models';
 import { initializeDatabase } from '@/lib/db/init';
 import { getAuthenticatedUser } from '@/lib/auth';
+import { calculateRankingScore } from '@/utils/rankingCalculator';
+
+// 랭킹 점수를 레벨로 변환하는 함수 (expert-levels API와 동일)
+const calculateLevelByScore = (rankingScore: number = 0): number => {
+  if (rankingScore >= 950) return 999;
+  if (rankingScore >= 900) return Math.floor(900 + (rankingScore - 900) * 2);
+  if (rankingScore >= 850) return Math.floor(800 + (rankingScore - 850) * 2);
+  if (rankingScore >= 800) return Math.floor(700 + (rankingScore - 800) * 2);
+  if (rankingScore >= 750) return Math.floor(600 + (rankingScore - 750) * 2);
+  if (rankingScore >= 700) return Math.floor(500 + (rankingScore - 700) * 2);
+  if (rankingScore >= 650) return Math.floor(400 + (rankingScore - 650) * 2);
+  if (rankingScore >= 600) return Math.floor(300 + (rankingScore - 600) * 2);
+  if (rankingScore >= 550) return Math.floor(200 + (rankingScore - 550) * 2);
+  if (rankingScore >= 500) return Math.floor(100 + (rankingScore - 500));
+  return Math.max(1, Math.floor(rankingScore / 5));
+};
 
 // ExpertStats 인터페이스 정의
 interface ExpertStats {
@@ -32,14 +48,7 @@ interface ExpertStats {
   specialtyTotalExperts?: number;
 }
 
-// 랭킹 점수 계산 함수
-const calculateRankingScore = (stats: ExpertStats): number => {
-  return Math.round(
-    (stats.avgRating * 20) + // 평점 기반 (0-100)
-    (stats.totalSessions * 2) + // 상담 수 기반 (0-200)
-    (stats.reviewCount * 1) // 리뷰 수 기반 (0-100)
-  );
-};
+// 공식 랭킹 점수 계산 함수는 utils/rankingCalculator.ts에서 import
 
 // GET: 전문가 통계 정보 조회
 export async function GET(request: NextRequest) {
@@ -60,6 +69,12 @@ export async function GET(request: NextRequest) {
             as: 'user',
             required: false,
             attributes: ['id', 'name', 'email']
+          },
+          {
+            model: ExpertProfile,
+            as: 'profile',
+            required: false,
+            attributes: ['level', 'totalSessions', 'avgRating', 'reviewCount']
           }
         ]
       });
@@ -96,13 +111,14 @@ export async function GET(request: NextRequest) {
         1: reviews.filter(r => r.rating === 1).length
       };
 
-      // 랭킹 점수 계산 (간단한 공식)
-      const rankingScore = Math.round(
-        (avgRating * 20) + // 평점 기반 (0-100)
-        (totalSessions * 2) + // 상담 수 기반 (0-200)
-        (completedSessions * 3) + // 완료된 상담 기반 (0-300)
-        (reviews.length * 1) // 리뷰 수 기반 (0-100)
-      );
+      // 공식 랭킹 점수 계산
+      const rankingScore = calculateRankingScore({
+        totalSessions,
+        avgRating,
+        reviewCount: reviews.length,
+        repeatClients: 0, // 재방문 고객 데이터가 없으면 0
+        likeCount: reviews.reduce((sum, review) => sum + (review.helpfulCount || 0), 0)
+      });
 
       const stats: ExpertStats = {
         expertId: expert.id.toString(),
@@ -115,7 +131,9 @@ export async function GET(request: NextRequest) {
         ratingDistribution,
         specialty: expert.specialty || '일반',
         lastUpdated: new Date().toISOString(),
-        rankingScore
+        rankingScore,
+        // 랭킹점수를 기반으로 실시간 레벨 계산
+        level: calculateLevelByScore(rankingScore)
       };
 
       // 랭킹 정보 포함 여부에 따라 응답 구성
@@ -136,12 +154,13 @@ export async function GET(request: NextRequest) {
             
             return {
               expertId: exp.id,
-              score: Math.round(
-                (expAvgRating * 20) +
-                (expConsultations.length * 2) +
-                (expConsultations.filter(c => c.status === 'completed').length * 3) +
-                (expReviews.length * 1)
-              )
+              score: calculateRankingScore({
+                totalSessions: expConsultations.length,
+                avgRating: expAvgRating,
+                reviewCount: expReviews.length,
+                repeatClients: 0, // 재방문 고객 데이터가 없으면 0
+                likeCount: expReviews.reduce((sum, review) => sum + (review.helpfulCount || 0), 0)
+              })
             };
           })
         );
@@ -167,6 +186,12 @@ export async function GET(request: NextRequest) {
             as: 'user',
             required: false,
             attributes: ['id', 'name', 'email']
+          },
+          {
+            model: ExpertProfile,
+            as: 'profile',
+            required: false,
+            attributes: ['level', 'totalSessions', 'avgRating', 'reviewCount']
           }
         ]
       });
@@ -183,12 +208,13 @@ export async function GET(request: NextRequest) {
           const avgRating = reviews.length > 0 ? 
             reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length : 0;
 
-          const rankingScore = Math.round(
-            (avgRating * 20) +
-            (consultations.length * 2) +
-            (consultations.filter(c => c.status === 'completed').length * 3) +
-            (reviews.length * 1)
-          );
+          const rankingScore = calculateRankingScore({
+            totalSessions: consultations.length,
+            avgRating,
+            reviewCount: reviews.length,
+            repeatClients: 0, // 재방문 고객 데이터가 없으면 0
+            likeCount: reviews.reduce((sum, review) => sum + (review.helpfulCount || 0), 0)
+          });
 
           return {
             expertId: expert.id.toString(),
@@ -207,7 +233,9 @@ export async function GET(request: NextRequest) {
             },
             specialty: expert.specialty || '일반',
             lastUpdated: new Date().toISOString(),
-            rankingScore
+            rankingScore,
+            // 프로필에서 레벨 가져오기
+            level: (expert as any).profile?.level || 1
           };
         })
       );
@@ -244,6 +272,12 @@ export async function GET(request: NextRequest) {
             as: 'user',
             required: false,
             attributes: ['id', 'name', 'email']
+          },
+          {
+            model: ExpertProfile,
+            as: 'profile',
+            required: false,
+            attributes: ['level', 'totalSessions', 'avgRating', 'reviewCount']
           }
         ]
       });
@@ -260,12 +294,13 @@ export async function GET(request: NextRequest) {
           const avgRating = reviews.length > 0 ? 
             reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length : 0;
 
-          const rankingScore = Math.round(
-            (avgRating * 20) +
-            (consultations.length * 2) +
-            (consultations.filter(c => c.status === 'completed').length * 3) +
-            (reviews.length * 1)
-          );
+          const rankingScore = calculateRankingScore({
+            totalSessions: consultations.length,
+            avgRating,
+            reviewCount: reviews.length,
+            repeatClients: 0, // 재방문 고객 데이터가 없으면 0
+            likeCount: reviews.reduce((sum, review) => sum + (review.helpfulCount || 0), 0)
+          });
 
           return {
             expertId: expert.id.toString(),
@@ -284,7 +319,9 @@ export async function GET(request: NextRequest) {
             },
             specialty: expert.specialty || '일반',
             lastUpdated: new Date().toISOString(),
-            rankingScore
+            rankingScore,
+            // 프로필에서 레벨 가져오기
+            level: (expert as any).profile?.level || 1
           };
         })
       );
@@ -313,6 +350,12 @@ export async function GET(request: NextRequest) {
             as: 'user',
             required: false,
             attributes: ['id', 'name', 'email']
+          },
+          {
+            model: ExpertProfile,
+            as: 'profile',
+            required: false,
+            attributes: ['level', 'totalSessions', 'avgRating', 'reviewCount']
           }
         ]
       });
@@ -329,12 +372,13 @@ export async function GET(request: NextRequest) {
           const avgRating = reviews.length > 0 ? 
             reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length : 0;
 
-          const rankingScore = Math.round(
-            (avgRating * 20) +
-            (consultations.length * 2) +
-            (consultations.filter(c => c.status === 'completed').length * 3) +
-            (reviews.length * 1)
-          );
+          const rankingScore = calculateRankingScore({
+            totalSessions: consultations.length,
+            avgRating,
+            reviewCount: reviews.length,
+            repeatClients: 0, // 재방문 고객 데이터가 없으면 0
+            likeCount: reviews.reduce((sum, review) => sum + (review.helpfulCount || 0), 0)
+          });
 
           return {
             expertId: expert.id.toString(),
@@ -353,7 +397,9 @@ export async function GET(request: NextRequest) {
             },
             specialty: expert.specialty || '일반',
             lastUpdated: new Date().toISOString(),
-            rankingScore
+            rankingScore,
+            // 프로필에서 레벨 가져오기
+            level: (expert as any).profile?.level || 1
           };
         })
       );

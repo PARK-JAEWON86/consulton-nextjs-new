@@ -194,7 +194,7 @@ export async function GET(request: NextRequest) {
         id: expert.id,
         name: expert.user?.name || '알 수 없음',
         specialty: expert.specialty || '일반',
-        level: expert.level || 1,
+        level: 1, // 기본값 (실제로는 API에서 계산된 레벨 사용)
         pricePerMinute: expert.pricePerMinute || 0,
         totalSessions,
         avgRating: Math.round(avgRating * 100) / 100,

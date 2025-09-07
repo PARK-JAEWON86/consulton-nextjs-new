@@ -347,7 +347,7 @@ export default function ExpertConsultationSessionsPage() {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">평균 평점</p>
                   <p className="text-2xl font-semibold text-gray-900">
-                    {stats.averageRating > 0 ? stats.averageRating.toFixed(1) : "0.0"}
+                    {stats.averageRating > 0 ? Number(stats.averageRating).toFixed(1) : "0.0"}
                   </p>
                 </div>
               </div>

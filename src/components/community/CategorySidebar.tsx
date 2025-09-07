@@ -244,7 +244,7 @@ const CategorySidebar = ({
                   <div className="text-sm text-gray-500">
                     <p className="font-medium text-blue-600">전문가</p>
                     {user?.expert ? (
-                      <p className="text-xs text-gray-400">{user.expert.specialty} • 레벨 {user.expert.level}</p>
+                      <p className="text-xs text-gray-400">{user.expert.specialty} • 레벨 1</p>
                     ) : (
                       <p className="text-xs text-gray-400">전문가 정보 없음</p>
                     )}

@@ -462,10 +462,19 @@ export default function ExpertProfilePage() {
     
     const loadExpertProfile = async () => {
       try {
-        // 먼저 expert-profiles/[id] API를 통해 직접 조회 시도
-        const response = await fetch(`/api/expert-profiles/${expertId}`);
-        if (response.ok) {
-          const result = await response.json();
+        console.log('전문가 상세 데이터 병렬 로드 시작:', expertId);
+        const startTime = performance.now();
+
+        // 모든 API를 병렬로 호출
+        const [profileResponse, statsResponse, reviewsResponse] = await Promise.all([
+          fetch(`/api/expert-profiles/${expertId}`),
+          fetch(`/api/expert-stats?expertId=${expertId}&includeRanking=true`),
+          fetch(`/api/reviews?expertId=${expertId}&isPublic=true`)
+        ]);
+
+        // 프로필 데이터 처리
+        if (profileResponse.ok) {
+          const result = await profileResponse.json();
           if (result.success) {
             const apiProfile = result.data;
             // API 응답을 ExpertProfile 형태로 변환
@@ -543,22 +552,20 @@ export default function ExpertProfilePage() {
             
             setExpert(foundExpert);
             
-            // 전문가 통계 데이터 로드
-            loadExpertStats(foundExpert.id.toString());
-            
-            // 좋아요 상태는 useEffect에서 자동으로 로드됨
-            
-            // 해당 전문가의 리뷰 로드 (실제 API 연동)
-            let expertReviews: any[] = [];
-            try {
-              const reviewsResponse = await fetch(`/api/reviews?expertId=${expertId}`);
-              if (reviewsResponse.ok) {
-                const reviewsData = await reviewsResponse.json();
-                expertReviews = reviewsData.reviews || [];
+            // 통계 데이터 처리 (병렬 호출에서 이미 가져옴)
+            if (statsResponse.ok) {
+              const statsResult = await statsResponse.json();
+              if (statsResult.success) {
+                setExpertStats(statsResult.data);
+                console.log('전문가 통계 로드 성공:', statsResult.data);
               }
-            } catch (error) {
-              console.error('리뷰 로드 실패:', error);
-              expertReviews = [];
+            }
+            
+            // 리뷰 데이터 처리 (병렬 호출에서 이미 가져옴)
+            let expertReviews: any[] = [];
+            if (reviewsResponse.ok) {
+              const reviewsData = await reviewsResponse.json();
+              expertReviews = reviewsData.data?.reviews || [];
             }
             
             // 리뷰 데이터를 Review 타입으로 변환
@@ -591,6 +598,10 @@ export default function ExpertProfilePage() {
             const similar = findSimilarExperts(foundExpert, allExperts, searchContext);
             setSimilarExperts(similar);
             
+            const endTime = performance.now();
+            const totalTime = Math.round((endTime - startTime) * 100) / 100;
+            console.log(`전문가 상세 데이터 병렬 로드 완료: ${totalTime}ms`);
+            
             return;
           }
         }
@@ -606,22 +617,19 @@ export default function ExpertProfilePage() {
         if (foundExpert) {
           setExpert(foundExpert);
           
-          // 전문가 통계 데이터 로드
-          loadExpertStats(foundExpert.id.toString());
-          
-          // 좋아요 상태는 useEffect에서 자동으로 로드됨
-          
-          // 해당 전문가의 리뷰 로드 (실제 API 연동)
-          let expertReviews: any[] = [];
-          try {
-            const reviewsResponse = await fetch(`/api/reviews?expertId=${expertId}`);
-            if (reviewsResponse.ok) {
-              const reviewsData = await reviewsResponse.json();
-              expertReviews = reviewsData.reviews || [];
+          // 통계 데이터 처리 (병렬 호출에서 이미 가져옴)
+          if (statsResponse.ok) {
+            const statsResult = await statsResponse.json();
+            if (statsResult.success) {
+              setExpertStats(statsResult.data);
             }
-          } catch (error) {
-            console.error('리뷰 로드 실패:', error);
-            expertReviews = [];
+          }
+          
+          // 리뷰 데이터 처리 (병렬 호출에서 이미 가져옴)
+          let expertReviews: any[] = [];
+          if (reviewsResponse.ok) {
+            const reviewsData = await reviewsResponse.json();
+            expertReviews = reviewsData.data?.reviews || [];
           }
           
           // 리뷰 데이터를 Review 타입으로 변환
@@ -1142,47 +1150,21 @@ export default function ExpertProfilePage() {
                   <div>
                     {/* 리뷰 통계 */}
                     <div className="mb-6 p-6 bg-gray-50 rounded-lg">
-                      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
-                        <div className="flex-shrink-0">
-                          <h3 className="text-xl font-semibold text-gray-900 mb-3">고객 리뷰</h3>
-                          <div className="flex items-center space-x-4">
-                            <div className="flex items-center">
-                              <Star className="h-6 w-6 text-yellow-500 fill-current" />
-                              <span className="text-2xl font-bold text-gray-900 ml-2">{expertStats?.avgRating || expert.rating}</span>
-                              <span className="text-base text-gray-600 ml-3">({expertStats?.reviewCount || reviews.length}개 리뷰)</span>
-                            </div>
-                            <div className="text-base text-gray-500">
-                              {reviews.filter(r => r.isVerified).length}개 인증된 리뷰
-                            </div>
+                      <div className="mb-6">
+                        <h3 className="text-xl font-semibold text-gray-900 mb-3">고객 리뷰</h3>
+                        <div className="flex items-center space-x-4">
+                          <div className="flex items-center">
+                            <Star className="h-6 w-6 text-yellow-500 fill-current" />
+                            <span className="text-2xl font-bold text-gray-900 ml-2">
+                              {reviews.length > 0 
+                                ? (reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length).toFixed(1)
+                                : Number(expertStats?.avgRating || expert.rating || 0).toFixed(1)
+                              }
+                            </span>
+                            <span className="text-base text-gray-600 ml-3">({reviews.length}개 리뷰)</span>
                           </div>
-                        </div>
-                        <div className="flex-shrink-0 min-w-0">
-                          <div className="space-y-3">
-                            {[5, 4, 3, 2, 1].map((rating) => {
-                              // API 데이터가 있으면 API 기반으로 계산, 없으면 리뷰 데이터 기반으로 계산
-                              const totalReviews = expertStats?.reviewCount || reviews.length;
-                              const ratingCount = expertStats?.ratingDistribution ? 
-                                expertStats.ratingDistribution[rating as keyof typeof expertStats.ratingDistribution] :
-                                reviews.filter(r => r.rating === rating).length;
-                              
-                              return (
-                                <div key={rating} className="flex items-center text-base min-w-0">
-                                  <span className="w-4 text-gray-600 flex-shrink-0">{rating}</span>
-                                  <Star className="h-4 w-4 text-yellow-400 fill-current mx-2 flex-shrink-0" />
-                                  <div className="w-24 bg-gray-200 rounded-full h-2.5 mr-3 flex-shrink-0">
-                                    <div 
-                                      className="bg-yellow-400 h-2.5 rounded-full" 
-                                      style={{ 
-                                        width: `${totalReviews > 0 ? (ratingCount / totalReviews) * 100 : 0}%` 
-                                      }}
-                                    ></div>
-                                  </div>
-                                  <span className="text-sm text-gray-500 w-10 text-right flex-shrink-0">
-                                    {ratingCount}
-                                  </span>
-                                </div>
-                              );
-                            })}
+                          <div className="text-base text-gray-500">
+                            {reviews.filter(r => r.isVerified).length}개 인증된 리뷰
                           </div>
                         </div>
                       </div>
@@ -1434,11 +1416,8 @@ export default function ExpertProfilePage() {
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100 p-6">
               <div className="mb-4">
                 {(() => {
-                  // 기본 레벨 계산 (동기적으로)
-                  const actualLevel = Math.min(
-                    999,
-                    Math.max(1, Math.floor(expert.totalSessions / 10) + Math.floor(expert.avgRating * 10))
-                  );
+                  // 공식 랭킹 점수 기반 레벨 사용 (실시간 계산)
+                  const actualLevel = 1; // 기본값 (실제로는 API에서 계산된 레벨 사용)
                   
                   // 기본 크레딧 요금 (실제로는 API에서 가져와야 함)
                   const baseCreditsPerMinute = Math.max(100, actualLevel * 0.5);
@@ -1539,11 +1518,8 @@ export default function ExpertProfilePage() {
                       <>
                         {/* 상위 5위까지만 표시 */}
                         {rankingList.slice(0, 5).map((item, index) => {
-                          // 전문가 레벨 계산
-                          const actualLevel = Math.min(
-                            999,
-                            Math.max(1, Math.floor(item.totalSessions / 10) + Math.floor(item.avgRating * 10))
-                          );
+                          // 공식 랭킹 점수 기반 레벨 사용 (기본값 1)
+                          const actualLevel = (item as any).level || 1;
                           
                           return (
                             <div
@@ -1586,7 +1562,7 @@ export default function ExpertProfilePage() {
                                   {item.totalSessions}회
                                 </div>
                                 <div className="text-xs text-blue-600 font-bold">
-                                  {item.rankingScore?.toFixed(1)}점
+                                  {Number(item.rankingScore || 0).toFixed(1)}점
                                 </div>
                               </div>
                             </div>

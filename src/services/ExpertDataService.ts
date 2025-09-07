@@ -213,7 +213,7 @@ export class ExpertDataService {
 
       return experts.map((expert, index) => {
         const profile = this.convertExpertToProfile(expert);
-        const level = this.calculateLevel(profile.totalSessions);
+        const level = profile.level || 1; // 공식 랭킹 점수 기반 레벨 사용
         const levelStr = level >= 700 ? `고급 (레벨 ${level})` :
                          level >= 500 ? `고급 (레벨 ${level})` :
                          level >= 300 ? `중급 (레벨 ${level})` :
@@ -250,17 +250,7 @@ export class ExpertDataService {
     } : null;
   }
 
-  /**
-   * 레벨 계산
-   */
-  private calculateLevel(sessions: number): number {
-    if (sessions >= 700) return Math.min(999, 700 + Math.floor((sessions - 700) / 10));
-    if (sessions >= 500) return 600 + Math.floor((sessions - 500) / 5);
-    if (sessions >= 300) return 400 + Math.floor((sessions - 300) / 2);
-    if (sessions >= 200) return 300 + Math.floor((sessions - 200) / 2);
-    if (sessions >= 100) return 200 + Math.floor((sessions - 100) / 1);
-    return Math.max(1, 100 + Math.floor(sessions / 2));
-  }
+  // 레거시 레벨 계산 함수 제거됨 - 공식 랭킹 점수 기반 레벨 사용
 
   /**
    * 전문가의 완전한 사용자 정보 생성 (로그인용)

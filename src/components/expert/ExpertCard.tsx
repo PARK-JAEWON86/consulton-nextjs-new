@@ -106,17 +106,8 @@ const normalizeExpert = (raw: any) => {
   const consultationTypes: string[] = Array.isArray(raw.consultationTypes)
     ? raw.consultationTypes
     : ["video", "chat"]; // 기본값
-  const level =
-    raw.level ??
-    Math.max(
-      1,
-      Math.floor(
-        ((raw.experience || 0) * 10 +
-          (raw.rating || 0) * 20 +
-          reviewCount * 0.5) /
-          10
-      )
-    );
+  // 공식 랭킹 점수 기반 레벨 사용 (API에서 제공)
+  const level = raw.level ?? 1;
 
   return {
     id: raw.id,
@@ -212,8 +203,8 @@ export default function ExpertCard({
     loadPricingInfo();
   }, [expert.id, expert.totalSessions, expert.avgRating]);
 
-  // 요금 정보가 로딩 중이거나 없을 때 기본값 사용
-  const creditsPerMinute = pricingInfo?.creditsPerMinute || calculateCreditsByLevel(expert.level || 1);
+  // 요금 정보가 로딩 중이거나 없을 때 기본값 사용 (레벨은 실시간 계산됨)
+  const creditsPerMinute = pricingInfo?.creditsPerMinute || calculateCreditsByLevel(1); // 기본값 사용
   const tierName = pricingInfo?.tierName || "Tier 1 (Lv.1-99)";
 
   const handleProfileView = () => {
@@ -278,7 +269,11 @@ export default function ExpertCard({
             <div className="flex items-center space-x-1 mb-2">
               <Star className="h-4 w-4 text-yellow-500 fill-current" />
               <span className="text-sm font-semibold text-gray-900">
-                {expert.rating || 4.5}
+                {(() => {
+                  const displayRating = expert.avgRating || expert.rating || 4.5;
+                  console.log(`[ExpertCard DEBUG] ${expert.name}: avgRating=${expert.avgRating}, rating=${expert.rating}, 표시값=${displayRating}`);
+                  return displayRating;
+                })()}
               </span>
               <span className="text-sm text-gray-500">
                 ({expert.reviewCount || 12})
@@ -402,7 +397,7 @@ export default function ExpertCard({
           <div className="flex items-center">
             <Star className="h-4 w-4 text-yellow-500 fill-current" />
             <span className="text-sm font-semibold text-gray-900 ml-1">
-              {expert.rating}
+              {expert.avgRating || expert.rating || 4.5}
             </span>
             <span className="text-sm text-gray-500 ml-1">
               ({expert.reviewCount})

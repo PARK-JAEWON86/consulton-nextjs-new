@@ -205,7 +205,14 @@ export async function GET(request: NextRequest) {
       category: (review as any).consultation?.categoryId?.toString() || '기타',
       date: review.createdAt.toISOString(),
       isVerified: review.isVerified,
-      isPublic: review.isPublic
+      isPublic: review.isPublic,
+      // expertReply는 현재 DB 스키마에 없으므로 제거하거나 별도 처리 필요
+      ...(review.expertReply && {
+        expertReply: {
+          message: review.expertReply,
+          createdAt: review.updatedAt.toISOString()
+        }
+      })
     }));
 
     return NextResponse.json({

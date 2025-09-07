@@ -20,34 +20,8 @@ export const calculateCreditsByLevel = (level: number = 1): number => {
   return baseCredits + levelBonus;
 };
 
-/**
- * 전문가 레벨 계산 함수
- * @param totalSessions 총 상담 세션 수
- * @param avgRating 평균 평점
- * @param reviewCount 리뷰 수
- * @returns 계산된 레벨 (1-999)
- */
-export const calculateExpertLevel = (
-  totalSessions: number = 0,
-  avgRating: number = 0,
-  reviewCount: number = 0
-): number => {
-  // 세션 점수: 세션당 10점
-  const sessionScore = totalSessions * 10;
-  
-  // 평점 점수: 평점 * 20
-  const ratingScore = avgRating * 20;
-  
-  // 리뷰 점수: 리뷰당 0.5점
-  const reviewScore = reviewCount * 0.5;
-  
-  // 총 점수를 레벨로 변환
-  const totalScore = sessionScore + ratingScore + reviewScore;
-  const calculatedLevel = Math.floor(totalScore / 10);
-  
-  // 레벨 범위 제한 (1-999)
-  return Math.max(1, Math.min(999, calculatedLevel));
-};
+// 레거시 전문가 레벨 계산 함수 제거됨
+// 공식 랭킹 점수 계산은 utils/rankingCalculator.ts 사용
 
 /**
  * 레벨별 티어 정보 반환

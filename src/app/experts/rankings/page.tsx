@@ -8,7 +8,6 @@ import {
   Users, 
   Award, 
   TrendingUp,
-  Filter,
   Search,
   ArrowLeft
 } from "lucide-react";
@@ -51,35 +50,20 @@ interface Category {
 export default function ExpertRankingsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = useState<'overall' | 'specialty' | 'tier'>('overall');
+  const [activeTab, setActiveTab] = useState<'overall' | 'rating' | 'sessions' | 'specialty'>('overall');
   const [rankingList, setRankingList] = useState<RankingItem[]>([]);
   const [allExpertProfiles, setAllExpertProfiles] = useState<ExpertProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>('');
-  const [selectedTier, setSelectedTier] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<'ranking' | 'score' | 'level' | 'sessions' | 'rating' | 'reviews' | 'likes'>('ranking');
+  // sortBy 상태 제거됨 - 탭별 자동 정렬로 대체
   const [showAllCategories, setShowAllCategories] = useState<boolean>(false);
 
   // 전문 분야 목록 (API에서 로드)
   const [categories, setCategories] = useState<Category[]>([]);
 
-  // 레벨 티어 목록 (긍정적이고 동기부여가 되는 티어 이름)
-  const tierOptions = [
-    { id: 'all', name: '전체', range: '모든 레벨' },
-    { id: 'freshmind', name: 'Fresh Mind (신예)', range: 'Lv.1-99' },
-    { id: 'emergingtalent', name: 'Emerging Talent (신진)', range: 'Lv.100-199' },
-    { id: 'risingstar', name: 'Rising Star (신성)', range: 'Lv.200-299' },
-    { id: 'core', name: 'Core (핵심)', range: 'Lv.300-399' },
-    { id: 'skilled', name: 'Skilled (숙련)', range: 'Lv.400-499' },
-    { id: 'professional', name: 'Professional (프로페셔널)', range: 'Lv.500-599' },
-    { id: 'senior', name: 'Senior (시니어)', range: 'Lv.600-699' },
-    { id: 'expert', name: 'Expert (전문가)', range: 'Lv.700-799' },
-    { id: 'master', name: 'Master (마스터)', range: 'Lv.800-899' },
-    { id: 'grandmaster', name: 'Grand Master (그랜드마스터)', range: 'Lv.900-998' },
-    { id: 'legend', name: 'Legend (전설)', range: 'Lv.999' }
-  ];
+  // 레벨 티어 목록 제거됨 - 평점/상담수 랭킹으로 대체
 
   // 카테고리 목록 로드
   const loadCategories = async () => {
@@ -129,14 +113,20 @@ export default function ExpertRankingsPage() {
     }
   };
 
-  // 랭킹 목록 로드 (더미데이터 + API 계산 데이터 사용)
-  const loadRankingList = async (type: 'overall' | 'specialty' | 'tier', specialty?: string, tier?: string) => {
+  // 랭킹 목록 로드 (DB 기반 실시간 데이터 사용)
+  const loadRankingList = async (type: 'overall' | 'rating' | 'sessions' | 'specialty', specialty?: string) => {
     setIsLoading(true);
     try {
       // 실제 API에서 랭킹 점수를 가져오기 (이미 API 호출로 처리됨)
       
       // API에서 추가 정보 가져오기
-      let url = `/api/expert-stats?rankingType=${type}`;
+      let apiType = type;
+      // rating과 sessions 탭은 overall 데이터를 가져와서 클라이언트에서 정렬
+      if (type === 'rating' || type === 'sessions') {
+        apiType = 'overall';
+      }
+      
+      let url = `/api/expert-stats?rankingType=${apiType}`;
       if (type === 'specialty' && specialty) {
         url += `&specialty=${encodeURIComponent(specialty)}`;
       }
@@ -169,25 +159,29 @@ export default function ExpertRankingsPage() {
           };
         });
         
-        // 레벨 티어별 필터링 (tier 타입일 때)
-        let filteredRankings = mergedRankings;
-        if (type === 'tier' && tier && tier !== 'all') {
-          const selectedTierOption = tierOptions.find(t => t.id === tier);
-          
-          if (selectedTierOption) {
-            const [minLevel, maxLevel] = selectedTierOption.range.replace('Lv.', '').split('-').map(Number);
-            
-            filteredRankings = mergedRankings.filter((ranking: any) => {
-              const level = ranking.level || 0;
-              const isInRange = maxLevel ? (level >= minLevel && level <= maxLevel) : (level === minLevel);
-              
-              return isInRange;
-            });
-          }
-        }
+        // 티어별 필터링 제거됨 - 간단한 정렬로 대체
         
-        // 랭킹 점수로 정렬
-        const sortedRankings = filteredRankings.sort((a: any, b: any) => (b.rankingScore || 0) - (a.rankingScore || 0));
+        // 탭별 정렬 적용 (디버깅 로그 포함)
+        let sortedRankings;
+        console.log(`[DEBUG] 정렬 타입: ${type}, 데이터 개수: ${mergedRankings.length}`);
+        
+        if (type === 'rating') {
+          sortedRankings = mergedRankings.sort((a: any, b: any) => {
+            const diff = b.avgRating - a.avgRating;
+            return diff;
+          });
+          console.log('[DEBUG] 평점 랭킹 정렬 완료:', sortedRankings.slice(0, 3).map(r => `${r.expertName}: ${r.avgRating}`));
+        } else if (type === 'sessions') {
+          sortedRankings = mergedRankings.sort((a: any, b: any) => {
+            const diff = b.totalSessions - a.totalSessions;
+            return diff;
+          });
+          console.log('[DEBUG] 상담 수 랭킹 정렬 완료:', sortedRankings.slice(0, 3).map(r => `${r.expertName}: ${r.totalSessions}회`));
+        } else {
+          // overall, specialty 등 기본값 - 랭킹점수 순
+          sortedRankings = mergedRankings.sort((a: any, b: any) => (b.rankingScore || 0) - (a.rankingScore || 0));
+          console.log('[DEBUG] 종합 랭킹 정렬 완료:', sortedRankings.slice(0, 3).map(r => `${r.expertName}: ${r.rankingScore}점`));
+        }
         
         // 순위 재계산
         const finalRankings = sortedRankings.map((ranking: any, index: number) => ({
@@ -227,6 +221,10 @@ export default function ExpertRankingsPage() {
     if (allExpertProfiles.length > 0) {
       if (activeTab === 'overall') {
         loadRankingList('overall');
+      } else if (activeTab === 'rating') {
+        loadRankingList('rating');
+      } else if (activeTab === 'sessions') {
+        loadRankingList('sessions');
       } else if (activeTab === 'specialty') {
         // 분야별 랭킹 탭을 선택했을 때 기본 카테고리 선택
         if (categories.length > 0 && !selectedSpecialty) {
@@ -234,12 +232,9 @@ export default function ExpertRankingsPage() {
         } else if (selectedSpecialty) {
           loadRankingList('specialty', selectedSpecialty);
         }
-      } else if (activeTab === 'tier') {
-        // 레벨 티어별 랭킹은 전체 랭킹을 로드하고 클라이언트에서 필터링
-        loadRankingList('overall');
       }
     }
-  }, [activeTab, selectedSpecialty, selectedTier, allExpertProfiles, categories]);
+  }, [activeTab, selectedSpecialty, allExpertProfiles, categories]);
 
   // 선택된 전문분야가 변경될 때 랭킹 로드
   useEffect(() => {
@@ -248,17 +243,9 @@ export default function ExpertRankingsPage() {
     }
   }, [selectedSpecialty, activeTab, allExpertProfiles]);
 
-  // 선택된 티어가 변경될 때 랭킹 로드
-  useEffect(() => {
-    if (activeTab === 'tier' && selectedTier && allExpertProfiles.length > 0) {
-      // 티어 변경 시에는 이미 로드된 전체 랭킹을 사용하므로 추가 로드 불필요
-    }
-  }, [selectedTier, activeTab, allExpertProfiles]);
+  // 티어 관련 useEffect 제거됨 - 평점/상담수 랭킹으로 대체
 
-  // 전문가 레벨 계산 (기존 방식 - 호환성 유지)
-  const calculateLevel = (sessions: number, rating: number) => {
-    return Math.min(999, Math.max(1, Math.floor(sessions / 10) + Math.floor(rating * 10)));
-  };
+  // 레거시 레벨 계산 함수는 제거됨 - 공식 랭킹 점수를 사용
 
   // 레벨 API에서 전문가 레벨 정보 가져오기
   const [expertLevels, setExpertLevels] = useState<{[key: string]: any}>({});
@@ -279,18 +266,7 @@ export default function ExpertRankingsPage() {
     }
   };
 
-  // 레벨 티어별 필터링
-  const getTierRange = (tierId: string) => {
-    switch (tierId) {
-      case 'bronze': return { min: 1, max: 50 };
-      case 'silver': return { min: 51, max: 100 };
-      case 'gold': return { min: 101, max: 200 };
-      case 'platinum': return { min: 201, max: 300 };
-      case 'diamond': return { min: 301, max: 500 };
-      case 'master': return { min: 501, max: 999 };
-      default: return { min: 1, max: 999 };
-    }
-  };
+  // getTierRange 함수 제거됨 - 티어별 필터링 제거
 
   // 검색 및 필터링된 랭킹 목록
   const filteredRankings = rankingList.filter(item => {
@@ -302,37 +278,38 @@ export default function ExpertRankingsPage() {
       if (!nameMatch && !specialtyMatch) return false;
     }
 
-    // 레벨 티어 필터링
-    if (activeTab === 'tier' && selectedTier !== 'all') {
-      const level = expertLevels[item.expertId]?.currentLevel || calculateLevel(item.totalSessions, item.avgRating);
-      const { min, max } = getTierRange(selectedTier);
-      if (level < min || level > max) return false;
-    }
+    // 티어 필터링 제거됨 - 평점/상담수 랭킹으로 대체
 
     return true;
   });
 
-  // 정렬된 랭킹 목록 (더미데이터 랭킹 점수 우선)
+  // 정렬된 랭킹 목록 (탭별 자동 정렬)
   const sortedRankings = [...filteredRankings].sort((a, b) => {
-    switch (sortBy) {
-      case 'ranking':
-        return (a.ranking || 0) - (b.ranking || 0);
-      case 'score':
-        return (b.rankingScore || 0) - (a.rankingScore || 0);
-      case 'level':
-        return (b.level || 0) - (a.level || 0);
-      case 'sessions':
-        return b.totalSessions - a.totalSessions;
-      case 'rating':
-        return b.avgRating - a.avgRating;
-      case 'reviews':
-        return (b.reviewCount || 0) - (a.reviewCount || 0);
-      case 'likes':
-        return (b.likeCount || 0) - (a.likeCount || 0);
-      default:
-        return (a.ranking || 0) - (b.ranking || 0); // 기본값은 랭킹 순
+    // 탭별 기본 정렬 적용
+    if (activeTab === 'rating') {
+      const diff = b.avgRating - a.avgRating;
+      console.log(`[CLIENT DEBUG] 평점 정렬: ${a.expertName}(${a.avgRating}) vs ${b.expertName}(${b.avgRating}) = ${diff}`);
+      return diff; // 평점 높은 순
+    } else if (activeTab === 'sessions') {
+      const diff = b.totalSessions - a.totalSessions;
+      console.log(`[CLIENT DEBUG] 상담수 정렬: ${a.expertName}(${a.totalSessions}) vs ${b.expertName}(${b.totalSessions}) = ${diff}`);
+      return diff; // 상담 수 많은 순
+    } else if (activeTab === 'specialty') {
+      return (b.rankingScore || 0) - (a.rankingScore || 0); // 분야별 랭킹점수 순
+    } else {
+      // overall 탭 또는 기본값 - 종합 랭킹점수 순
+      return (b.rankingScore || 0) - (a.rankingScore || 0);
     }
   });
+
+  // 최종 정렬 결과 확인
+  if (activeTab === 'rating' || activeTab === 'sessions') {
+    console.log(`[CLIENT DEBUG] ${activeTab} 탭 최종 정렬 결과:`, 
+      sortedRankings.slice(0, 5).map((r, i) => 
+        `${i+1}위: ${r.expertName} (${activeTab === 'rating' ? r.avgRating : r.totalSessions})`
+      )
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -358,7 +335,7 @@ export default function ExpertRankingsPage() {
           </h1>
           <p className="text-lg text-gray-600 leading-relaxed">
             전문가들의 상담 실적, 고객 만족도, 리뷰 등을 종합적으로 평가한 랭킹입니다. 
-            전체 랭킹과 분야별 랭킹을 확인하고, 검색과 정렬을 통해 원하는 전문가를 찾아보세요.
+            종합 랭킹, 평점 랭킹, 상담 수 랭킹, 분야별 랭킹을 확인하고, 검색을 통해 원하는 전문가를 찾아보세요.
           </p>
         </div>
         
@@ -409,7 +386,7 @@ export default function ExpertRankingsPage() {
                   <p className="text-sm font-medium text-gray-600">평균 평점</p>
                   <p className="text-2xl font-bold text-gray-900">
                     {rankingList.length > 0 
-                      ? (rankingList.reduce((sum, item) => sum + item.avgRating, 0) / rankingList.length).toFixed(1)
+                      ? (rankingList.reduce((sum, item) => sum + Number(item.avgRating || 0), 0) / rankingList.length).toFixed(1)
                       : '0.0'
                     }
                   </p>
@@ -451,9 +428,7 @@ export default function ExpertRankingsPage() {
               onClick={() => {
                 setActiveTab('overall');
                 setSelectedSpecialty('');
-                setSelectedTier('all');
                 setSearchQuery('');
-                setSortBy('ranking');
                 setShowAllCategories(false);
                 loadRankingList('overall');
               }}
@@ -463,15 +438,45 @@ export default function ExpertRankingsPage() {
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              전체 랭킹
+              종합 랭킹
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('rating');
+                setSelectedSpecialty('');
+                setSearchQuery('');
+                setShowAllCategories(false);
+                loadRankingList('rating');
+              }}
+              className={`flex-1 py-3 px-4 text-sm font-medium rounded-md transition-colors ${
+                activeTab === 'rating'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              평점 랭킹
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('sessions');
+                setSelectedSpecialty('');
+                setSearchQuery('');
+                setShowAllCategories(false);
+                loadRankingList('sessions');
+              }}
+              className={`flex-1 py-3 px-4 text-sm font-medium rounded-md transition-colors ${
+                activeTab === 'sessions'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              상담 수 랭킹
             </button>
             <button
               onClick={() => {
                 setActiveTab('specialty');
                 setSelectedSpecialty('');
-                setSelectedTier('all');
                 setSearchQuery('');
-                setSortBy('ranking');
                 setShowAllCategories(false);
                 if (categories.length > 0) {
                   setSelectedSpecialty(categories[0].name);
@@ -485,25 +490,6 @@ export default function ExpertRankingsPage() {
               }`}
             >
               분야별 랭킹
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab('tier');
-                setSelectedSpecialty('');
-                setSelectedTier('all');
-                setSearchQuery('');
-                setSortBy('ranking');
-                setShowAllCategories(false);
-                // 티어 탭 선택 시 전체 데이터 로드
-                loadRankingList('tier', undefined, 'all');
-              }}
-              className={`flex-1 py-3 px-4 text-sm font-medium rounded-md transition-colors ${
-                activeTab === 'tier'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              레벨 티어별 랭킹
             </button>
           </div>
 
@@ -580,33 +566,7 @@ export default function ExpertRankingsPage() {
             </div>
           )}
 
-          {/* 레벨 티어 선택 (레벨 티어별 랭킹일 때만) */}
-          {activeTab === 'tier' && (
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">레벨 티어 선택</label>
-              <div className="flex flex-wrap gap-2">
-                {tierOptions.map((tier) => (
-                  <button
-                    key={tier.id}
-                    onClick={() => {
-                      setSelectedTier(tier.id);
-                      loadRankingList('tier', undefined, tier.id);
-                    }}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
-                      selectedTier === tier.id
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="text-center">
-                      <div className="font-semibold">{tier.name}</div>
-                      <div className="text-xs text-gray-500">{tier.range}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* 레벨 티어 선택 제거됨 - 평점/상담수 랭킹으로 대체 */}
 
           {/* 검색 및 정렬 */}
           <div className="flex flex-col sm:flex-row gap-4">
@@ -621,22 +581,7 @@ export default function ExpertRankingsPage() {
               />
             </div>
             
-            <div className="flex items-center space-x-2">
-              <Filter className="h-4 w-4 text-gray-500" />
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="ranking">랭킹 순</option>
-                <option value="score">점수 순</option>
-                <option value="level">레벨 순</option>
-                <option value="sessions">상담 횟수 순</option>
-                <option value="rating">평점 순</option>
-                <option value="reviews">리뷰 순</option>
-                <option value="likes">좋아요 순</option>
-              </select>
-            </div>
+            {/* 정렬 드롭다운 제거됨 - 탭별 자동 정렬 적용 */}
           </div>
         </div>
 
@@ -728,7 +673,7 @@ export default function ExpertRankingsPage() {
                               </div>
                             </div>
                           ) : (
-                            `Lv.${calculateLevel(item.totalSessions, item.avgRating)}`
+                            `Lv.${item.level || 1}`
                           )}
                         </div>
                       </td>
@@ -779,7 +724,7 @@ export default function ExpertRankingsPage() {
                       
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <div className="text-sm font-bold text-blue-600">
-                          {item.rankingScore?.toFixed(1)}점
+                          {Number(item.rankingScore || 0).toFixed(1)}점
                         </div>
                       </td>
                       
@@ -796,9 +741,10 @@ export default function ExpertRankingsPage() {
         {!isLoading && sortedRankings.length > 0 && (
           <div className="mt-6 text-center text-sm text-gray-500">
             총 {sortedRankings.length}명의 전문가 중 {
-              activeTab === 'overall' ? '전체' : 
-              activeTab === 'specialty' ? selectedSpecialty : 
-              activeTab === 'tier' ? `${tierOptions.find(t => t.id === selectedTier)?.name} 티어` : ''
+              activeTab === 'overall' ? '종합' : 
+              activeTab === 'rating' ? '평점' :
+              activeTab === 'sessions' ? '상담 수' :
+              activeTab === 'specialty' ? selectedSpecialty : ''
             } 랭킹
             {searchQuery && ` (검색어: "${searchQuery}")`}
           </div>

@@ -340,7 +340,7 @@ const calculateTierStatistics = (experts: ExpertLevelLike[] = []) => {
   );
 
   experts.forEach((expert: ExpertLevelLike) => {
-    const tier = getTierInfo(expert.level || 1);
+    const tier = getTierInfo(expert.level || expert.rankingScore || 1); // 랭킹점수 기반 또는 기본값
     stats[tier.name].count++;
   });
 
@@ -721,10 +721,10 @@ export async function POST(request: NextRequest) {
         if (data?.experts) {
           const experts = data.experts.map((expert: any) => ({
             ...expert,
-            tierInfo: getTierInfo(expert.level || 1),
-            creditsPerMinute: calculateCreditsByLevel(expert.level || 1),
-            badgeStyles: getTierBadgeStyles(expert.level || 1),
-            pricing: getLevelPricing(expert.level || 1)
+            tierInfo: getTierInfo(expert.level || expert.rankingScore || 1),
+            creditsPerMinute: calculateCreditsByLevel(expert.level || expert.rankingScore || 1),
+            badgeStyles: getTierBadgeStyles(expert.level || expert.rankingScore || 1),
+            pricing: getLevelPricing(expert.level || expert.rankingScore || 1)
           }));
           result = { experts };
         }

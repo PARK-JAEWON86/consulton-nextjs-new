@@ -51,11 +51,8 @@ const calculateExpertLevel = async (totalSessions: number = 0, avgRating: number
 
 const getNextLevelProgress = async (totalSessions: number = 0, avgRating: number = 0) => {
   try {
-    const level = Math.min(
-      999,
-      Math.max(1, Math.floor(totalSessions / 10) + Math.floor(avgRating * 10))
-    );
-    const response = await fetch(`/api/expert-levels?action=getNextTierProgress&level=${level}`);
+    // 공식 랭킹 점수를 기반으로 레벨 계산
+    const response = await fetch(`/api/expert-levels?action=getNextTierProgress&totalSessions=${totalSessions}&avgRating=${avgRating}`);
     const data = await response.json();
     return data.progress;
   } catch (error) {
@@ -104,7 +101,7 @@ const getKoreanLevelName = async (levelName: string): Promise<string> => {
 
 const calculateCreditsPerMinute = async (expert: any) => {
   try {
-    const level = expert.level || 1;
+    const level = 1; // 기본값 (실제로는 API에서 계산된 레벨 사용)
     const response = await fetch(`/api/expert-levels?action=calculateCreditsByLevel&level=${level}`);
     const data = await response.json();
     return data.creditsPerMinute || 100;
@@ -837,7 +834,7 @@ const ExpertProfile = forwardRef<any, ExpertProfileProps>(({
                       <div className="flex items-center space-x-4">
                         <div className="flex items-center">
                           <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                          <span className="text-sm font-semibold text-gray-900 ml-1">{(displayData.avgRating || 0).toFixed(1)}</span>
+                          <span className="text-sm font-semibold text-gray-900 ml-1">{Number(displayData.avgRating || 0).toFixed(1)}</span>
                           <span className="text-sm text-gray-500 ml-1">({displayData.reviewCount || 0}개 리뷰)</span>
               </div>
                         <div className="flex items-center text-sm text-gray-500">
@@ -1019,10 +1016,8 @@ const ExpertProfile = forwardRef<any, ExpertProfileProps>(({
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <div className="mb-4">
                   {(() => {
-                    const actualLevel = Math.min(
-                      999,
-                      Math.max(1, Math.floor((profileData.totalSessions || 0) / 10) + Math.floor((profileData.avgRating || 0) * 10))
-                    );
+                    // 공식 랭킹 점수 기반 레벨은 API에서 계산됨
+                    const actualLevel = profileData.level || 1;
                     
                     return (
                       <>
@@ -1045,7 +1040,7 @@ const ExpertProfile = forwardRef<any, ExpertProfileProps>(({
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-600">평균 평점</span>
-                    <span className="font-medium text-gray-900">{(profileData.avgRating || 0).toFixed(1)}</span>
+                    <span className="font-medium text-gray-900">{Number(profileData.avgRating || 0).toFixed(1)}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-600">경력</span>

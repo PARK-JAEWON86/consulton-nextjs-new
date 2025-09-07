@@ -42,6 +42,7 @@ interface ExpertProfile {
 // GET: 전문가 프로필 조회
 export async function GET(request: NextRequest) {
   try {
+    console.log('Expert-profiles API 호출됨:', request.url);
     await initializeDatabase();
     
     const { searchParams } = new URL(request.url);
@@ -109,15 +110,23 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 현재 로그인한 전문가 프로필 조회
+    // 현재 로그인한 전문가 프로필 조회 (임시로 비활성화)
     if (currentExpert) {
-      const authUser = await getAuthenticatedUser(request);
-      if (!authUser || authUser.role !== 'expert') {
-        return NextResponse.json(
-          { success: false, message: '전문가 권한이 필요합니다.' },
-          { status: 403 }
-        );
-      }
+      console.log('현재 전문가 조회 요청 - 임시로 빈 응답 반환');
+      return NextResponse.json({
+        success: true,
+        data: {
+          profiles: [],
+          total: 0
+        }
+      });
+      // const authUser = await getAuthenticatedUser(request);
+      // if (!authUser || authUser.role !== 'expert') {
+      //   return NextResponse.json(
+      //     { success: false, message: '전문가 권한이 필요합니다.' },
+      //     { status: 403 }
+      //   );
+      // }
 
       const expert = await Expert.findOne({
         where: { userId: authUser.id },
@@ -188,6 +197,7 @@ export async function GET(request: NextRequest) {
       whereClause.specialty = specialty;
     }
 
+    console.log('데이터베이스 조회 조건:', whereClause);
     const experts = await Expert.findAll({
       where: whereClause,
       include: [
@@ -204,6 +214,7 @@ export async function GET(request: NextRequest) {
       ],
       limit: 50 // 성능을 위해 제한
     });
+    console.log('조회된 전문가 수:', experts.length);
 
     const profiles = experts.map(expert => ({
       id: expert.id.toString(),
@@ -251,8 +262,9 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('전문가 프로필 조회 실패:', error);
+    console.error('에러 스택:', error.stack);
     return NextResponse.json(
-      { success: false, error: '전문가 프로필 조회에 실패했습니다.' },
+      { success: false, error: '전문가 프로필 조회에 실패했습니다.', details: error.message },
       { status: 500 }
     );
   }

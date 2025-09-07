@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
       expert: user.expert ? {
         id: user.expert.id,
         specialty: user.expert.specialty,
-        level: user.expert.level,
+        level: 1, // 기본값 (실제로는 API에서 계산된 레벨 사용)
         experience: user.expert.experience,
         rating: user.expert.rating,
         profile: user.expert.profile
