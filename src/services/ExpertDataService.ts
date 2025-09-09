@@ -295,6 +295,7 @@ export class ExpertDataService {
       rating: expert.rating || 0,
       reviewCount: expert.reviewCount || 0,
       completionRate: expert.completionRate || 0,
+      level: expert.level || 1, // 전문가 레벨 추가
       repeatClients: 0,
       averageSessionDuration: 60,
       responseTime: expert.responseTime || '2시간 내',

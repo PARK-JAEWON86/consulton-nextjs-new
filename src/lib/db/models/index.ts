@@ -1,7 +1,6 @@
 // 기본 모델들
 export { User } from "./user.model";
 export { UserCredits } from "./userCredits.model";
-export { AiUsage } from "./aiUsage.model";
 
 // 전문가 관련 모델들
 export { Expert } from "./expert.model";
@@ -10,6 +9,7 @@ export { ExpertAvailability } from "./expertAvailability.model";
 
 // 상담 관련 모델들
 export { Consultation } from "./consultation.model";
+export { ConsultationRequest } from "./consultationRequest.model";
 export { ConsultationSession } from "./consultationSession.model";
 export { ConsultationSummary } from "./consultationSummary.model";
 

@@ -27,7 +27,9 @@ interface ExpertAttributes {
   profileViews: number; // 프로필 조회수
   lastActiveAt: Date; // 마지막 활동 시간
   joinedAt: Date; // 가입일
-  // level: number; // 전문가 레벨 - 실시간 계산으로 대체
+  level: number; // 전문가 레벨
+  rankingScore: number; // 랭킹 점수
+  likeCount: number; // 좋아요 수
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -82,7 +84,9 @@ export class Expert
   public profileViews!: number;
   public lastActiveAt!: Date;
   public joinedAt!: Date;
-  // public level!: number; // 실시간 계산으로 대체
+  public level!: number; // 전문가 레벨
+  public rankingScore!: number; // 랭킹 점수
+  public likeCount!: number; // 좋아요 수
 
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
@@ -238,12 +242,24 @@ Expert.init(
       defaultValue: DataTypes.NOW,
       comment: '가입일'
     },
-    // level: {
-    //   type: DataTypes.INTEGER.UNSIGNED,
-    //   allowNull: false,
-    //   defaultValue: 1,
-    //   comment: '전문가 레벨 - 실시간 계산으로 대체'
-    // },
+    level: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+      defaultValue: 1,
+      comment: '전문가 레벨'
+    },
+    rankingScore: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      defaultValue: 0.00,
+      comment: '랭킹 점수'
+    },
+    likeCount: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+      defaultValue: 0,
+      comment: '좋아요 수'
+    },
   },
   {
     sequelize,

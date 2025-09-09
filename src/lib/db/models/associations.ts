@@ -1,10 +1,10 @@
 import { User } from './user.model';
 import { UserCredits } from './userCredits.model';
-import { AiUsage } from './aiUsage.model';
 import { Expert } from './expert.model';
 import { ExpertProfile } from './expertProfile.model';
 import { ExpertAvailability } from './expertAvailability.model';
 import { Consultation } from './consultation.model';
+import { ConsultationRequest } from './consultationRequest.model';
 import { ConsultationSession } from './consultationSession.model';
 import { ConsultationSummary } from './consultationSummary.model';
 import { Category } from './category.model';
@@ -15,9 +15,9 @@ import { PaymentMethod } from './paymentMethod.model';
 
 // User 모델 연관관계 설정
 User.hasOne(UserCredits, { foreignKey: 'userId', as: 'credits' });
-User.hasOne(AiUsage, { foreignKey: 'userId', as: 'aiUsage' });
 User.hasOne(Expert, { foreignKey: 'userId', as: 'expert' });
 User.hasMany(Consultation, { foreignKey: 'userId', as: 'consultations' });
+User.hasMany(ConsultationRequest, { foreignKey: 'clientId', as: 'consultationRequests' });
 User.hasMany(Review, { foreignKey: 'userId', as: 'reviews' });
 User.hasMany(Payment, { foreignKey: 'userId', as: 'payments' });
 User.hasMany(Notification, { foreignKey: 'userId', as: 'notifications' });
@@ -28,6 +28,7 @@ Expert.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 Expert.hasOne(ExpertProfile, { foreignKey: 'expertId', as: 'profile' });
 Expert.hasMany(ExpertAvailability, { foreignKey: 'expertId', as: 'availability' });
 Expert.hasMany(Consultation, { foreignKey: 'expertId', as: 'consultations' });
+Expert.hasMany(ConsultationRequest, { foreignKey: 'expertId', as: 'consultationRequests' });
 Expert.hasMany(Review, { foreignKey: 'expertId', as: 'reviews' });
 
 // ExpertProfile 모델 연관관계 설정
@@ -66,23 +67,24 @@ Payment.belongsTo(Consultation, { foreignKey: 'consultationId', as: 'consultatio
 // UserCredits 모델 연관관계 설정
 UserCredits.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
-// AiUsage 모델 연관관계 설정
-AiUsage.belongsTo(User, { foreignKey: 'userId', as: 'user' });
-
 // Notification 모델 연관관계 설정
 Notification.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
 // PaymentMethod 모델 연관관계 설정
 PaymentMethod.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
+// ConsultationRequest 모델 연관관계 설정
+ConsultationRequest.belongsTo(User, { foreignKey: 'clientId', as: 'client' });
+ConsultationRequest.belongsTo(Expert, { foreignKey: 'expertId', as: 'expert' });
+
 export {
   User,
   UserCredits,
-  AiUsage,
   Expert,
   ExpertProfile,
   ExpertAvailability,
   Consultation,
+  ConsultationRequest,
   ConsultationSession,
   ConsultationSummary,
   Category,

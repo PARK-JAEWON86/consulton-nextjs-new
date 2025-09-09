@@ -33,32 +33,14 @@ export default function ExpertSettingsPage() {
   useEffect(() => {
     const loadAppState = async () => {
       try {
-        // 로컬 스토리지에서 먼저 로드
-        const storedUser = localStorage.getItem('consulton-user');
-        const storedAuth = localStorage.getItem('consulton-auth');
-        const storedViewMode = localStorage.getItem('consulton-viewMode');
-        
-        if (storedUser && storedAuth) {
-          const user = JSON.parse(storedUser);
-          const isAuthenticated = JSON.parse(storedAuth);
-          const viewMode = storedViewMode ? JSON.parse(storedViewMode) : 'expert';
-          
+        const response = await fetch('/api/app-state');
+        const result = await response.json();
+        if (result.success) {
           setAppState({
-            isAuthenticated,
-            user,
-            viewMode
+            isAuthenticated: result.data.isAuthenticated,
+            user: result.data.user,
+            viewMode: result.data.viewMode || 'expert'
           });
-        } else {
-          // API에서 로드
-          const response = await fetch('/api/app-state');
-          const result = await response.json();
-          if (result.success) {
-            setAppState({
-              isAuthenticated: result.data.isAuthenticated,
-              user: result.data.user,
-              viewMode: result.data.viewMode
-            });
-          }
         }
       } catch (error) {
         console.error('앱 상태 로드 실패:', error);
@@ -156,8 +138,15 @@ export default function ExpertSettingsPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-6 flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">전문가 설정</h1>
-              <p className="text-gray-600 mt-1">전문가 계정과 앱 설정을 관리하세요.</p>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {effectiveVariant === "expert" ? "전문가 설정" : "설정"}
+              </h1>
+              <p className="text-gray-600 mt-1">
+                {effectiveVariant === "expert" 
+                  ? "전문가 계정과 앱 설정을 관리하세요." 
+                  : "계정과 앱 설정을 관리하세요."
+                }
+              </p>
             </div>
             
             {/* 테마 선택기 */}
@@ -184,30 +173,33 @@ export default function ExpertSettingsPage() {
             </div>
           </div>
 
-          {/* 전문가 전용 설정 메뉴 */}
-          <div className="mb-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">전문가 전용 설정</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {expertSettingsMenu.map((item) => {
-                const IconComponent = item.icon;
-                return (
-                  <a
-                    key={item.id}
-                    href={item.path}
-                    className="flex flex-col items-center p-6 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200"
-                  >
-                    <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-3">
-                      <IconComponent className="h-6 w-6 text-blue-600" />
-                    </div>
-                    <span className="text-sm font-medium text-gray-900 text-center">{item.name}</span>
-                  </a>
-                );
-              })}
+          {/* 전문가 모드일 때만 전문가 전용 설정 메뉴 표시 */}
+          {effectiveVariant === "expert" && (
+            <div className="mb-8">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">전문가 전용 설정</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {expertSettingsMenu.map((item) => {
+                  const IconComponent = item.icon;
+                  return (
+                    <a
+                      key={item.id}
+                      href={item.path}
+                      className="flex flex-col items-center p-6 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200"
+                    >
+                      <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-3">
+                        <IconComponent className="h-6 w-6 text-blue-600" />
+                      </div>
+                      <span className="text-sm font-medium text-gray-900 text-center">{item.name}</span>
+                    </a>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="space-y-8">
-            <ProfileSettings />
+            {/* 사용자 모드일 때만 프로필 설정 표시 */}
+            {effectiveVariant === "user" && <ProfileSettings />}
             <CalendarIntegration />
           </div>
         </div>

@@ -3,14 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "test:api": "tsx scripts/test-api.ts",
     "test:data": "tsx scripts/validate-data.ts",
     "test:performance": "tsx scripts/performance-test.ts",
-    "test:all": "npm run test:data && npm run test:performance && npm run test:api"
+    "test:all": "npm run test:data && npm run test:performance && npm run test:api",
+    "db:test": "tsx scripts/test-db-connection.ts",
+    "db:migrate": "npx sequelize-cli db:migrate",
+    "db:migrate:undo": "npx sequelize-cli db:migrate:undo",
+    "db:seed": "npx sequelize-cli db:seed:all"
   },
   "dependencies": {
     "@types/bcryptjs": "^2.4.6",

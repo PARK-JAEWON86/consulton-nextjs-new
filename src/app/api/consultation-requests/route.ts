@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ConsultationRequest, Notification } from '@/types';
+import { Op } from 'sequelize';
+import { ConsultationRequest, User, Expert, Notification } from '@/lib/db/models';
+import sequelize, { testConnection } from '@/lib/db/connection';
 
-// 임시 메모리 저장소 (실제로는 데이터베이스 사용)
-let consultationRequests: ConsultationRequest[] = [];
+// 데이터베이스 연결 확인
+testConnection();
 
 // 상담 신청 목록 조회
 export async function GET(request: NextRequest) {
@@ -14,60 +16,86 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    let filteredRequests = consultationRequests;
-
-    // 전문가별 필터링
+    // 쿼리 조건 구성
+    const whereClause: any = {};
+    
     if (expertId) {
-      filteredRequests = filteredRequests.filter(request => 
-        request.expertId === expertId
-      );
+      whereClause.expertId = expertId;
     }
-
-    // 클라이언트별 필터링
+    
     if (clientId) {
-      filteredRequests = filteredRequests.filter(request => 
-        request.clientId === clientId
-      );
+      whereClause.clientId = clientId;
     }
-
-    // 상태별 필터링
+    
     if (status) {
-      filteredRequests = filteredRequests.filter(request => 
-        request.status === status
-      );
+      whereClause.status = status;
     }
 
-    // 만료된 신청 제거
+    // 만료되지 않은 요청만 조회
     const now = new Date();
-    filteredRequests = filteredRequests.filter(request => 
-      !request.expiresAt || request.expiresAt > now
-    );
+    whereClause[Op.or] = [
+      { expiresAt: null },
+      { expiresAt: { [Op.gt]: now } }
+    ];
 
-    // 최신순 정렬
-    filteredRequests.sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    // 데이터베이스에서 조회
+    const { count, rows: requests } = await ConsultationRequest.findAndCountAll({
+      where: whereClause,
+      include: [
+        {
+          model: User,
+          as: 'client',
+          attributes: ['id', 'name', 'email']
+        },
+        {
+          model: Expert,
+          as: 'expert',
+          attributes: ['id', 'userId'],
+          include: [
+            {
+              model: User,
+              as: 'user',
+              attributes: ['id', 'name', 'email']
+            }
+          ]
+        }
+      ],
+      order: [['createdAt', 'DESC']],
+      limit,
+      offset
+    });
 
-    // 페이징
-    const paginatedRequests = filteredRequests.slice(offset, offset + limit);
-
-    // 대기 중인 신청 개수 계산
-    const pendingCount = filteredRequests.filter(r => r.status === 'pending').length;
+    // 대기 중인 신청 개수 계산 (expertId가 있는 경우에만)
+    let pendingCount = 0;
+    if (expertId) {
+      pendingCount = await ConsultationRequest.count({
+        where: {
+          expertId,
+          status: 'pending',
+          [Op.or]: [
+            { expiresAt: null },
+            { expiresAt: { [Op.gt]: now } }
+          ]
+        }
+      });
+    }
 
     return NextResponse.json({
       success: true,
       data: {
-        requests: paginatedRequests,
-        totalCount: filteredRequests.length,
-        pendingCount,
-        hasMore: offset + limit < filteredRequests.length
+        requests,
+        summary: {
+          totalCount: count,
+          pendingCount,
+          hasMore: offset + limit < count
+        }
       }
     });
 
   } catch (error) {
     console.error('상담 신청 목록 조회 실패:', error);
     return NextResponse.json(
-      { success: false, error: '상담 신청 목록을 불러오는데 실패했습니다.' },
+      { success: false, error: '상담 신청 목록을 불러올 수 없습니다.' },
       { status: 500 }
     );
   }
@@ -99,12 +127,14 @@ export async function POST(request: NextRequest) {
     const now = new Date();
     const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     
-    const existingRequest = consultationRequests.find(request => 
-      request.clientId === clientId && 
-      request.expertId === expertId && 
-      request.status === 'pending' &&
-      new Date(request.createdAt) > oneDayAgo
-    );
+    const existingRequest = await ConsultationRequest.findOne({
+      where: {
+        clientId,
+        expertId,
+        status: 'pending',
+        createdAt: { [Op.gt]: oneDayAgo }
+      }
+    });
 
     if (existingRequest) {
       return NextResponse.json(
@@ -114,23 +144,17 @@ export async function POST(request: NextRequest) {
     }
 
     // 새 상담 신청 생성
-    const newRequest: ConsultationRequest = {
-      id: `request_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      clientId,
-      expertId,
+    const newRequest = await ConsultationRequest.create({
+      clientId: parseInt(clientId),
+      expertId: parseInt(expertId),
       clientName,
       clientEmail,
       consultationType,
       preferredDate: preferredDate ? new Date(preferredDate) : undefined,
       message,
       status: 'pending',
-      createdAt: new Date(),
-      updatedAt: new Date(),
       expiresAt: new Date(now.getTime() + 24 * 60 * 60 * 1000) // 24시간 후 만료
-    };
-
-    // 상담 신청 저장
-    consultationRequests.push(newRequest);
+    });
 
     // 전문가에게 알림 생성
     const notification: Notification = {
@@ -206,7 +230,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // 상담 신청 찾기
-    const consultationRequest = consultationRequests.find(r => r.id === requestId);
+    const consultationRequest = await ConsultationRequest.findByPk(requestId);
     if (!consultationRequest) {
       return NextResponse.json(
         { success: false, error: '상담 신청을 찾을 수 없습니다.' },
@@ -215,7 +239,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // 권한 확인 (해당 전문가의 신청인지)
-    if (consultationRequest.expertId !== expertId) {
+    if (consultationRequest.expertId !== parseInt(expertId)) {
       return NextResponse.json(
         { success: false, error: '상담 신청을 처리할 권한이 없습니다.' },
         { status: 403 }
@@ -231,8 +255,11 @@ export async function PATCH(request: NextRequest) {
     }
 
     // 상태 업데이트
-    consultationRequest.status = status;
-    consultationRequest.updatedAt = new Date();
+    await consultationRequest.update({
+      status,
+      expertMessage,
+      updatedAt: new Date()
+    });
 
     // 클라이언트에게 알림 생성
     const notification: Notification = {

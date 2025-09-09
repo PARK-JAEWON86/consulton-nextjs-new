@@ -1,10 +1,6 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import { getRepositoryContainer, getSettlementConfig } from "@/config/SettlementConfig";
-import { SettlementService } from "@/services/settlement/SettlementService";
-import { PaymentService } from "@/services/payment/PaymentService";
-// import { getSettlementSummary } from "@/data/dummy/consultationHistory"; // 더미 데이터 제거
 import type { PayoutItem, ExpertEarnings } from "@/types/settlement";
 
 interface User {
@@ -95,9 +91,7 @@ export default function PayoutsPage() {
   const [nextSettlementDate, setNextSettlementDate] = useState<Date>(new Date());
   const [daysUntilSettlement, setDaysUntilSettlement] = useState<number>(0);
   
-  // 새로운 정산 시스템 상태
-  const [payoutItems, setPayoutItems] = useState<PayoutItem[]>([]);
-  const [expertEarnings, setExpertEarnings] = useState<ExpertEarnings | null>(null);
+  // 정산 시스템 상태
   const [isLoading, setIsLoading] = useState(false);
   const [currentExpertId, setCurrentExpertId] = useState<number | null>(null);
   const [settlementSummary, setSettlementSummary] = useState<any>(null);
@@ -180,8 +174,8 @@ export default function PayoutsPage() {
     setNextSettlementDate(nextDate);
     setDaysUntilSettlement(daysLeft);
     
-    // 로그인된 전문가 정보에서 ID 추출 및 정산 데이터 로드
-    if (appState.user && appState.user.role === 'expert' && appState.user.expertProfile) {
+    // 로그인된 전문가의 정산 데이터 로드
+    if (appState.user && appState.user.role === 'expert') {
       const expertId = appState.user.id && typeof appState.user.id === 'string' 
         ? parseInt(appState.user.id.replace('expert_', '')) 
         : 0;
@@ -196,16 +190,15 @@ export default function PayoutsPage() {
     try {
       setIsLoading(true);
       
-      // 실제 API에서 정산 요약 정보를 가져오기
+      // API에서 정산 요약 정보 가져오기
       try {
         const settlementResponse = await fetch(`/api/payouts?expertId=${expertId}`);
         if (settlementResponse.ok) {
           const settlementData = await settlementResponse.json();
           setSettlementSummary(settlementData.summary || null);
-          console.log(`✅ Loaded settlement data for expert ${expertId}:`, settlementData.summary);
         } else {
           setSettlementSummary(null);
-          console.log(`❌ Failed to load settlement data for expert ${expertId}`);
+          console.error(`정산 데이터 로드 실패: expert ${expertId}`);
         }
       } catch (error) {
         console.error('정산 데이터 로드 실패:', error);
@@ -224,7 +217,7 @@ export default function PayoutsPage() {
     [items]
   );
   
-  // 실제 정산 데이터 사용 (더미 데이터에서 로드)
+  // 정산 데이터 계산
   const gross = settlementSummary ? settlementSummary.totalGrossCredits : completed.reduce((acc, v) => acc + (v.amount || 0), 0);
   const totalFees = settlementSummary ? Math.floor(settlementSummary.totalPlatformFeeKrw / 10) : Math.round(gross * feeRate);
   const taxWithheld = settlementSummary ? Math.floor(settlementSummary.taxWithheldKrw / 10) : 0;
@@ -327,16 +320,18 @@ export default function PayoutsPage() {
               <div className="flex items-center">
                 <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
                   <span className="text-blue-600 font-bold text-lg">
-                    {appState.user.name?.charAt(0)}
+                    {appState.user.name?.charAt(0) || '전'}
                   </span>
                 </div>
                 <div className="ml-4">
                   <h2 className="text-lg font-bold text-blue-900">{appState.user.name}</h2>
-                  <p className="text-blue-700">{appState.user.expertProfile.specialty} • {appState.user.expertProfile.pricePerMinute?.toLocaleString()}원/분</p>
+                  <p className="text-blue-700">
+                    {appState.user.expertProfile.specialty} • {appState.user.expertProfile.pricePerMinute?.toLocaleString() || 0}원/분
+                  </p>
                   <div className="flex items-center mt-1 space-x-3 text-sm text-blue-600">
-                    <span>레벨 {appState.user.expertProfile.level}</span>
-                    <span>총 {appState.user.expertProfile.totalSessions}회 상담</span>
-                    <span>평점 {appState.user.expertProfile.avgRating}⭐</span>
+                    <span>레벨 {appState.user.expertProfile.level || 1}</span>
+                    <span>총 {appState.user.expertProfile.totalSessions || 0}회 상담</span>
+                    <span>평점 {appState.user.expertProfile.avgRating || 0}⭐</span>
                   </div>
                 </div>
               </div>
@@ -364,17 +359,13 @@ export default function PayoutsPage() {
             >
               CSV 다운로드
             </button>
-            {process.env.NODE_ENV === 'development' && appState.user && appState.user.expertProfile && (
+            {process.env.NODE_ENV === 'development' && currentExpertId && (
               <button
-                onClick={() => {
-                  const expertId = parseInt(appState.user?.id?.replace('expert_', '') || '0');
-                  if (expertId > 0) {
-                    loadSettlementData(expertId);
-                  }
-                }}
+                onClick={() => loadSettlementData(currentExpertId)}
                 className="h-10 px-4 rounded-md bg-green-600 text-white text-sm hover:bg-green-700"
+                disabled={isLoading}
               >
-                데이터 새로고침
+                {isLoading ? '로딩 중...' : '데이터 새로고침'}
               </button>
             )}
           </div>

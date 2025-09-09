@@ -320,34 +320,6 @@ const CreditBalance = ({ credits }: CreditBalanceProps) => {
               현재 {safeDisplayCredits(currentCredits)} 크레딧으로 상담 가능
             </div>
             
-            {/* 크레딧 충전 권유 메시지 */}
-            {shouldShowTopupRecommendation(currentCredits) && (
-              <div className="mt-2 p-3 bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg">
-                <div className="flex items-center space-x-2">
-                  <div className="flex-shrink-0">
-                    <svg
-                      className="h-5 w-5 text-orange-500"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-orange-800">
-                      상담 시간이 부족합니다!
-                    </p>
-                    <p className="text-xs text-orange-700">
-                      {getAvailableMinutes(currentCredits)}분 남음 • 지금 충전하고 더 많은 상담을 받아보세요
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
@@ -408,26 +380,28 @@ const CreditBalance = ({ credits }: CreditBalanceProps) => {
       )}
 
       {/* 경고 메시지 */}
-      {currentCredits < 30 && (
-        <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+      {shouldShowTopupRecommendation(currentCredits) && (
+        <div className="mt-4 p-3 bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg">
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <svg
-                className="h-5 w-5 text-yellow-400"
+                className="h-5 w-5 text-orange-500"
                 viewBox="0 0 20 20"
                 fill="currentColor"
               >
                 <path
                   fillRule="evenodd"
-                  d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" />
+                  d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                  clipRule="evenodd"
+                />
               </svg>
             </div>
             <div className="ml-3">
-              <p className="text-sm font-medium text-yellow-800">
-                크레딧이 부족합니다
+              <p className="text-sm font-medium text-orange-800">
+                상담 시간이 부족합니다!
               </p>
-              <p className="text-sm text-yellow-700">
-                원활한 서비스 이용을 위해 크레딧을 충전해 주세요.
+              <p className="text-sm text-orange-700">
+                현재 {getAvailableMinutes(currentCredits)}분 남음 • 원활한 서비스 이용을 위해 크레딧을 충전해 주세요.
               </p>
             </div>
           </div>

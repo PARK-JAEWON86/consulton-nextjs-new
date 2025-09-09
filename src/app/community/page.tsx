@@ -18,7 +18,7 @@ export default function CommunityPage() {
   const [myComments, setMyComments] = useState<any[]>([]);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [refreshStats, setRefreshStats] = useState(0);
-  const [profileMode, setProfileMode] = useState<'expert' | 'client'>('client');
+  const [viewMode, setViewMode] = useState<'user' | 'expert'>('user');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -57,11 +57,14 @@ export default function CommunityPage() {
             if (isAuth) {
               setIsAuthenticated(true);
               setUser(userData);
-              // 사용자 역할에 따라 기본 프로필 모드 설정
-              if (userData.role === 'expert') {
-                setProfileMode('expert');
+              // 로컬 스토리지에서 viewMode 우선 로드
+              const storedViewMode = localStorage.getItem('consulton-viewMode');
+              if (storedViewMode) {
+                setViewMode(JSON.parse(storedViewMode));
+              } else if (userData.role === 'expert') {
+                setViewMode('expert');
               } else {
-                setProfileMode('client'); // 일반 사용자는 항상 client 모드
+                setViewMode('user');
               }
               return;
             }
@@ -70,21 +73,24 @@ export default function CommunityPage() {
           }
         }
         
-        // API에서 사용자 정보 로드 (백업)
-        const response = await fetch('/api/auth/me');
+        // API에서 앱 상태 로드 (viewMode 포함)
+        const response = await fetch('/api/app-state');
         const result = await response.json();
+        
         if (result.success) {
-          setIsAuthenticated(true);
-          setUser(result.user);
-          // 사용자 역할에 따라 기본 프로필 모드 설정
-          if (result.user.role === 'expert') {
-            setProfileMode('expert');
+          setIsAuthenticated(result.data.isAuthenticated);
+          setUser(result.data.user);
+          // 로컬 스토리지에서 viewMode 우선 로드
+          const storedViewMode = localStorage.getItem('consulton-viewMode');
+          if (storedViewMode) {
+            setViewMode(JSON.parse(storedViewMode));
           } else {
-            setProfileMode('client'); // 일반 사용자는 항상 client 모드
+            setViewMode(result.data.viewMode || 'user');
           }
         } else {
           setIsAuthenticated(false);
           setUser(null);
+          setViewMode('user');
         }
       } catch (error) {
         console.error('인증 상태 확인 실패:', error);
@@ -92,6 +98,29 @@ export default function CommunityPage() {
     };
 
     checkAuth();
+  }, []);
+
+  // localStorage 변경 감지하여 viewMode 동기화
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'consulton-viewMode' && e.newValue) {
+        try {
+          const newViewMode = JSON.parse(e.newValue);
+          setViewMode(newViewMode);
+          console.log('localStorage에서 viewMode 변경 감지:', newViewMode);
+        } catch (error) {
+          console.error('viewMode 파싱 오류:', error);
+        }
+      }
+    };
+
+    // localStorage 이벤트 리스너 등록
+    window.addEventListener('storage', handleStorageChange);
+
+    // 컴포넌트 언마운트 시 이벤트 리스너 제거
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
   // URL 쿼리 파라미터에서 탭 설정 확인
@@ -334,7 +363,7 @@ export default function CommunityPage() {
           page: currentPage.toString(),
           limit: postsPerPage.toString(),
           userId: userFilter === 'my_posts' && user ? user.id.toString() : '',
-          profileMode: userFilter === 'my_posts' && user && user.role === 'expert' ? profileMode : ''
+          viewMode: userFilter === 'my_posts' && user && user.role === 'expert' ? viewMode : ''
         });
         
         const response = await fetch(`/api/community/posts?${params}`);
@@ -362,7 +391,7 @@ export default function CommunityPage() {
     };
 
     loadPosts();
-  }, [activeTab, postTypeFilter, sortBy, currentPage, userFilter, user, profileMode]);
+  }, [activeTab, postTypeFilter, sortBy, currentPage, userFilter, user, viewMode]);
 
 
   // API에서 이미 필터링 및 정렬된 게시글 사용
@@ -422,13 +451,44 @@ export default function CommunityPage() {
   };
 
   // 프로필 모드 변경 핸들러 (전문가만 가능)
-  const handleProfileModeChange = (mode: 'expert' | 'client') => {
-    // 전문가가 아닌 경우 모드 변경 불가
+  // 뷰 모드 변경 핸들러
+  const handleViewModeChange = async (mode: 'user' | 'expert') => {
+    // 전문가가 아니면 모드 변경 불가
     if (user?.role !== 'expert') {
       console.log('전문가가 아니므로 모드 변경 불가');
       return;
     }
-    setProfileMode(mode);
+    
+    try {
+      // 로컬 상태 업데이트
+      setViewMode(mode);
+      
+      // API에 상태 저장
+      const response = await fetch('/api/app-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'setViewMode', data: { viewMode: mode } })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      // 로컬 스토리지에도 저장
+      localStorage.setItem('consulton-viewMode', JSON.stringify(mode));
+      
+      console.log('뷰 모드 변경 완료:', mode);
+      
+      // 모드 변경 시 적절한 대시보드로 리다이렉트
+      if (mode === 'expert') {
+        window.location.href = '/dashboard/expert';
+      } else {
+        window.location.href = '/dashboard';
+      }
+    } catch (error) {
+      console.error('뷰 모드 변경 실패:', error);
+      // 에러 발생 시에도 로컬 상태는 유지
+    }
   };
 
   // 내가 쓴 댓글 로드
@@ -516,8 +576,8 @@ export default function CommunityPage() {
                 onMyCommentsClick={handleMyCommentsClick}
                 isMyCommentsActive={commentFilter === 'my_comments'}
                 refreshStats={refreshStats}
-                profileMode={profileMode}
-                onProfileModeChange={handleProfileModeChange}
+                viewMode={viewMode}
+                onViewModeChange={handleViewModeChange}
               />
           </div>
 
@@ -575,8 +635,8 @@ export default function CommunityPage() {
                     }}
                     isMyCommentsActive={commentFilter === 'my_comments'}
                     refreshStats={refreshStats}
-                    profileMode={profileMode}
-                    onProfileModeChange={handleProfileModeChange}
+                    viewMode={viewMode}
+                    onViewModeChange={handleViewModeChange}
                   />
                 </div>
               </div>

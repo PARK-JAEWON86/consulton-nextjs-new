@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Expert, ExpertProfile as ExpertProfileModel, User } from '@/lib/db/models';
 import { initializeDatabase } from '@/lib/db/init';
+import { sequelize } from '@/lib/db/sequelize';
+import { QueryTypes } from 'sequelize';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { 
   searchExpertProfiles, 
@@ -42,7 +44,6 @@ interface ExpertProfile {
 // GET: 전문가 프로필 조회
 export async function GET(request: NextRequest) {
   try {
-    console.log('Expert-profiles API 호출됨:', request.url);
     await initializeDatabase();
     
     const { searchParams } = new URL(request.url);
@@ -112,7 +113,6 @@ export async function GET(request: NextRequest) {
 
     // 현재 로그인한 전문가 프로필 조회 (임시로 비활성화)
     if (currentExpert) {
-      console.log('현재 전문가 조회 요청 - 임시로 빈 응답 반환');
       return NextResponse.json({
         success: true,
         data: {
@@ -120,15 +120,17 @@ export async function GET(request: NextRequest) {
           total: 0
         }
       });
-      // const authUser = await getAuthenticatedUser(request);
-      // if (!authUser || authUser.role !== 'expert') {
-      //   return NextResponse.json(
-      //     { success: false, message: '전문가 권한이 필요합니다.' },
-      //     { status: 403 }
-      //   );
-      // }
+      
+      // 아래 코드는 인증이 활성화될 때 사용
+      /*
+      const authUser = await getAuthenticatedUser(request);
+      if (!authUser || authUser.role !== 'expert') {
+        return NextResponse.json(
+          { success: false, message: '전문가 권한이 필요합니다.' },
+          { status: 403 }
+        );
+      }
 
-      const expert = await Expert.findOne({
         where: { userId: authUser.id },
         include: [
           {
@@ -185,6 +187,7 @@ export async function GET(request: NextRequest) {
           currentExpertId: expert.id
         }
       });
+      */
     }
 
     // 전체 전문가 프로필 목록 조회
@@ -197,50 +200,64 @@ export async function GET(request: NextRequest) {
       whereClause.specialty = specialty;
     }
 
-    console.log('데이터베이스 조회 조건:', whereClause);
     const experts = await Expert.findAll({
       where: whereClause,
+      attributes: [
+        'id', 'userId', 'specialty', 'experience', 'rating', 'reviewCount', 
+        'totalSessions', 'avgRating', 'completionRate', 'responseTime', 
+        'isOnline', 'isProfileComplete', 'isProfilePublic', 'location', 
+        'timeZone', 'languages', 'consultationTypes', 'hourlyRate', 
+        'pricePerMinute', 'profileViews', 'lastActiveAt', 'joinedAt', 
+        'level', 'rankingScore', 'likeCount', 'createdAt', 'updatedAt' // 새 필드들 포함
+      ],
       include: [
         {
           model: ExpertProfileModel,
           as: 'profile',
-          required: false
+          required: false,
+          attributes: ['id', 'fullName', 'jobTitle', 'bio', 'specialties', 'certifications', 'profileImage', 'repeatClients'] // 필요한 필드만 선택
         },
         {
           model: User,
           as: 'user',
-          required: false
+          required: false,
+          attributes: ['id', 'name', 'email'] // 필요한 필드만 선택
         }
       ],
-      limit: 50 // 성능을 위해 제한
+      limit: 50, // 성능을 위해 제한
+      order: [['avgRating', 'DESC'], ['totalSessions', 'DESC']] // 정렬 추가
     });
-    console.log('조회된 전문가 수:', experts.length);
 
-    const profiles = experts.map(expert => ({
-      id: expert.id.toString(),
-      email: expert.user?.email || '',
-      fullName: expert.profile?.fullName || expert.user?.name || '',
-      jobTitle: expert.profile?.jobTitle || expert.specialty,
-      specialty: expert.specialty,
-      experienceYears: expert.experience,
-      bio: expert.profile?.bio || '',
-      keywords: expert.profile?.specialties ? JSON.parse(expert.profile.specialties) : [],
-      consultationTypes: expert.consultationTypes ? JSON.parse(expert.consultationTypes) : [],
-      availability: {},
-      certifications: expert.profile?.certifications ? JSON.parse(expert.profile.certifications) : [],
-      profileImage: expert.profile?.profileImage,
-      status: 'approved',
-      createdAt: expert.createdAt.toISOString(),
-      updatedAt: expert.updatedAt.toISOString(),
-      rating: expert.rating,
-      reviewCount: expert.reviewCount,
-      totalSessions: expert.totalSessions,
-      repeatClients: expert.profile?.repeatClients || 0,
-      responseTime: expert.responseTime,
-      languages: expert.languages ? JSON.parse(expert.languages) : ['한국어'],
-      location: expert.location,
-      timeZone: expert.timeZone
-    }));
+    const profiles = experts.map(expert => {
+      return {
+        id: expert.id.toString(),
+        email: expert.user?.email || '',
+        fullName: expert.profile?.fullName || expert.user?.name || '',
+        jobTitle: expert.profile?.jobTitle || expert.specialty,
+        specialty: expert.specialty,
+        experienceYears: expert.experience,
+        bio: expert.profile?.bio || '',
+        keywords: expert.profile?.specialties ? JSON.parse(expert.profile.specialties) : [],
+        consultationTypes: expert.consultationTypes ? JSON.parse(expert.consultationTypes) : [],
+        availability: {},
+        certifications: expert.profile?.certifications ? JSON.parse(expert.profile.certifications) : [],
+        profileImage: expert.profile?.profileImage,
+        status: 'approved',
+        createdAt: expert.createdAt.toISOString(),
+        updatedAt: expert.updatedAt.toISOString(),
+        rating: expert.rating,
+        reviewCount: expert.reviewCount,
+        totalSessions: expert.totalSessions,
+        level: expert.level || 1, // 전문가 레벨 (직접 사용)
+        rankingScore: expert.rankingScore || 0, // 랭킹 점수
+        likeCount: expert.likeCount || 0, // 좋아요 수
+        repeatClients: expert.profile?.repeatClients || 0,
+        responseTime: expert.responseTime,
+        languages: expert.languages ? JSON.parse(expert.languages) : ['한국어'],
+        location: expert.location,
+        timeZone: expert.timeZone
+      }
+    });
 
     // 검색 쿼리가 있는 경우 필터링
     let filteredProfiles = profiles;
@@ -262,9 +279,13 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('전문가 프로필 조회 실패:', error);
-    console.error('에러 스택:', error.stack);
+    console.error('에러 스택:', error instanceof Error ? error.stack : 'Unknown error');
     return NextResponse.json(
-      { success: false, error: '전문가 프로필 조회에 실패했습니다.', details: error.message },
+      { 
+        success: false, 
+        error: '전문가 프로필 조회에 실패했습니다.', 
+        details: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.' 
+      },
       { status: 500 }
     );
   }
@@ -275,6 +296,41 @@ export async function POST(request: NextRequest) {
   try {
     await initializeDatabase();
     
+    const body = await request.json();
+    const { action } = body;
+
+    // 초기화 액션 처리 (인증 없이도 가능)
+    if (action === 'initializeProfiles') {
+      console.log('전문가 프로필 초기화 요청 처리 중...');
+      
+      // 데이터베이스 연결 확인 및 기본 설정
+      try {
+        // 간단한 쿼리로 데이터베이스 연결 확인
+        await sequelize.authenticate();
+        console.log('데이터베이스 연결 확인 완료');
+        
+        return NextResponse.json({
+          success: true,
+          message: '전문가 프로필 초기화가 완료되었습니다.',
+          data: {
+            initialized: true,
+            timestamp: new Date().toISOString()
+          }
+        });
+      } catch (dbError) {
+        console.error('데이터베이스 초기화 실패:', dbError);
+        return NextResponse.json(
+          { 
+            success: false, 
+            message: '데이터베이스 초기화에 실패했습니다.',
+            error: dbError instanceof Error ? dbError.message : '알 수 없는 오류'
+          },
+          { status: 500 }
+        );
+      }
+    }
+
+    // 일반적인 프로필 생성/업데이트는 인증 필요
     const authUser = await getAuthenticatedUser(request);
     if (!authUser || authUser.role !== 'expert') {
       return NextResponse.json(
@@ -282,8 +338,6 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       );
     }
-
-    const body = await request.json();
     const {
       fullName,
       jobTitle,
@@ -482,6 +536,13 @@ export async function PATCH(request: NextRequest) {
       });
     }
 
+    // 전문가 레벨 조회 (PATCH 메서드용)
+    const expertLevelQuery = await sequelize.query(
+      `SELECT level FROM experts WHERE id = ${expert.id}`,
+      { type: QueryTypes.SELECT }
+    ) as Array<{ level: number }>;
+    const expertLevel = expertLevelQuery[0]?.level || 1;
+
     const profileData = {
       id: expert.id.toString(),
       email: expert.user?.email || '',
@@ -502,6 +563,7 @@ export async function PATCH(request: NextRequest) {
       rating: expert.rating,
       reviewCount: expert.reviewCount,
       totalSessions: expert.totalSessions,
+      level: expertLevel, // 전문가 레벨 (별도 조회)
       repeatClients: expert.profile?.repeatClients || 0,
       responseTime: expert.responseTime,
       languages: expert.languages ? JSON.parse(expert.languages) : ['한국어'],

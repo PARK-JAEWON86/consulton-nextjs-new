@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { Star, MessageCircle, Filter, Search, ChevronDown, Calendar, User, Video, Phone, Edit2, Save, X } from "lucide-react";
+import ExpertProtectedRoute from "@/components/auth/ExpertProtectedRoute";
 
 import { Review } from "@/types";
 
@@ -21,16 +22,19 @@ interface AppState {
 }
 
 interface ConsultationItem {
-  id: number;
-  date: string;
-  customer: string;
-  topic: string;
-  amount: number;
-  status: "completed" | "scheduled" | "canceled";
-  method: "video" | "chat" | "voice" | "call";
+  id: string;
+  userId: string;
+  expertId: string;
+  title: string;
+  description: string;
+  category: string;
+  status: string;
+  scheduledAt: string;
   duration: number;
-  summary: string;
-  notes: string;
+  sessionType: 'video' | 'voice' | 'chat';
+  price: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 type SortOption = "latest" | "oldest" | "highest" | "lowest";
@@ -94,18 +98,12 @@ export default function ExpertReviewsPage() {
   const [editReplyText, setEditReplyText] = useState<{ [key: number]: string }>({});
   const [notification, setNotification] = useState<{ message: string; type: "success" | "error" } | null>(null);
   
-  // 상담 기록 스토어에서 데이터 가져오기
-  // const consultations = useConsultationsStore((state) => state.items);
-
-  // 로그인한 전문가의 리뷰만 로드
-  useEffect(() => {
-    if (user && user.role === 'expert') {
-      loadExpertReviews();
-    }
-  }, [user]);
+  // 페이징 상태 추가
+  const [currentPage, setCurrentPage] = useState(1);
+  const reviewsPerPage = 5; // 페이지당 리뷰 개수
 
   // 전문가 리뷰 로드
-  const loadExpertReviews = async () => {
+  const loadExpertReviews = useCallback(async () => {
     try {
       // 현재 로그인한 전문가의 리뷰를 API에서 조회
       const response = await fetch(`/api/reviews?expertId=${user?.id}&isPublic=true`);
@@ -121,46 +119,28 @@ export default function ExpertReviewsPage() {
           rating: apiReview.rating,
           comment: apiReview.content,
           consultationTopic: apiReview.category,
-          consultationType: 'video', // 기본값, 실제로는 상담 세션에서 가져와야 함
+          consultationType: 'video' as const,
           createdAt: apiReview.date,
           isVerified: apiReview.isVerified,
-          expertReply: apiReview.expertReply || null // API 응답에서 전문가 답글 가져오기
+          expertReply: apiReview.expertReply || null
         }));
         
         setReviews(transformedReviews);
       } else {
-        // API 실패 시 빈 배열 설정
         setReviews([]);
       }
     } catch (error) {
       console.error('전문가 리뷰 로드 실패:', error);
-      // 에러 시 빈 배열 설정
       setReviews([]);
     }
-  };
+  }, [user]);
 
-  // 하이라이트된 리뷰로 스크롤
+  // 로그인한 전문가의 리뷰만 로드
   useEffect(() => {
-    if (highlightReviewId) {
-      const timer = setTimeout(() => {
-        const element = document.getElementById(`review-${highlightReviewId}`);
-        if (element) {
-          element.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'center' 
-          });
-          // 하이라이트 효과를 위해 잠시 배경색 변경
-          element.style.backgroundColor = '#fef3c7';
-          element.style.transition = 'background-color 2s ease';
-          setTimeout(() => {
-            element.style.backgroundColor = '';
-          }, 2000);
-        }
-      }, 500); // 페이지 로드 후 약간의 지연
-      
-      return () => clearTimeout(timer);
+    if (user && user.role === 'expert') {
+      loadExpertReviews();
     }
-  }, [highlightReviewId]);
+  }, [user, loadExpertReviews]);
 
   // 리뷰 통계 계산
   const stats = useMemo(() => {
@@ -187,6 +167,7 @@ export default function ExpertReviewsPage() {
       totalReviews,
       averageRating: Math.round(averageRating * 10) / 10,
       ratingDistribution,
+      repliedReviews,
       replyRate: Math.round(replyRate),
       verifiedReviews,
       verificationRate: Math.round(verificationRate)
@@ -235,127 +216,34 @@ export default function ExpertReviewsPage() {
     return filtered;
   }, [reviews, searchTerm, sortBy, filterBy]);
 
+  // 페이징된 리뷰 계산
+  const paginatedReviews = useMemo(() => {
+    const startIndex = (currentPage - 1) * reviewsPerPage;
+    const endIndex = startIndex + reviewsPerPage;
+    return filteredAndSortedReviews.slice(startIndex, endIndex);
+  }, [filteredAndSortedReviews, currentPage, reviewsPerPage]);
+
+  // 총 페이지 수 계산
+  const totalPages = Math.ceil(filteredAndSortedReviews.length / reviewsPerPage);
+
+  // 페이지 변경 핸들러
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
+
+  // 필터나 검색이 변경될 때 첫 페이지로 리셋
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterBy, sortBy]);
+
   // 알림 표시 함수
   const showNotification = (message: string, type: "success" | "error" = "success") => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 3000);
-  };
-
-  // 리뷰에 답글 작성
-  const handleReply = async (reviewId: number) => {
-    const reply = replyText[reviewId]?.trim();
-    if (!reply) {
-      showNotification("답글 내용을 입력해주세요.", "error");
-      return;
-    }
-
-    try {
-      // API를 통해 답글 저장
-      const response = await fetch('/api/reviews', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: reviewId.toString(),
-          expertReply: {
-            message: reply,
-            createdAt: new Date().toISOString()
-          }
-        })
-      });
-
-      const result = await response.json();
-      
-      if (result.success) {
-        // 로컬 상태 업데이트
-        setReviews(prev =>
-          prev.map(review =>
-            review.id === reviewId
-              ? {
-                  ...review,
-                  expertReply: {
-                    message: reply,
-                    createdAt: new Date().toISOString()
-                  }
-                }
-              : review
-          )
-        );
-
-        setReplyText(prev => ({ ...prev, [reviewId]: "" }));
-        setShowReplyForm(null);
-        showNotification("답글이 성공적으로 작성되었습니다!");
-      } else {
-        showNotification(result.message || "답글 작성에 실패했습니다.", "error");
-      }
-    } catch (error) {
-      console.error('답글 작성 실패:', error);
-      showNotification("답글 작성에 실패했습니다.", "error");
-    }
-  };
-
-  // 답글 수정 시작
-  const startEditReply = (reviewId: number, currentReply: string) => {
-    setEditingReply(reviewId);
-    setEditReplyText(prev => ({ ...prev, [reviewId]: currentReply }));
-  };
-
-  // 답글 수정 완료
-  const handleEditReply = async (reviewId: number) => {
-    const editedReply = editReplyText[reviewId]?.trim();
-    if (!editedReply) {
-      showNotification("답글 내용을 입력해주세요.", "error");
-      return;
-    }
-
-    try {
-      // API를 통해 답글 수정
-      const response = await fetch('/api/reviews', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: reviewId.toString(),
-          expertReply: {
-            message: editedReply,
-            createdAt: new Date().toISOString()
-          }
-        })
-      });
-
-      const result = await response.json();
-      
-      if (result.success) {
-        // 로컬 상태 업데이트
-        setReviews(prev =>
-          prev.map(review =>
-            review.id === reviewId && review.expertReply
-              ? {
-                  ...review,
-                  expertReply: {
-                    ...review.expertReply,
-                    message: editedReply,
-                    createdAt: review.expertReply.createdAt // 원래 작성일은 유지
-                  }
-                }
-              : review
-          )
-        );
-
-        setEditReplyText(prev => ({ ...prev, [reviewId]: "" }));
-        setEditingReply(null);
-        showNotification("답글이 성공적으로 수정되었습니다!");
-      } else {
-        showNotification(result.message || "답글 수정에 실패했습니다.", "error");
-      }
-    } catch (error) {
-      console.error('답글 수정 실패:', error);
-      showNotification("답글 수정에 실패했습니다.", "error");
-    }
-  };
-
-  // 답글 수정 취소
-  const cancelEditReply = (reviewId: number) => {
-    setEditingReply(null);
-    setEditReplyText(prev => ({ ...prev, [reviewId]: "" }));
   };
 
   // 별점 렌더링
@@ -399,36 +287,10 @@ export default function ExpertReviewsPage() {
     });
   };
 
-
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* 알림 토스트 */}
-      {notification && (
-        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2">
-          <div className={`rounded-lg p-4 shadow-lg border-l-4 ${
-            notification.type === "success" 
-              ? "bg-green-50 border-green-400 text-green-800" 
-              : "bg-red-50 border-red-400 text-red-800"
-          }`}>
-            <div className="flex items-center">
-              {notification.type === "success" ? (
-                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              )}
-              <p className="font-medium">{notification.message}</p>
-            </div>
-          </div>
-        </div>
-      )}
-      
+    <ExpertProtectedRoute>
+      <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* 헤더 */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
@@ -447,62 +309,51 @@ export default function ExpertReviewsPage() {
         </div>
 
         {/* 통계 카드 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
             <div className="flex items-center">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Star className="w-6 h-6 text-blue-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">전체 리뷰</p>
-                <p className="text-2xl font-semibold text-gray-900">
+              <Star className="h-6 w-6 md:h-8 md:w-8 text-blue-500 mr-2 md:mr-3" />
+              <div>
+                <p className="text-xs md:text-sm font-medium text-gray-600">전체 리뷰</p>
+                <p className="text-lg md:text-2xl font-bold text-gray-900">
                   {stats.totalReviews}개
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
             <div className="flex items-center">
-              <div className="p-2 bg-yellow-100 rounded-lg">
-                <Star className="w-6 h-6 text-yellow-600 fill-current" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">평균 평점</p>
-                <div className="flex items-center">
-                  <p className="text-2xl font-semibold text-gray-900 mr-2">
-                    {stats.averageRating}
-                  </p>
-                  {renderStars(Math.round(stats.averageRating))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <MessageCircle className="w-6 h-6 text-green-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">답글 작성률</p>
-                <p className="text-2xl font-semibold text-gray-900">
-                  {stats.replyRate}%
+              <Star className="h-6 w-6 md:h-8 md:w-8 text-yellow-500 mr-2 md:mr-3" />
+              <div>
+                <p className="text-xs md:text-sm font-medium text-gray-600">평균 평점</p>
+                <p className="text-lg md:text-2xl font-bold text-gray-900">
+                  {stats.averageRating}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
             <div className="flex items-center">
-              <div className="p-2 bg-orange-100 rounded-lg">
-                <svg className="w-6 h-6 text-orange-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
+              <MessageCircle className="h-6 w-6 md:h-8 md:w-8 text-orange-500 mr-2 md:mr-3" />
+              <div>
+                <p className="text-xs md:text-sm font-medium text-gray-600">미답글 리뷰</p>
+                <p className="text-lg md:text-2xl font-bold text-gray-900">
+                  {stats.totalReviews - stats.repliedReviews}개
+                </p>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">검증된 리뷰</p>
-                <p className="text-2xl font-semibold text-gray-900">
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+            <div className="flex items-center">
+              <svg className="h-6 w-6 md:h-8 md:w-8 text-purple-500 mr-2 md:mr-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              <div>
+                <p className="text-xs md:text-sm font-medium text-gray-600">검증된 리뷰</p>
+                <p className="text-lg md:text-2xl font-bold text-gray-900">
                   {stats.verifiedReviews}개
                 </p>
                 <p className="text-xs text-gray-500">
@@ -511,21 +362,22 @@ export default function ExpertReviewsPage() {
               </div>
             </div>
           </div>
+        </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Star className="w-6 h-6 text-purple-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">5점 리뷰</p>
-                <p className="text-2xl font-semibold text-gray-900">
-                  {stats.ratingDistribution[5]}개
-                </p>
+        {/* 알림 토스트 */}
+        {notification && (
+          <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2">
+            <div className={`rounded-lg p-4 shadow-lg border-l-4 ${
+              notification.type === "success" 
+                ? "bg-green-50 border-green-400 text-green-800" 
+                : "bg-red-50 border-red-400 text-red-800"
+            }`}>
+              <div className="flex items-center">
+                <span className="font-medium">{notification.message}</span>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* 검색 및 필터 */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
@@ -583,167 +435,151 @@ export default function ExpertReviewsPage() {
               <p className="text-gray-500">조건에 맞는 리뷰가 없습니다.</p>
             </div>
           ) : (
-            filteredAndSortedReviews.map((review) => (
-              <div key={review.id} id={`review-${review.id}`} className="bg-white rounded-lg shadow p-6">
-                {/* 리뷰 헤더 */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center">
-                    <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
-                      <User className="w-6 h-6 text-gray-600" />
-                    </div>
-                    <div className="ml-3">
-                      <div className="flex items-center">
-                        <p className="font-medium text-gray-900">{review.userName}</p>
-                        {review.isVerified && (
-                          <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            인증됨
+            <>
+              {paginatedReviews.map((review) => (
+                <div 
+                  key={review.id} 
+                  id={`review-${review.id}`} 
+                  className={`rounded-xl shadow-sm border p-6 ${
+                    !review.expertReply 
+                      ? 'bg-gradient-to-b from-orange-50 to-orange-100/50 border-orange-200' 
+                      : 'bg-white border-gray-200'
+                  }`}
+                >
+                  {/* 리뷰 헤더 */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center">
+                      <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
+                        <User className="w-6 h-6 text-gray-600" />
+                      </div>
+                      <div className="ml-3">
+                        <div className="flex items-center">
+                          <p className="font-medium text-gray-900">{review.userName}</p>
+                          {review.isVerified && (
+                            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              인증됨
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center mt-1">
+                          {renderStars(review.rating)}
+                          <span className="ml-2 text-sm text-gray-500">
+                            {formatDate(review.createdAt)}
                           </span>
-                        )}
-                      </div>
-                      <div className="flex items-center mt-1">
-                        {renderStars(review.rating)}
-                        <span className="ml-2 text-sm text-gray-500">
-                          {formatDate(review.createdAt)}
-                        </span>
+                        </div>
                       </div>
                     </div>
+                    <div className="flex items-center text-sm text-gray-500">
+                      {getConsultationIcon(review.consultationType)}
+                      <span className="ml-1">{review.consultationTopic}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center text-sm text-gray-500">
-                    {getConsultationIcon(review.consultationType)}
-                    <span className="ml-1">{review.consultationTopic}</span>
+
+                  {/* 리뷰 내용 */}
+                  <div className="mb-4">
+                    <p className="text-gray-700 leading-relaxed">{review.comment}</p>
                   </div>
-                </div>
 
-                {/* 리뷰 내용 */}
-                <div className="mb-4">
-                  <p className="text-gray-700 leading-relaxed">{review.comment}</p>
-                </div>
-
-                {/* 전문가 답글 */}
-                {review.expertReply ? (
-                  <div className="bg-blue-50 rounded-lg p-4 mb-4">
-                    <div className="flex items-start">
-                      <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-                        <User className="w-4 h-4 text-white" />
-                      </div>
-                      <div className="ml-3 flex-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center">
+                  {/* 전문가 답글 */}
+                  {review.expertReply ? (
+                    <div className="bg-blue-50 rounded-lg p-4 mb-4">
+                      <div className="flex items-start">
+                        <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                          <User className="w-4 h-4 text-white" />
+                        </div>
+                        <div className="ml-3 flex-1">
+                          <div className="flex items-center mb-1">
                             <p className="font-medium text-blue-900">전문가 답글</p>
                             <span className="ml-2 text-xs text-blue-600">
                               {formatDate(review.expertReply.createdAt)}
                             </span>
                           </div>
-                          {editingReply !== review.id && (
-                            <button
-                              onClick={() => startEditReply(review.id, review.expertReply!.message)}
-                              className="text-blue-600 hover:text-blue-800 p-1 rounded"
-                              title="답글 수정"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                        
-                        {editingReply === review.id ? (
-                          <div className="space-y-3">
-                            <textarea
-                              value={editReplyText[review.id] || ""}
-                              onChange={(e) =>
-                                setEditReplyText(prev => ({
-                                  ...prev,
-                                  [review.id]: e.target.value
-                                }))
-                              }
-                              rows={3}
-                              className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-blue-800 bg-white"
-                            />
-                            <div className="flex justify-end gap-2">
-                              <button
-                                onClick={() => cancelEditReply(review.id)}
-                                className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                              >
-                                <X className="w-3 h-3 mr-1" />
-                                취소
-                              </button>
-                              <button
-                                onClick={() => handleEditReply(review.id)}
-                                disabled={!editReplyText[review.id]?.trim()}
-                                className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                <Save className="w-3 h-3 mr-1" />
-                                저장
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
                           <p className="text-blue-800">{review.expertReply.message}</p>
-                        )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ) : (
-                  // 답글 작성 폼
-                  <div className="border-t pt-4">
-                    {showReplyForm === review.id ? (
-                      <div className="bg-gray-50 rounded-lg p-4">
-                        <div className="flex items-start mb-3">
-                          <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-                            <User className="w-4 h-4 text-white" />
+                  ) : (
+                    <div className="mt-4 p-4 bg-gradient-to-r from-orange-100/70 to-orange-50/70 border border-orange-200 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center flex-shrink-0">
+                            <MessageCircle className="w-4 h-4 text-white" />
                           </div>
-                          <div className="ml-3 flex-1">
-                            <p className="font-medium text-gray-900 mb-2">답글 작성</p>
-                            <textarea
-                              placeholder="고객에게 정중하고 도움이 되는 답글을 작성해주세요..."
-                              value={replyText[review.id] || ""}
-                              onChange={(e) =>
-                                setReplyText(prev => ({
-                                  ...prev,
-                                  [review.id]: e.target.value
-                                }))
-                              }
-                              rows={4}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                            />
+                          <div className="ml-3">
+                            <p className="text-sm font-medium text-orange-800">답글이 필요한 리뷰입니다</p>
+                            <p className="text-xs text-orange-600">고객의 소중한 후기에 답글을 작성해주세요</p>
                           </div>
                         </div>
-                        <div className="flex justify-end gap-2 ml-11">
-                          <button
-                            onClick={() => {
-                              setShowReplyForm(null);
-                              setReplyText(prev => ({ ...prev, [review.id]: "" }));
-                            }}
-                            className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-                          >
-                            <X className="w-4 h-4 mr-1" />
-                            취소
-                          </button>
-                          <button
-                            onClick={() => handleReply(review.id)}
-                            disabled={!replyText[review.id]?.trim()}
-                            className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <MessageCircle className="w-4 h-4 mr-1" />
-                            답글 작성
-                          </button>
-                        </div>
+                        <button className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors border border-orange-700">
+                          <Edit2 className="w-4 h-4 mr-2" />
+                          답글 작성
+                        </button>
                       </div>
-                    ) : (
-                      <button
-                        onClick={() => setShowReplyForm(review.id)}
-                        className="inline-flex items-center px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
-                      >
-                        <MessageCircle className="w-4 h-4 mr-2" />
-                        답글 작성
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {/* 페이징 컨트롤 */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center space-x-2 mt-8">
+                  {/* 이전 페이지 버튼 */}
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                      currentPage === 1
+                        ? "text-gray-400 bg-gray-100 cursor-not-allowed"
+                        : "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"
+                    }`}
+                  >
+                    이전
+                  </button>
+
+                  {/* 페이지 번호들 */}
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => handlePageChange(page)}
+                      className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                        currentPage === page
+                          ? "bg-blue-600 text-white"
+                          : "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+
+                  {/* 다음 페이지 버튼 */}
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                      currentPage === totalPages
+                        ? "text-gray-400 bg-gray-100 cursor-not-allowed"
+                        : "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"
+                    }`}
+                  >
+                    다음
+                  </button>
+                </div>
+              )}
+
+              {/* 페이지 정보 표시 */}
+              {totalPages > 1 && (
+                <div className="text-center text-sm text-gray-500 mt-4">
+                  {currentPage} / {totalPages} 페이지
+                  <span className="ml-2">
+                    (총 {filteredAndSortedReviews.length}개 리뷰 중 {(currentPage - 1) * reviewsPerPage + 1}-{Math.min(currentPage * reviewsPerPage, filteredAndSortedReviews.length)}번째)
+                  </span>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </ExpertProtectedRoute>
   );
 }

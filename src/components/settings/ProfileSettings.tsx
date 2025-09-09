@@ -109,22 +109,8 @@ const ProfileSettings = () => {
         }
       } catch (error) {
         console.error('프로필 로드 실패:', error);
-        // 에러가 발생해도 기본값으로 설정하여 알러트 방지
-        setProfile({
-          firstName: "김철수",
-          lastName: "",
-          displayName: "철수킹",
-          email: "kimcheolsu@example.com",
-          phone: "010-1234-5678",
-          profileImage: null,
-          interestedCategories: ["career", "psychology", "finance"],
-          profileVisibility: "experts",
-        });
-        setPhoneVerification(prev => ({
-          ...prev,
-          isVerified: true,
-          originalPhone: "010-1234-5678"
-        }));
+        // 에러 발생 시 빈 상태로 설정하고 에러 메시지 표시
+        setError('프로필 정보를 불러올 수 없습니다. 페이지를 새로고침하거나 잠시 후 다시 시도해주세요.');
       } finally {
         setIsLoading(false);
       }
@@ -216,32 +202,52 @@ const ProfileSettings = () => {
     }));
 
     try {
-      // 인증번호 발송 API 호출 시뮬레이션
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // 카운트다운 시작 (3분)
-      setPhoneVerification(prev => ({
-        ...prev,
-        isSending: false,
-        countdown: 180
-      }));
+      // 실제 인증번호 발송 API 호출
+      const response = await fetch('/api/auth/send-phone-verification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          phone: profile.phone
+        }),
+      });
 
-      // 카운트다운 타이머
-      const timer = setInterval(() => {
-        setPhoneVerification(prev => {
-          if (prev.countdown <= 1) {
-            clearInterval(timer);
-            return { ...prev, countdown: 0 };
-          }
-          return { ...prev, countdown: prev.countdown - 1 };
-        });
-      }, 1000);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || '인증번호 발송에 실패했습니다.');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // 카운트다운 시작 (3분)
+        setPhoneVerification(prev => ({
+          ...prev,
+          isSending: false,
+          countdown: 180
+        }));
+
+        // 카운트다운 타이머
+        const timer = setInterval(() => {
+          setPhoneVerification(prev => {
+            if (prev.countdown <= 1) {
+              clearInterval(timer);
+              return { ...prev, countdown: 0 };
+            }
+            return { ...prev, countdown: prev.countdown - 1 };
+          });
+        }, 1000);
+      } else {
+        throw new Error(result.message || '인증번호 발송에 실패했습니다.');
+      }
 
     } catch (error) {
+      console.error('인증번호 발송 실패:', error);
       setPhoneVerification(prev => ({
         ...prev,
         isSending: false,
-        errorMessage: "인증번호 발송에 실패했습니다. 다시 시도해주세요."
+        errorMessage: error instanceof Error ? error.message : "인증번호 발송에 실패했습니다. 다시 시도해주세요."
       }));
     }
   };
@@ -263,11 +269,26 @@ const ProfileSettings = () => {
     }));
 
     try {
-      // 인증번호 확인 API 호출 시뮬레이션
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // 실제 인증번호 확인 API 호출
+      const response = await fetch('/api/auth/verify-phone', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          phone: profile.phone,
+          verificationCode: phoneVerification.verificationCode
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || '인증에 실패했습니다.');
+      }
+
+      const result = await response.json();
       
-      // 인증 성공 (더미 데이터에서는 "123456"이 정답)
-      if (phoneVerification.verificationCode === "123456") {
+      if (result.success) {
         console.log('인증 성공:', {
           phone: profile.phone,
           verificationCode: phoneVerification.verificationCode
@@ -284,14 +305,15 @@ const ProfileSettings = () => {
         setPhoneVerification(prev => ({
           ...prev,
           isVerifying: false,
-          errorMessage: "인증번호가 일치하지 않습니다."
+          errorMessage: result.message || "인증번호가 일치하지 않습니다."
         }));
       }
     } catch (error) {
+      console.error('인증번호 확인 실패:', error);
       setPhoneVerification(prev => ({
         ...prev,
         isVerifying: false,
-        errorMessage: "인증에 실패했습니다. 다시 시도해주세요."
+        errorMessage: error instanceof Error ? error.message : "인증에 실패했습니다. 다시 시도해주세요."
       }));
     }
   };

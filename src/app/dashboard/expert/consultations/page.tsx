@@ -33,9 +33,8 @@ function formatCredits(amount: number) {
 }
 
 // 고객이 리뷰를 남겼는지 확인하는 함수
-function hasCustomerLeftReview(customerName: string, expertId: number = 1): boolean {
-  // 실제 프로덕션에서는 API에서 리뷰를 조회해야 함
-  // 현재는 false 반환
+function hasCustomerLeftReview(customerName: string): boolean {
+  // TODO: 실제 API에서 리뷰 상태 조회 구현
   return false;
 }
 
@@ -309,7 +308,7 @@ export default function ExpertConsultationsPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                       <div className="flex items-center">
                         <Calendar className="h-4 w-4 text-gray-400 mr-2" />
-                        {format(new Date(row.date), "PP", { locale: ko })}
+                        {format(new Date(row.date), "yyyy-MM-dd", { locale: ko })}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">

@@ -21,7 +21,7 @@ import {
   History,
 } from "lucide-react";
 import CreditBalance from "./CreditBalance";
-import UserProfile from "./UserProfile";
+import UserStats from "./UserStats";
 import { eventBus, CREDIT_EVENTS, USER_EVENTS } from "@/utils/eventBus";
 
 interface User {
@@ -379,11 +379,6 @@ export default function DashboardContent() {
 
   const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
 
-  // 사용자 프로필 저장 핸들러
-  const handleUserProfileSave = (profileData: any) => {
-    console.log("사용자 프로필 저장:", profileData);
-    // TODO: 실제 사용자 데이터 업데이트 로직 구현
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -416,231 +411,147 @@ export default function DashboardContent() {
           </div>
         </div>
 
-        {/* 크레딧 잔액 및 AI상담 토큰 */}
-        <div className="mb-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* 크레딧 잔액 */}
-            <div className="flex flex-col">
-              <CreditBalance 
-                credits={user.credits} 
-                userId={user.id} 
-              />
-            </div>
-            
-            {/* AI상담 토큰 */}
-            <div className="flex flex-col">
-              <div className="bg-white shadow rounded-lg p-6">
-              {isLoading ? (
-                <div className="flex justify-center items-center h-32">
-                  <RefreshCw className="h-8 w-8 text-blue-500 animate-spin" />
-                  <span className="ml-2 text-gray-600">데이터를 불러오는 중입니다...</span>
+        {/* 사용자 정보 헤더 - 로딩 완료 후에만 표시 */}
+        {!isLoading && user && (
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 mb-8">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                  <span className="text-blue-600 font-bold text-xl">
+                    {user.name?.charAt(0)}
+                  </span>
                 </div>
-              ) : (
-                <>
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center">
-                      <MessageCircle className="h-6 w-6 text-blue-600 mr-3" />
-                      <h3 className="text-lg font-medium text-gray-900">AI상담 토큰</h3>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <div className="flex items-center space-x-2 text-xs text-gray-500">
-                        <RefreshCw className="w-4 h-4" />
-                        <span>
-                          다음 리셋까지 {aiTokenData ? (() => {
-                            const now = new Date();
-                            const nextReset = new Date(aiTokenData.summary?.nextResetDate || '');
-                            const diff = nextReset.getTime() - now.getTime();
-                            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-                            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                            return `${days}일 ${hours}시간`;
-                          })() : '...일 ...시간'}
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => {
-                          console.log('AI상담 토큰 히스토리 토글:', !showTokenHistory);
-                          setShowTokenHistory(!showTokenHistory);
-                        }}
-                        className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
-                        title="AI상담 토큰 사용내역"
-                      >
-                        <History className="h-5 w-5" />
-                      </button>
-                    </div>
+                <div className="ml-4">
+                  <h2 className="text-xl font-bold text-blue-900">{user.name} (사용자)</h2>
+                  <div className="flex items-center mt-2 space-x-4 text-sm">
+                    <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded flex items-center justify-center min-w-[80px] whitespace-nowrap">
+                      사용자
+                    </span>
+                    <span className="text-blue-600">
+                      상담 가능
+                    </span>
                   </div>
-                  
-                  <div className="space-y-4">
-                    {/* 이번 달 무료 토큰 */}
-                    <div className="text-center">
-                      <h4 className="text-sm font-semibold text-gray-800 mb-4">
-                        이번 달 무료 토큰
-                        <span className="text-xs font-normal text-gray-500 ml-2">
-                          (사용기한: {aiTokenData ? (() => {
-                            const nextReset = new Date(aiTokenData.summary?.nextResetDate || '');
-                            return `${nextReset.getMonth() + 1}월 ${nextReset.getDate()}일`;
-                          })() : '...월 ...일'})
-                        </span>
-                      </h4>
-                      <div className="text-3xl font-bold text-blue-600 mb-4">
-                        {aiTokenData && aiTokenData.summary?.remainingFreeTokens ? (
-                          aiTokenData.summary.remainingFreeTokens.toLocaleString()
-                        ) : (
-                          '로딩 중...'
-                        )}
-                      </div>
-                      <div className="mb-4">
-                        <p className="text-gray-600">
-                          {/* 턴 대화가능 텍스트 제거됨 */}
-                        </p>
-                      </div>
-                    </div>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-sm text-blue-600 mb-2">이메일</div>
+                <div className="font-medium text-blue-900">{user.email}</div>
+              </div>
+            </div>
+          </div>
+        )}
 
-                    {/* 진행률 표시 */}
-                    <div className="text-center">
-                      <p className="text-sm text-gray-600 mb-2">
-                        무료 제공량 {aiTokenData && aiTokenData.summary?.freeTokensUsagePercent !== undefined ? 
-                          (100 - aiTokenData.summary.freeTokensUsagePercent) : '...'}% 남음
-                      </p>
-                      <div className="w-full bg-gray-200 rounded-full h-2 mb-2 overflow-hidden shadow-inner">
-                        <div 
-                          className={`h-2 rounded-full transition-all duration-500 ease-out shadow-sm ${
-                            aiTokenData && aiTokenData.summary?.freeTokensUsagePercent > 70 ? 'bg-gradient-to-r from-red-400 to-red-500' :
-                            aiTokenData && aiTokenData.summary?.freeTokensUsagePercent > 30 ? 'bg-gradient-to-r from-yellow-400 to-orange-500' :
-                            'bg-gradient-to-r from-green-400 to-green-500'
-                          }`}
-                          style={{ 
-                            width: `${aiTokenData && aiTokenData.summary?.freeTokensUsagePercent !== undefined ? 
-                              Math.max(1, Math.min(100, 100 - aiTokenData.summary.freeTokensUsagePercent)) : 0}%` 
-                          }}
-                        ></div>
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        {/* 턴 남음 텍스트 제거됨 */}
-                      </p>
-                    </div>
+        {/* 빠른 액션 섹션 */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
+          {/* 크레딧 잔액 */}
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">
+              크레딧 잔액
+            </h3>
+            <div className="space-y-3">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-blue-600 mb-2">
+                  {user.credits.toLocaleString()}
+                </div>
+                <div className="text-sm text-gray-600 mb-4">크레딧</div>
+                <button
+                  onClick={handleGoToCreditTopup}
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  크레딧 충전
+                </button>
+              </div>
+            </div>
+          </div>
 
-                    {/* 토큰 사용량 안내 */}
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <button
-                        onClick={() => setIsTokenGuideExpanded(!isTokenGuideExpanded)}
-                        className="w-full flex items-center justify-between text-left"
-                      >
-                        <h5 className="font-semibold text-gray-800 text-sm">
-                          토큰 사용량 안내
-                        </h5>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-xs text-gray-500">
-                            {isTokenGuideExpanded ? '접기' : '펼치기'}
-                          </span>
-                          <ChevronDown 
-                            className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${
-                              isTokenGuideExpanded ? 'rotate-180' : ''
-                            }`}
-                          />
-                        </div>
-                      </button>
-                      
-                      {isTokenGuideExpanded && (
-                        <div className="mt-3 text-center space-y-3">
-                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                            <p className="text-blue-800 text-sm font-medium mb-2">
-                              💡 토큰 사용량은 대화의 복잡도에 따라 달라집니다
-                            </p>
-                            <ul className="text-blue-700 text-xs space-y-1 text-left">
-                              <li>• 간단한 질문: 적은 토큰 사용</li>
-                              <li>• 복잡한 상담: 더 많은 토큰 사용</li>
-                              <li>• 긴 대화: 누적 토큰 소모</li>
-                              <li>• 정밀 모드: 1.2배 토큰 소모</li>
-                            </ul>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* 크레딧 충전 안내 */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <Plus className="w-5 h-5 text-blue-600" />
-                            <span className="font-semibold text-blue-800 text-sm">더 많은 대화가 필요하다면</span>
-                          </div>
-                          <p className="text-blue-700 text-sm">
-                            100크레딧으로 더 많은 대화를 즐기세요
-                          </p>
-                        </div>
-                        <div className="ml-4">
-                          <button 
-                            onClick={handleShowPurchaseModal}
-                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
-                          >
-                            AI상담 토큰 구매하기
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* AI상담 토큰 사용내역 */}
-                    {showTokenHistory && (
-                      <div className="border-t pt-4 mt-4">
-                        <h3 className="text-lg font-medium text-gray-900 mb-3">AI상담 토큰 사용내역</h3>
-                        <div className="space-y-3 max-h-60 overflow-y-auto">
-                          {aiTokenData && aiTokenData.usageHistory ? (
-                            aiTokenData.usageHistory.map((item: any, index: number) => (
-                              <div
-                                key={index}
-                                className="flex items-center justify-between py-2"
-                              >
-                                <div className="flex-1">
-                                  <div className="flex items-center space-x-2">
-                                    <span
-                                      className={`text-sm font-medium ${
-                                        item.type === 'free' ? 'text-blue-600' : 'text-green-600'
-                                      }`}
-                                    >
-                                      {item.type === 'free' ? '무료 토큰' : '구매 토큰'}
-                                    </span>
-                                    <span className="text-sm text-gray-600">
-                                      {item.description || 'AI상담 대화'}
-                                    </span>
-                                  </div>
-                                  <div className="text-xs text-gray-500 mt-1">
-                                    {new Date(item.date).toLocaleDateString("ko-KR")}
-                                  </div>
-                                </div>
-                                <div className="text-right">
-                                  <div className="text-sm font-semibold text-red-600">
-                                    -{item.tokensUsed?.toLocaleString() || '0'}
-                                  </div>
-                                  <div className="text-xs text-gray-500">토큰</div>
-                                </div>
-                              </div>
-                            ))
-                          ) : (
-                            <div className="text-center py-8">
-                              <MessageCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                              <p className="text-gray-500">
-                                아직 AI상담 토큰 사용내역이 없습니다.
-                              </p>
-                              <p className="text-sm text-gray-400 mt-1">
-                                AI상담을 시작해보세요!
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
+          {/* AI상담 토큰 */}
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">
+              AI상담 토큰
+            </h3>
+            {isLoading ? (
+              <div className="flex justify-center items-center h-32">
+                <RefreshCw className="h-8 w-8 text-blue-500 animate-spin" />
+                <span className="ml-2 text-gray-600">로딩 중...</span>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600 mb-2">
+                    {aiTokenData && aiTokenData.summary?.remainingFreeTokens ? (
+                      aiTokenData.summary.remainingFreeTokens.toLocaleString()
+                    ) : (
+                      '0'
                     )}
                   </div>
-                </>
-              )}
+                  <div className="text-sm text-gray-600 mb-4">토큰 남음</div>
+                  
+                  {/* 진행률 표시 */}
+                  <div className="w-full bg-gray-200 rounded-full h-2 mb-4 overflow-hidden">
+                    <div 
+                      className={`h-2 rounded-full transition-all duration-500 ease-out ${
+                        aiTokenData && aiTokenData.summary?.freeTokensUsagePercent > 70 ? 'bg-gradient-to-r from-red-400 to-red-500' :
+                        aiTokenData && aiTokenData.summary?.freeTokensUsagePercent > 30 ? 'bg-gradient-to-r from-yellow-400 to-orange-500' :
+                        'bg-gradient-to-r from-green-400 to-green-500'
+                      }`}
+                      style={{ 
+                        width: `${aiTokenData && aiTokenData.summary?.freeTokensUsagePercent !== undefined ? 
+                          Math.max(1, Math.min(100, 100 - aiTokenData.summary.freeTokensUsagePercent)) : 0}%` 
+                      }}
+                    ></div>
+                  </div>
+                  
+                  <button 
+                    onClick={handleShowPurchaseModal}
+                    className="w-full px-4 py-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors"
+                  >
+                    토큰 구매
+                  </button>
+                </div>
               </div>
+            )}
+          </div>
+
+          {/* 알림 요약 */}
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold text-gray-900">
+                알림
+              </h3>
+              <button
+                onClick={() => {/* 알림 페이지로 이동 */}}
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              >
+                전체 보기
+              </button>
+            </div>
+            <div className="space-y-2 text-sm">
+              {upcomingConsultations.length > 0 && (
+                <div className="flex items-center justify-between p-2 bg-blue-50 rounded">
+                  <span className="text-blue-700">예약된 상담</span>
+                  <span className="font-semibold text-blue-800">
+                    {upcomingConsultations.length}건
+                  </span>
+                </div>
+              )}
+              {aiTokenData && aiTokenData.summary?.freeTokensUsagePercent > 70 && (
+                <div className="flex items-center justify-between p-2 bg-orange-50 rounded">
+                  <span className="text-orange-700">토큰 부족</span>
+                  <span className="font-semibold text-orange-800">
+                    충전 필요
+                  </span>
+                </div>
+              )}
+              {upcomingConsultations.length === 0 && (!aiTokenData || aiTokenData.summary?.freeTokensUsagePercent <= 70) && (
+                <div className="text-gray-500">새로운 알림이 없습니다.</div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* 프로필 섹션 */}
+        {/* 활동 통계 섹션 */}
         <div className="mb-8">
-          <UserProfile />
+          <UserStats readOnly={true} />
         </div>
 
         {/* 상담 일정 섹션 */}

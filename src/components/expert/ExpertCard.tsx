@@ -180,6 +180,11 @@ export default function ExpertCard({
     const loadPricingInfo = async () => {
       try {
         setIsLoadingPricing(true);
+        // expert.id가 유효한지 확인
+        if (!expert.id || expert.id <= 0) {
+          throw new Error('Invalid expert ID');
+        }
+        
         const pricing = await getExpertLevelPricing(
           expert.id,
           expert.totalSessions || 0,

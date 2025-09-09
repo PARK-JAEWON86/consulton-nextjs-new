@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/auth';
-import { User, Expert, ExpertProfile } from '@/lib/db/models';
+import { User, Expert, ExpertProfile, UserCredits } from '@/lib/db/models';
 import { initializeDatabase } from '@/lib/db/init';
 // 더미 데이터 import 제거 - 실제 서비스에서는 불필요
 // import { dummyUserProfile } from '@/data/dummy/users';
@@ -87,15 +87,40 @@ export async function GET(request: NextRequest) {
         ]
       });
 
+      // 사용자 크레딧 정보 조회
+      let userCredits = await UserCredits.findOne({
+        where: { userId: authUser.id }
+      });
+
+      // 사용자 크레딧이 없으면 새로 생성
+      if (!userCredits) {
+        userCredits = await UserCredits.create({
+          userId: authUser.id,
+          aiChatTotal: 7300, // 기본 AI 채팅 토큰
+          aiChatUsed: 0,
+          purchasedTotal: 0,
+          purchasedUsed: 0,
+          lastResetDate: null
+        });
+      }
+
       if (user) {
         // 사용자 정보가 있으면 앱 상태 업데이트
         const userData = {
           id: user.id.toString(),
           email: user.email,
           name: user.name || '',
-          credits: user.credits || 0,
+          credits: (userCredits.aiChatTotal + userCredits.purchasedTotal) - (userCredits.aiChatUsed + userCredits.purchasedUsed), // 실제 크레딧 계산
           expertLevel: user.expert?.level || 'Tier 1 (Lv.1-99)',
           role: user.role,
+          // AI 사용량 정보 추가
+          aiUsage: {
+            usedTokens: userCredits.aiChatUsed + userCredits.purchasedUsed,
+            purchasedTokens: userCredits.purchasedTotal,
+            remainingTokens: Math.max(0, (userCredits.aiChatTotal + userCredits.purchasedTotal) - (userCredits.aiChatUsed + userCredits.purchasedUsed)),
+            totalTurns: Math.floor((userCredits.aiChatUsed + userCredits.purchasedUsed) / 900), // 평균 900토큰/턴
+            monthlyResetDate: userCredits.lastResetDate || new Date().toISOString()
+          },
           avatar: null,
           profileImage: null,
           isEmailVerified: user.isEmailVerified,
@@ -163,11 +188,12 @@ export async function GET(request: NextRequest) {
           } : null
         };
 
-        // 앱 상태 업데이트
+        // 앱 상태 업데이트 - viewMode는 기존 상태 유지하거나 기본값 사용
         appState = {
           ...appState,
           isAuthenticated: true,
-          viewMode: user.role === 'expert' ? 'expert' : 'user',
+          // viewMode는 기존 상태를 유지하거나 기본값 사용
+          viewMode: appState.viewMode || 'user',
           user: userData
         };
       }

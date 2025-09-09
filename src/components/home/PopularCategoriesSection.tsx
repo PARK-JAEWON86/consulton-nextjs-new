@@ -24,7 +24,8 @@ import {
   ChefHat,
   PawPrint,
   Building2,
-  GraduationCap
+  GraduationCap,
+  Activity
 } from "lucide-react";
 
 interface PopularCategoriesSectionProps {
@@ -60,7 +61,8 @@ const getIconComponent = (iconName: string) => {
     ChefHat,
     PawPrint,
     Building2,
-    GraduationCap
+    GraduationCap,
+    Activity
   };
   
   return iconMap[iconName] || Target; // 기본값으로 Target 사용

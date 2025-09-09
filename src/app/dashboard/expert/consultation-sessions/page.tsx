@@ -64,27 +64,27 @@ export default function ExpertConsultationSessionsPage() {
     totalReviews: 0,
   });
 
-  // 상담 데이터 로드 (API에서 가져오기)
+  // 상담 데이터 로드
   useEffect(() => {
     const loadConsultations = async () => {
       try {
-        // 전문가 상담 세션 조회
-        const response = await fetch('/api/consultations-multi?expertId=current');
+        // 현재 로그인한 전문가의 상담 세션 조회
+        const response = await fetch('/api/consultation-sessions?current=true');
         if (response.ok) {
           const data = await response.json();
-          const consultations = data.data || [];
+          const consultations = data.data?.sessions || [];
           setConsultations(consultations);
 
           // 통계 계산
           const totalSessions = consultations.length;
-          const completedSessions = consultations.filter((c: any) => c.status === "completed").length;
-          const scheduledSessions = consultations.filter((c: any) => c.status === "scheduled").length;
+          const completedSessions = consultations.filter((c: ExpertConsultationSession) => c.status === "completed").length;
+          const scheduledSessions = consultations.filter((c: ExpertConsultationSession) => c.status === "scheduled").length;
           const totalEarnings = consultations
-            .filter((c: any) => c.status === "completed")
-            .reduce((sum: number, c: any) => sum + (c.price || 0), 0);
-          const completedWithRating = consultations.filter((c: any) => c.status === "completed" && c.clientRating);
+            .filter((c: ExpertConsultationSession) => c.status === "completed")
+            .reduce((sum: number, c: ExpertConsultationSession) => sum + (c.price || 0), 0);
+          const completedWithRating = consultations.filter((c: ExpertConsultationSession) => c.status === "completed" && c.clientRating);
           const averageRating = completedWithRating.length > 0 
-            ? completedWithRating.reduce((sum: number, c: any) => sum + (c.clientRating || 0), 0) / completedWithRating.length
+            ? completedWithRating.reduce((sum: number, c: ExpertConsultationSession) => sum + (c.clientRating || 0), 0) / completedWithRating.length
             : 0;
           const totalReviews = completedWithRating.length;
 
@@ -96,9 +96,13 @@ export default function ExpertConsultationSessionsPage() {
             averageRating,
             totalReviews,
           });
+        } else {
+          console.error('상담 데이터 로드 실패: API 응답 오류');
+          setConsultations([]);
         }
       } catch (error) {
         console.error('상담 데이터 로드 실패:', error);
+        setConsultations([]);
       }
     };
 
@@ -286,8 +290,8 @@ export default function ExpertConsultationSessionsPage() {
               <ConsultationSession
                 consultation={{
                   ...selectedConsultation,
-                  expertId: "expert_1", // 실제로는 현재 로그인한 전문가 ID
-                  expertName: "전문가", // 실제로는 현재 로그인한 전문가 이름
+                  expertId: "current", // 현재 로그인한 전문가 ID
+                  expertName: "전문가", // 전문가 이름
                   expertAvatar: "전",
                   expertSpecialty: "상담",
                 }}

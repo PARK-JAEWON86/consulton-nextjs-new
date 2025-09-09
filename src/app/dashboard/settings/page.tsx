@@ -63,13 +63,13 @@ export default function SettingsPage() {
     return "light";
   });
 
-  // 현재 모드 결정 (Sidebar와 동일한 로직)
+  // 현재 모드 결정 - 일반 설정 페이지에서는 기본적으로 user 모드
   const effectiveVariant: "user" | "expert" = useMemo(() => {
-    if (viewMode) return viewMode;
+    // 일반 설정 페이지(/dashboard/settings)에서는 항상 user 모드
+    if (pathname === "/dashboard/settings") return "user";
     if (pathname.startsWith("/dashboard/expert")) return "expert";
-    if (user?.expertLevel) return "expert";
     return "user";
-  }, [viewMode, pathname, user]);
+  }, [pathname]);
 
   // 테마 변경 함수
   const handleThemeChange = (newTheme: "light" | "dark" | "system") => {
@@ -160,7 +160,7 @@ export default function SettingsPage() {
           </div>
 
           <div className="space-y-8">
-            {/* 전문가 모드에서는 프로필 설정 섹션 숨김 */}
+            {/* 사용자 모드일 때만 프로필 설정 표시 */}
             {effectiveVariant === "user" && <ProfileSettings />}
             <PaymentSettings />
             <CalendarIntegration />

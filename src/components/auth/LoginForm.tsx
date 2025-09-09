@@ -40,73 +40,28 @@ const LoginForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
 
-  // API를 통한 앱 상태 업데이트 함수들
-  const setAuthenticated = async (isAuth: boolean) => {
+  // 간소화된 로컬 상태 관리 함수들
+  const setAuthenticated = (isAuth: boolean) => {
     try {
-      // 로컬 스토리지에 저장
       localStorage.setItem('consulton-auth', JSON.stringify(isAuth));
-      
-      await fetch('/api/app-state', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'setAuthenticated', data: { isAuthenticated: isAuth } })
-      });
     } catch (error) {
-      console.error('인증 상태 업데이트 실패:', error);
+      console.error('인증 상태 저장 실패:', error);
     }
   };
 
-  const setUser = async (userData: User) => {
+  const setUser = (userData: User) => {
     try {
-      // 로컬 스토리지에 저장
       localStorage.setItem('consulton-user', JSON.stringify(userData));
-      
-      await fetch('/api/app-state', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'setUser', data: { user: userData } })
-      });
     } catch (error) {
-      console.error('사용자 정보 업데이트 실패:', error);
+      console.error('사용자 정보 저장 실패:', error);
     }
   };
 
-  const enterService = async () => {
+  const setViewMode = (mode: "user" | "expert") => {
     try {
-      await fetch('/api/app-state', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'enterService', data: {} })
-      });
-    } catch (error) {
-      console.error('서비스 진입 실패:', error);
-    }
-  };
-
-  const setViewMode = async (mode: "user" | "expert") => {
-    try {
-      // 로컬 스토리지에 저장
       localStorage.setItem('consulton-viewMode', JSON.stringify(mode));
-      
-      await fetch('/api/app-state', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'setViewMode', data: { viewMode: mode } })
-      });
     } catch (error) {
-      console.error('뷰 모드 설정 실패:', error);
-    }
-  };
-
-  const loadExpertConsultations = async (expertId: string) => {
-    try {
-      await fetch('/api/consultations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'loadExpertConsultations', data: { expertId } })
-      });
-    } catch (error) {
-      console.error('전문가 상담 내역 로드 실패:', error);
+      console.error('뷰 모드 저장 실패:', error);
     }
   };
 
@@ -179,8 +134,14 @@ const LoginForm = () => {
       if (response.ok && data.success) {
         // 로그인 성공 처리
         const userData = data.user;
+        const token = data.token;
         
-        // 로그인 성공 처리: 전역 스토어 업데이트 및 리다이렉트
+        // JWT 토큰을 로컬 스토리지에 저장 (API 호출 시 사용)
+        if (token) {
+          localStorage.setItem('consulton-token', token);
+        }
+        
+        // 로그인 성공 처리: 로컬 스토리지 업데이트 및 리다이렉트
         setAuthenticated(true);
         setUser(userData);
         
@@ -190,18 +151,14 @@ const LoginForm = () => {
         // 전문가로 로그인하면 viewMode를 expert로 설정
         if (userData.role === 'expert') {
           console.log('전문가 로그인: viewMode를 expert로 설정');
-          await setViewMode('expert');
-          
-          // 전문가 상담 내역 로드
-          loadExpertConsultations(userData.id.toString());
+          setViewMode('expert');
           
           // redirect 파라미터가 있으면 해당 URL로, 없으면 전문가 대시보드로 이동
           const redirectUrl = searchParams.get('redirect') || "/dashboard/expert";
           router.push(redirectUrl);
         } else {
           // 일반 사용자 로그인
-          await setViewMode('user');
-          enterService();
+          setViewMode('user');
           
           // redirect 파라미터가 있으면 해당 URL로, 없으면 대시보드로 이동
           const redirectUrl = searchParams.get('redirect') || "/dashboard";

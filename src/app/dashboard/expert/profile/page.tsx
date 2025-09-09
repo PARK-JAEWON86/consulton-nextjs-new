@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-// API를 통한 전문가 프로필 처리로 변경
 import { ExpertProfile as ExpertProfileType } from "@/types";
 import ExpertProfile from "@/components/dashboard/ExpertProfile";
 
@@ -115,20 +114,14 @@ export default function ExpertProfilePage() {
 
   const { user } = appState;
   
-  // 기본적으로는 보기 모드로 시작 (편집 모드 자동 시작 제거)
-  // useEffect(() => {
-  //   if (initialData && !initialData.isProfileComplete) {
-  //     setIsEditing(true);
-  //   }
-  // }, [initialData]);
+  // 프로필이 완성되지 않은 경우 편집 모드로 시작
+  useEffect(() => {
+    if (initialData && !initialData.isProfileComplete) {
+      setIsEditing(true);
+    }
+  }, [initialData]);
 
-  // 전문가 프로필 스토어 사용
-  // const { 
-  //   getCurrentExpertProfile, 
-  //   addOrUpdateProfile, 
-  //   setCurrentExpertId,
-  //   currentExpertId 
-  // } = useExpertProfileStore();
+  // TODO: 전문가 프로필 스토어 사용 고려
 
   useEffect(() => {
     // 로그인한 사용자가 없으면 리턴
@@ -136,8 +129,7 @@ export default function ExpertProfilePage() {
       return;
     }
     
-    // 기존 localStorage 데이터 마이그레이션
-    // initializeExpertProfiles();
+    // TODO: localStorage 데이터 마이그레이션 고려
     
     // 로그인한 전문가의 ID 추출
     const expertId = user.id && typeof user.id === 'string' 
@@ -147,25 +139,7 @@ export default function ExpertProfilePage() {
       setCurrentExpertId(expertId);
     }
     
-    // API를 통한 최신 전문가 프로필 정보 가져오기 (임시로 주석 처리)
-    // const loadExpertProfile = async () => {
-    //   try {
-    //     const response = await fetch(`/api/expert-profiles/${expertId}`);
-    //     if (response.ok) {
-    //       const latestProfile = await response.json();
-    //       console.log('🔄 전문가 프로필 페이지 - API 데이터:', {
-    //         expertId,
-    //         latestProfile: {
-    //           name: latestProfile.name,
-    //           experience: latestProfile.experience,
-    //           totalSessions: latestProfile.totalSessions,
-    //           completionRate: latestProfile.completionRate
-    //         }
-    //       });
-    //       
-    //       const expertProfile = latestProfile || user.expertProfile;
-    
-    // 임시로 기존 로직 사용
+    // 현재는 기존 로직을 사용하여 프로필 데이터 처리
     const expertProfile = user.expertProfile;
     
     // 전문가 프로필이 없으면 기본 프로필 생성
@@ -363,30 +337,20 @@ export default function ExpertProfilePage() {
       updatedAt: new Date(),
     };
 
-    // 중앙 서비스에 업데이트 (임시로 주석 처리)
-    // const success = expertDataService.updateExpertProfile(currentExpertId || Date.now(), expertProfile);
-    const success = true; // 임시로 성공으로 처리
-    
-    if (success) {
-      // 스토어에도 업데이트 (기존 호환성)
-      // addOrUpdateProfile(expertProfile);
-      
-      // 로컬 상태도 업데이트
+    // 현재는 localStorage에 저장 (추후 API 연동 예정)
+    try {
+      // 로컬 상태 업데이트
       setInitialData(updated);
       
-      // 기존 localStorage도 유지 (호환성을 위해)
-      try {
-        localStorage.setItem("approvedExpertProfile", JSON.stringify(updated));
-      } catch {
-        // ignore
-      }
+      // localStorage에 저장
+      localStorage.setItem("approvedExpertProfile", JSON.stringify(updated));
       
       // 저장 성공 후 편집 모드 종료
       setIsEditing(false);
       
-      console.log('✅ 중앙 서비스에 프로필 저장 완료:', currentExpertId);
-    } else {
-      console.error('❌ 프로필 저장 실패:', currentExpertId);
+      console.log('✅ 프로필 저장 완료:', currentExpertId);
+    } catch (error) {
+      console.error('❌ 프로필 저장 실패:', error);
       alert("프로필 저장에 실패했습니다.");
     }
   };
@@ -441,6 +405,37 @@ export default function ExpertProfilePage() {
           >
             로그인하기
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 전문가 역할 확인
+  if (appState.user.role !== 'expert') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-orange-600 mb-4">
+            <svg className="h-16 w-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">전문가 권한이 필요합니다</h2>
+          <p className="text-gray-600 mb-4">이 페이지는 전문가 계정으로만 접근할 수 있습니다.</p>
+          <div className="space-x-4">
+            <button 
+              onClick={() => window.location.href = '/dashboard'}
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            >
+              대시보드로 이동
+            </button>
+            <button 
+              onClick={() => window.location.href = '/experts/become'}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              전문가 신청하기
+            </button>
+          </div>
         </div>
       </div>
     );

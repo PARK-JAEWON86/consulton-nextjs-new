@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
             model: ExpertProfile,
             as: 'profile',
             required: false,
-            attributes: ['level', 'totalSessions', 'avgRating', 'reviewCount']
+            attributes: ['totalSessions', 'avgRating', 'reviewCount']
           }
         ]
       });
@@ -191,7 +191,7 @@ export async function GET(request: NextRequest) {
             model: ExpertProfile,
             as: 'profile',
             required: false,
-            attributes: ['level', 'totalSessions', 'avgRating', 'reviewCount']
+            attributes: ['totalSessions', 'avgRating', 'reviewCount']
           }
         ]
       });
@@ -235,7 +235,7 @@ export async function GET(request: NextRequest) {
             lastUpdated: new Date().toISOString(),
             rankingScore,
             // 프로필에서 레벨 가져오기
-            level: (expert as any).profile?.level || 1
+            level: (expert as any).level || 1
           };
         })
       );
@@ -277,7 +277,7 @@ export async function GET(request: NextRequest) {
             model: ExpertProfile,
             as: 'profile',
             required: false,
-            attributes: ['level', 'totalSessions', 'avgRating', 'reviewCount']
+            attributes: ['totalSessions', 'avgRating', 'reviewCount']
           }
         ]
       });
@@ -321,7 +321,7 @@ export async function GET(request: NextRequest) {
             lastUpdated: new Date().toISOString(),
             rankingScore,
             // 프로필에서 레벨 가져오기
-            level: (expert as any).profile?.level || 1
+            level: (expert as any).level || 1
           };
         })
       );
@@ -355,7 +355,7 @@ export async function GET(request: NextRequest) {
             model: ExpertProfile,
             as: 'profile',
             required: false,
-            attributes: ['level', 'totalSessions', 'avgRating', 'reviewCount']
+            attributes: ['totalSessions', 'avgRating', 'reviewCount']
           }
         ]
       });
@@ -399,7 +399,7 @@ export async function GET(request: NextRequest) {
             lastUpdated: new Date().toISOString(),
             rankingScore,
             // 프로필에서 레벨 가져오기
-            level: (expert as any).profile?.level || 1
+            level: (expert as any).level || 1
           };
         })
       );

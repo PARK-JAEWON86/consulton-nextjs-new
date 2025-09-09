@@ -158,7 +158,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         if (storedUser && storedAuth) {
           const user = JSON.parse(storedUser);
           const isAuthenticated = JSON.parse(storedAuth);
-          const viewMode = storedViewMode ? JSON.parse(storedViewMode) : 'user';
+          const viewMode = storedViewMode ? JSON.parse(storedViewMode) : (user.role === 'expert' ? 'expert' : 'user');
           
           console.log('로컬 스토리지에서 복원된 상태:', { user, isAuthenticated, viewMode });
           
@@ -189,10 +189,11 @@ const Sidebar: React.FC<SidebarProps> = ({
           console.error('API 상태 동기화 실패:', error);
         }
           } else {
-            // 로컬 스토리지에 사용자 정보가 있지만 인증되지 않은 경우 정리
+            // 로컬 스토리지에 사용자 정보가 있지만 인증되지 않은 경우 정리 (JWT 토큰 포함)
             localStorage.removeItem('consulton-user');
             localStorage.removeItem('consulton-auth');
             localStorage.removeItem('consulton-viewMode');
+            localStorage.removeItem('consulton-token');
           }
           
           setAppState({
@@ -266,9 +267,10 @@ const Sidebar: React.FC<SidebarProps> = ({
         }
       } catch (error) {
         console.error('localStorage 변경 감지 시 파싱 오류:', error);
-        // 파싱 오류 시 localStorage 정리
+        // 파싱 오류 시 localStorage 정리 (JWT 토큰 포함)
         localStorage.removeItem('consulton-user');
         localStorage.removeItem('consulton-auth');
+        localStorage.removeItem('consulton-token');
         setAppState(prev => ({
           ...prev,
           isAuthenticated: false,
@@ -310,6 +312,11 @@ const Sidebar: React.FC<SidebarProps> = ({
       const result = await response.json();
       if (result.success) {
         setAppState(prev => ({ ...prev, viewMode: mode }));
+        
+        // viewMode 변경 이벤트 발생 (MainNavigation 업데이트용)
+        window.dispatchEvent(new CustomEvent('viewModeChanged', { 
+          detail: { viewMode: mode } 
+        }));
       } else {
         throw new Error(result.error || '뷰 모드 변경 실패');
       }
@@ -317,6 +324,11 @@ const Sidebar: React.FC<SidebarProps> = ({
       console.error('뷰 모드 변경 실패:', error);
       // 에러 발생 시에도 로컬 상태는 업데이트 (일관성 유지)
       setAppState(prev => ({ ...prev, viewMode: mode }));
+      
+      // 에러 발생 시에도 이벤트 발생
+      window.dispatchEvent(new CustomEvent('viewModeChanged', { 
+        detail: { viewMode: mode } 
+      }));
     }
   };
 
@@ -410,6 +422,29 @@ const Sidebar: React.FC<SidebarProps> = ({
   }, [variant, pathname, isHydrated, viewMode, user?.role, isAuthenticated]);
 
   // 하이드레이션 완료 체크 - 초기값이 true로 설정되어 있으므로 추가 로직 불필요
+
+  // localStorage 변경 감지하여 viewMode 동기화
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'consulton-viewMode' && e.newValue) {
+        try {
+          const newViewMode = JSON.parse(e.newValue);
+          setAppState(prev => ({ ...prev, viewMode: newViewMode }));
+          console.log('localStorage에서 viewMode 변경 감지:', newViewMode);
+        } catch (error) {
+          console.error('viewMode 파싱 오류:', error);
+        }
+      }
+    };
+
+    // localStorage 이벤트 리스너 등록
+    window.addEventListener('storage', handleStorageChange);
+
+    // 컴포넌트 언마운트 시 이벤트 리스너 제거
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
 
   // viewMode 변경 감지하여 즉시 반영
   useEffect(() => {
@@ -1240,10 +1275,10 @@ const Sidebar: React.FC<SidebarProps> = ({
                     {/* 전문가 계정이면 모드 전환, 일반 사용자면 전문가 지원 */}
                     {user?.role === 'expert' ? (
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           const nextMode =
                             effectiveVariant === "expert" ? "user" : "expert";
-                          setViewMode(nextMode);
+                          await setViewMode(nextMode);
                           const target =
                             nextMode === "expert"
                               ? "/dashboard/expert"
@@ -1313,10 +1348,11 @@ const Sidebar: React.FC<SidebarProps> = ({
                       <button
                         onClick={async () => {
                           try {
-                            // 로컬 스토리지 정리
+                            // 로컬 스토리지 정리 (JWT 토큰 포함)
                             localStorage.removeItem('consulton-user');
                             localStorage.removeItem('consulton-auth');
                             localStorage.removeItem('consulton-viewMode');
+                            localStorage.removeItem('consulton-token');
                             
                             const response = await fetch('/api/app-state', {
                               method: 'POST',
@@ -1329,13 +1365,13 @@ const Sidebar: React.FC<SidebarProps> = ({
                             }
                             
                             setAppState(prev => ({ ...prev, isAuthenticated: false, user: null }));
-                            router.push("/auth/login");
+                            router.push("/"); // 로그아웃 후 홈으로 이동
                             setShowProfileMenu(false);
                           } catch (error) {
                             console.error('로그아웃 실패:', error);
                             // API 실패 시에도 로컬 상태는 정리
                             setAppState(prev => ({ ...prev, isAuthenticated: false, user: null }));
-                            router.push("/auth/login");
+                            router.push("/"); // 로그아웃 후 홈으로 이동
                             setShowProfileMenu(false);
                           }
                         }}

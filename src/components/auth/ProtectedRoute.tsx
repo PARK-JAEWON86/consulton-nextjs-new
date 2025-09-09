@@ -71,31 +71,85 @@ export default function ProtectedRoute({
             user
           });
         } else {
-          // 로컬 스토리지에 없으면 API에서 로드
+          // 로컬 스토리지에 없으면 서버에서 인증 상태 확인
           try {
-            const response = await fetch('/api/app-state');
-            const result = await response.json();
-            if (result.success) {
+            // JWT 토큰을 헤더에 포함하여 인증 상태 확인
+            const token = localStorage.getItem('consulton-token');
+            const response = await fetch('/api/auth/me', {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(token && { 'Authorization': `Bearer ${token}` })
+              }
+            });
+
+            if (response.ok) {
+              const result = await response.json();
+              if (result.success && result.user) {
+                // 서버에서 인증된 사용자 정보로 상태 업데이트
+                const userData = {
+                  id: result.user.id.toString(),
+                  email: result.user.email,
+                  name: result.user.name,
+                  credits: result.user.credits || 0,
+                  expertLevel: result.user.expert ? 'Tier 1 (Lv.1-99)' : '',
+                  role: result.user.role
+                };
+
+                // 로컬 스토리지에도 저장
+                localStorage.setItem('consulton-user', JSON.stringify(userData));
+                localStorage.setItem('consulton-auth', JSON.stringify(true));
+
+                setAppState({
+                  hasEnteredService: true,
+                  isAuthenticated: true,
+                  user: userData
+                });
+              } else {
+                // 서버에서 인증 실패 - 로컬 스토리지 정리
+                localStorage.removeItem('consulton-user');
+                localStorage.removeItem('consulton-auth');
+                localStorage.removeItem('consulton-token');
+                localStorage.removeItem('consulton-viewMode');
+                
+                setAppState({
+                  hasEnteredService: false,
+                  isAuthenticated: false,
+                  user: null
+                });
+              }
+            } else if (response.status === 401) {
+              // 인증 실패 - 로컬 스토리지 정리
+              localStorage.removeItem('consulton-user');
+              localStorage.removeItem('consulton-auth');
+              localStorage.removeItem('consulton-token');
+              localStorage.removeItem('consulton-viewMode');
+              
               setAppState({
-                hasEnteredService: result.data.hasEnteredService,
-                isAuthenticated: result.data.isAuthenticated,
-                user: result.data.user
+                hasEnteredService: false,
+                isAuthenticated: false,
+                user: null
+              });
+            } else {
+              // 기타 오류 - 기본 상태로 설정
+              setAppState({
+                hasEnteredService: false,
+                isAuthenticated: false,
+                user: null
               });
             }
           } catch (error) {
-            console.error('API 상태 로드 실패:', error);
-            // API 실패 시 기본값으로 설정
+            console.error('인증 상태 확인 실패:', error);
+            // API 실패 시 로컬 스토리지 정리
+            localStorage.removeItem('consulton-user');
+            localStorage.removeItem('consulton-auth');
+            localStorage.removeItem('consulton-token');
+            localStorage.removeItem('consulton-viewMode');
+            
             setAppState({
-              hasEnteredService: true,
-              isAuthenticated: true,
-              user: {
-                id: 'client_1',
-                email: 'kimcheolsu@example.com',
-                name: '김철수',
-                credits: 8850,
-                expertLevel: '',
-                role: 'client'
-              }
+              hasEnteredService: false,
+              isAuthenticated: false,
+              user: null
             });
           }
         }
@@ -122,8 +176,8 @@ export default function ProtectedRoute({
           setAppState(prev => ({ ...prev, hasEnteredService: true }));
         }).catch(console.error);
       }
-    } else if (!hasEnteredService) {
-      // 서비스 진입하지 않은 경우 홈으로 리다이렉트
+    } else if (!hasEnteredService && pathname !== '/') {
+      // 서비스 진입하지 않은 경우 홈으로 리다이렉트 (홈 페이지 제외)
       router.push("/");
       return;
     }

@@ -48,6 +48,7 @@ export default function CreditPackagesPage() {
     isAuthenticated: false,
     user: null
   });
+  const [isLoading, setIsLoading] = useState(true); // 로딩 상태 추가
 
   // 앱 상태 로드
   useEffect(() => {
@@ -63,6 +64,8 @@ export default function CreditPackagesPage() {
         }
       } catch (error) {
         console.error('앱 상태 로드 실패:', error);
+      } finally {
+        setIsLoading(false); // 로딩 완료
       }
     };
 
@@ -238,8 +241,8 @@ export default function CreditPackagesPage() {
             </div>
           </div>
 
-          {/* 게스트 사용자를 위한 로그인 유도 메시지 */}
-          {!isAuthenticated && (
+          {/* 게스트 사용자를 위한 로그인 유도 메시지 - 로딩 완료 후에만 표시 */}
+          {!isLoading && !isAuthenticated && (
             <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-6">
               <div className="flex items-center justify-center space-x-4">
                 <LogIn className="h-8 w-8 text-blue-600" />

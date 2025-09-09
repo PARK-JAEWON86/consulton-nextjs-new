@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import ExpertProtectedRoute from "@/components/auth/ExpertProtectedRoute";
 import { ConsultationRequest } from "@/types";
 import { 
   MessageCircle, 
@@ -30,19 +30,19 @@ export default function ConsultationRequestsPage() {
     try {
       setIsLoading(true);
       
-      // 임시 전문가 ID (실제로는 인증 시스템에서 가져와야 함)
-      const expertId = 'expert_1';
-      
-      const response = await fetch(`/api/consultation-requests?expertId=${expertId}&limit=100`);
+      // 현재 로그인한 전문가 ID 가져오기
+      const response = await fetch('/api/consultation-requests?current=true&limit=100');
       const result = await response.json();
       
       if (result.success) {
-        setRequests(result.data.requests);
+        setRequests(result.data.requests || []);
       } else {
         console.error('상담 신청 목록 로드 실패:', result.error);
+        setRequests([]); // 실패 시 빈 배열로 설정
       }
     } catch (error) {
       console.error('상담 신청 목록 로드 오류:', error);
+      setRequests([]); // 오류 시 빈 배열로 설정
     } finally {
       setIsLoading(false);
     }
@@ -59,7 +59,6 @@ export default function ConsultationRequestsPage() {
         body: JSON.stringify({
           requestId: selectedRequest.id,
           status: actionType === 'accept' ? 'accepted' : 'rejected',
-          expertId: 'expert_1',
           expertMessage: expertMessage.trim() || undefined
         })
       });
@@ -71,18 +70,23 @@ export default function ConsultationRequestsPage() {
         setRequests(prev => 
           prev.map(request => 
             request.id === selectedRequest.id 
-              ? { ...request, status: actionType === 'accept' ? 'accepted' : 'rejected', updatedAt: new Date() }
+              ? { 
+                  ...request, 
+                  status: actionType === 'accept' ? 'accepted' : 'rejected', 
+                  updatedAt: new Date() 
+                }
               : request
           )
         );
         
+        // 모달 상태 초기화
         setShowActionModal(false);
         setSelectedRequest(null);
         setExpertMessage('');
         
         alert(`상담 신청이 ${actionType === 'accept' ? '수락' : '거절'}되었습니다.`);
       } else {
-        alert(`상담 신청 처리에 실패했습니다: ${result.error}`);
+        alert(`상담 신청 처리에 실패했습니다: ${result.error || '알 수 없는 오류'}`);
       }
     } catch (error) {
       console.error('상담 신청 처리 오류:', error);
@@ -161,7 +165,7 @@ export default function ConsultationRequestsPage() {
   }, []);
 
   return (
-    <ProtectedRoute requireAuth={true}>
+    <ExpertProtectedRoute>
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* 헤더 */}
@@ -269,25 +273,41 @@ export default function ConsultationRequestsPage() {
                         </div>
                       )}
 
-                      {/* 시간 정보 */}
-                      <div className="flex items-center space-x-4 text-xs text-gray-500">
-                        <div className="flex items-center space-x-1">
-                          <Clock className="h-3 w-3" />
-                          <span>신청: {new Date(request.createdAt).toLocaleString('ko-KR')}</span>
-                        </div>
-                        {request.preferredDate && (
-                          <div className="flex items-center space-x-1">
-                            <Calendar className="h-3 w-3" />
-                            <span>희망일: {new Date(request.preferredDate).toLocaleDateString('ko-KR')}</span>
-                          </div>
-                        )}
-                        {request.expiresAt && request.status === 'pending' && (
-                          <div className="flex items-center space-x-1 text-orange-600">
-                            <AlertCircle className="h-3 w-3" />
-                            <span>만료: {new Date(request.expiresAt).toLocaleString('ko-KR')}</span>
-                          </div>
-                        )}
-                      </div>
+        {/* 시간 정보 */}
+        <div className="flex items-center space-x-4 text-xs text-gray-500">
+          <div className="flex items-center space-x-1">
+            <Clock className="h-3 w-3" />
+            <span>신청: {new Date(request.createdAt).toLocaleString('ko-KR', {
+              year: 'numeric',
+              month: '2-digit', 
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit'
+            })}</span>
+          </div>
+          {request.preferredDate && (
+            <div className="flex items-center space-x-1">
+              <Calendar className="h-3 w-3" />
+              <span>희망일: {new Date(request.preferredDate).toLocaleDateString('ko-KR', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+              })}</span>
+            </div>
+          )}
+          {request.expiresAt && request.status === 'pending' && (
+            <div className="flex items-center space-x-1 text-orange-600">
+              <AlertCircle className="h-3 w-3" />
+              <span>만료: {new Date(request.expiresAt).toLocaleString('ko-KR', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}</span>
+            </div>
+          )}
+        </div>
                     </div>
 
                     {/* 액션 버튼들 */}
@@ -381,6 +401,6 @@ export default function ConsultationRequestsPage() {
           </div>
         )}
       </div>
-    </ProtectedRoute>
+    </ExpertProtectedRoute>
   );
 }

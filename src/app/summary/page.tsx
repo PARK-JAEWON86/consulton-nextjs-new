@@ -15,6 +15,7 @@ import {
   Target,
   CalendarDays,
   CheckSquare,
+  AlertCircle,
 } from "lucide-react";
 import ServiceLayout from "@/components/layout/ServiceLayout";
 import { ConsultationSummary } from "@/types";
@@ -134,11 +135,11 @@ export default function SummaryPage() {
           setTotalCount(result.pagination.totalCount);
         }
       } else {
-        setError(result.message || '상담 요약을 불러오는데 실패했습니다.');
+        setError(result.message || '상담 요약을 불러올 수 없습니다.');
       }
           } catch (error) {
         console.error('상담 요약 로드 실패:', error);
-        setError('상담 요약을 불러오는데 실패했습니다.');
+        setError('상담 요약을 불러올 수 없습니다.');
       } finally {
         setLoading(false);
       }
@@ -279,6 +280,7 @@ export default function SummaryPage() {
       </ServiceLayout>
     );
   }
+
 
   if (loading) {
     return (
@@ -606,9 +608,6 @@ export default function SummaryPage() {
                   ? "검색 조건에 맞는 상담 요약이 없습니다."
                   : "아직 상담 요약이 생성되지 않았습니다."}
               </p>
-              <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                첫 상담 시작하기
-              </button>
             </div>
           )}
 

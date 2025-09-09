@@ -6,14 +6,15 @@ import { ArrowRight, Users, Target, Brain, DollarSign, Scale, BookOpen, Heart, B
 import SearchFields from "./SearchFields";
 import { ExpertProfile } from "@/types";
 import LoginModal from "@/components/auth/LoginModal";
+import ExpertLevelBadge from "@/components/expert/ExpertLevelBadge";
+import ExpertCard from "@/components/expert/ExpertCard";
+
 // API를 통해 레벨별 크레딧을 계산하는 함수
 const calculateCreditsByLevel = (level: number = 1): number => {
   // 클라이언트 컴포넌트에서는 동기적으로 처리하기 위해 기본값 반환
   // 실제로는 useEffect에서 미리 로드하거나 다른 방식으로 처리해야 함
   return 100; // 기본값
 };
-import ExpertLevelBadge from "@/components/expert/ExpertLevelBadge";
-import ExpertCard from "@/components/expert/ExpertCard";
 
 type IconType = any;
 
@@ -271,32 +272,50 @@ export default function HeroSection(props: HeroSectionProps) {
         {hasSearched && (!searchResults || searchResults.length === 0) && (
           <div className="mt-12 text-center">
             <div className="bg-gray-50 rounded-xl p-8">
-              <p className="text-gray-600 text-lg mb-4">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Target className="w-8 h-8 text-blue-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                검색 결과가 없습니다
+              </h3>
+              <p className="text-gray-600 mb-4">
                 검색 조건에 맞는 전문가를 찾지 못했습니다.
               </p>
               <p className="text-gray-500 mb-6">
                 다른 조건으로 다시 검색해보시거나 AI 채팅 상담을 이용해보세요.
               </p>
-              <button 
-                onClick={handleAIChatClick}
-                className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-              >
-                <svg
-                  className="w-5 h-5 mr-2"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <button 
+                  onClick={() => {
+                    // 페이지 새로고침으로 검색 초기화
+                    window.location.reload();
+                  }}
+                  className="inline-flex items-center px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
-                  />
-                </svg>
-                AI 채팅 상담하기
-              </button>
+                  <Target className="w-5 h-5 mr-2" />
+                  다시 검색하기
+                </button>
+                <button 
+                  onClick={handleAIChatClick}
+                  className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                >
+                  <svg
+                    className="w-5 h-5 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+                    />
+                  </svg>
+                  AI 채팅 상담하기
+                </button>
+              </div>
             </div>
           </div>
         )}

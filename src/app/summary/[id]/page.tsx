@@ -177,11 +177,11 @@ export default function ConsultationSummaryPage() {
         if (result.success) {
           setSummaryData(result.data);
         } else {
-          setError(result.message || '상담 요약을 불러오는데 실패했습니다.');
+          setError(result.message || '상담 요약을 불러올 수 없습니다.');
         }
       } catch (error) {
         console.error('상담 요약 로드 실패:', error);
-        setError('상담 요약을 불러오는데 실패했습니다.');
+        setError('상담 요약을 불러올 수 없습니다.');
       } finally {
         setLoading(false);
       }
@@ -413,6 +413,7 @@ export default function ConsultationSummaryPage() {
       </ServiceLayout>
     );
   }
+
 
   if (loading) {
     return (

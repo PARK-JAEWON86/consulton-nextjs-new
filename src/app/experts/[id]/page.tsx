@@ -129,7 +129,12 @@ export default function ExpertProfilePage() {
     rankingScore?: number;
     totalSessions: number;
     avgRating: number;
+    reviewCount: number;
+    likeCount: number;
     specialty?: string;
+    level?: number;
+    tierInfo?: any;
+    ranking?: number;
     specialtyRanking?: number;
     specialtyTotalExperts?: number;
   }>>([]);
@@ -309,7 +314,8 @@ export default function ExpertProfilePage() {
     try {
       console.log(`랭킹 목록 로드 시작: ${type}`, specialty);
       
-      let url = `/api/expert-stats?rankingType=${type}`;
+      // 새로운 expert-rankings API 사용
+      let url = `/api/expert-rankings?rankingType=${type}`;
       if (type === 'specialty' && specialty) {
         url += `&specialty=${encodeURIComponent(specialty)}`;
       }
@@ -324,18 +330,8 @@ export default function ExpertProfilePage() {
         const rankings = result.data.rankings || [];
         console.log('로드된 랭킹 데이터:', rankings);
         
-        // 전문가 이름 정보 추가
-        const rankingsWithNames = rankings.map((ranking: any) => {
-          const expertProfile = allExperts.find(exp => exp.id.toString() === ranking.expertId);
-          return {
-            ...ranking,
-            expertName: expertProfile?.name || `전문가 ${ranking.expertId}`,
-            specialty: expertProfile?.specialty
-          };
-        });
-        
-        console.log('이름이 추가된 랭킹 데이터:', rankingsWithNames);
-        setRankingList(rankingsWithNames);
+        // API에서 이미 expertName이 포함되어 있으므로 추가 처리 불필요
+        setRankingList(rankings.slice(0, 10)); // 상위 10명만 표시
       } else {
         console.error('랭킹 API 응답 실패:', result.error);
       }
@@ -468,7 +464,7 @@ export default function ExpertProfilePage() {
         // 모든 API를 병렬로 호출
         const [profileResponse, statsResponse, reviewsResponse] = await Promise.all([
           fetch(`/api/expert-profiles/${expertId}`),
-          fetch(`/api/expert-stats?expertId=${expertId}&includeRanking=true`),
+          fetch(`/api/expert-profiles/${expertId}/stats`),
           fetch(`/api/reviews?expertId=${expertId}&isPublic=true`)
         ]);
 
@@ -1556,10 +1552,10 @@ export default function ExpertProfilePage() {
                                 </div>
                               </div>
                               
-                              {/* 상담횟수 - 점수 */}
+                              {/* 상담횟수 - 좋아요 - 점수 */}
                               <div className="text-right flex-shrink-0 ml-2">
                                 <div className="text-xs text-gray-600 font-medium">
-                                  {item.totalSessions}회
+                                  {item.totalSessions}회 · ❤️{item.likeCount || 0}
                                 </div>
                                 <div className="text-xs text-blue-600 font-bold">
                                   {Number(item.rankingScore || 0).toFixed(1)}점

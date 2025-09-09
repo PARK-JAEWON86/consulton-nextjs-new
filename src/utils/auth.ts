@@ -77,6 +77,7 @@ export const logout = () => {
   localStorage.removeItem('consulton-auth');
   localStorage.removeItem('consulton-user');
   localStorage.removeItem('consulton-viewMode');
+  localStorage.removeItem('consulton-token'); // JWT 토큰도 제거
   
   // API 상태도 초기화
   fetch('/api/app-state', {

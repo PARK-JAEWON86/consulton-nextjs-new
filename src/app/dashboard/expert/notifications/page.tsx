@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import ExpertProtectedRoute from "@/components/auth/ExpertProtectedRoute";
 
 interface User {
   id: string;
@@ -46,7 +46,7 @@ export default function ExpertNotificationsPage() {
 
 
   return (
-    <ProtectedRoute requireAuth={true}>
+    <ExpertProtectedRoute>
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-6">
@@ -63,6 +63,6 @@ export default function ExpertNotificationsPage() {
           </div>
         </div>
       </div>
-    </ProtectedRoute>
+    </ExpertProtectedRoute>
   );
 }

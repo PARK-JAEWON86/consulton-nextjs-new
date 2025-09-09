@@ -2,22 +2,39 @@
   "development": {
     "username": "root",
     "password": null,
-    "database": "database_development",
+    "database": "consulton_db",
     "host": "127.0.0.1",
-    "dialect": "mysql"
+    "port": 3306,
+    "dialect": "mysql",
+    "dialectOptions": { 
+      "dateStrings": true,
+      "typeCast": true
+    },
+    "timezone": "+09:00",
+    "logging": console.log
   },
   "test": {
     "username": "root",
-    "password": null,
-    "database": "database_test",
+    "password": "password123", 
+    "database": "consulton_test_db",
     "host": "127.0.0.1",
-    "dialect": "mysql"
+    "port": 3306,
+    "dialect": "mysql",
+    "dialectOptions": { 
+      "dateStrings": true,
+      "typeCast": true
+    },
+    "timezone": "+09:00",
+    "logging": false
   },
   "production": {
-    "username": "root",
-    "password": null,
-    "database": "database_production",
-    "host": "127.0.0.1",
-    "dialect": "mysql"
+    "use_env_variable": "DATABASE_URL",
+    "dialect": "mysql",
+    "dialectOptions": { 
+      "dateStrings": true,
+      "typeCast": true
+    },
+    "timezone": "+09:00",
+    "logging": false
   }
 }

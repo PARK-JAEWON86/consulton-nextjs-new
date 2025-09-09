@@ -60,22 +60,20 @@ export async function GET(
       );
     }
 
-    // 권한 확인 (상담 참여자만 조회 가능)
-    if (authUser.role === 'client' && (summary as any).consultation.userId !== authUser.id) {
-      return NextResponse.json(
-        { success: false, message: '상담 요약 조회 권한이 없습니다.' },
-        { status: 403 }
-      );
-    }
-
-    if (authUser.role === 'expert') {
-      const expert = await Expert.findOne({ where: { userId: authUser.id } });
-      if (!expert || (summary as any).consultation.expertId !== expert.id) {
+    // 권한 확인 (클라이언트는 본인이 받은 상담만, 전문가는 접근 불가)
+    if (authUser.role === 'client') {
+      if ((summary as any).consultation.userId !== authUser.id) {
         return NextResponse.json(
           { success: false, message: '상담 요약 조회 권한이 없습니다.' },
           { status: 403 }
         );
       }
+    } else if (authUser.role === 'expert') {
+      // 전문가는 개별 상담요약에 직접 접근할 수 없음 (상담받은 것이 아니므로)
+      return NextResponse.json(
+        { success: false, message: '상담 요약을 찾을 수 없습니다.' },
+        { status: 404 }
+      );
     }
 
     // 응답 데이터 변환
@@ -115,7 +113,7 @@ export async function GET(
   } catch (error) {
     console.error('상담 요약 상세 조회 실패:', error);
     return NextResponse.json(
-      { success: false, message: '상담 요약을 불러오는데 실패했습니다.' },
+      { success: false, message: '상담 요약을 불러올 수 없습니다.' },
       { status: 500 }
     );
   }

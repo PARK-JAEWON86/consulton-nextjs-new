@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { User, Expert, ExpertProfile } from '@/lib/db/models';
+import { User, Expert, ExpertProfile, UserCredits } from '@/lib/db/models';
 import { initializeDatabase } from '@/lib/db/init';
 import { getAuthenticatedUser } from '@/lib/auth';
 
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 사용자 정보 조회
+    // 사용자 정보 조회 (크레딧 정보 포함)
     const user = await User.findByPk(authUser.id, {
       include: [
         {
@@ -35,6 +35,23 @@ export async function GET(request: NextRequest) {
       ]
     });
 
+    // 사용자 크레딧 정보 조회
+    let userCredits = await UserCredits.findOne({
+      where: { userId: authUser.id }
+    });
+
+    // 사용자 크레딧이 없으면 새로 생성
+    if (!userCredits) {
+      userCredits = await UserCredits.create({
+        userId: authUser.id,
+        aiChatTotal: 7300, // 기본 AI 채팅 토큰
+        aiChatUsed: 0,
+        purchasedTotal: 0,
+        purchasedUsed: 0,
+        lastResetDate: null
+      });
+    }
+
     if (!user) {
       return NextResponse.json(
         { error: '사용자를 찾을 수 없습니다.' },
@@ -42,12 +59,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // 실제 크레딧 계산
+    const totalCredits = (userCredits.aiChatTotal + userCredits.purchasedTotal) - (userCredits.aiChatUsed + userCredits.purchasedUsed);
+
     // 응답 데이터 구성
     const userData = {
       id: user.id,
       email: user.email,
       name: user.name,
       role: user.role,
+      credits: totalCredits, // 실제 크레딧 계산값 추가
       isEmailVerified: user.isEmailVerified,
       lastLoginAt: user.lastLoginAt,
       createdAt: user.createdAt,

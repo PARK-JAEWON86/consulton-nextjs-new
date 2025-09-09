@@ -36,9 +36,14 @@ export default function LoginModal({ isOpen, onClose, redirectPath }: LoginModal
       const result = await response.json();
 
       if (result.success) {
-        // 로그인 성공 시 로컬 스토리지에 사용자 정보 저장
-        localStorage.setItem("consulton-user", JSON.stringify(result.data.user));
+        // 로그인 성공 시 로컬 스토리지에 사용자 정보 저장 (구조 통일)
+        localStorage.setItem("consulton-user", JSON.stringify(result.user));
         localStorage.setItem("consulton-auth", JSON.stringify(true));
+        
+        // JWT 토큰도 저장 (API 호출 시 사용)
+        if (result.token) {
+          localStorage.setItem("consulton-token", result.token);
+        }
 
         // 모달 닫기
         onClose();
@@ -50,7 +55,7 @@ export default function LoginModal({ isOpen, onClose, redirectPath }: LoginModal
           router.push("/dashboard");
         }
       } else {
-        setError(result.message || "로그인에 실패했습니다.");
+        setError(result.error || "로그인에 실패했습니다.");
       }
     } catch (error) {
       setError("로그인 중 오류가 발생했습니다.");

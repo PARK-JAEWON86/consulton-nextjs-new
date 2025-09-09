@@ -42,6 +42,7 @@ import {
   Video,
   Star,
   Heart as HeartIcon,
+  Activity,
 } from "lucide-react";
 import ConsultationRecommendation from "@/components/recommendation/ConsultationRecommendation";
 
@@ -80,6 +81,7 @@ const ExpertSearch = () => {
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
   const [popularCategoryStats, setPopularCategoryStats] = useState<any[]>([]);
   const [isLoadingPopularStats, setIsLoadingPopularStats] = useState(true);
+  const [isLoadingExperts, setIsLoadingExperts] = useState(true);
 
   // 로컬 스토리지에서 좋아요 상태 로드
   const loadFavoritesFromStorage = () => {
@@ -185,6 +187,7 @@ const ExpertSearch = () => {
   useEffect(() => {
     const loadExpertProfiles = async () => {
       try {
+        setIsLoadingExperts(true);
         console.log('전문가 프로필 로드 시작...');
         
         // API 호출을 통한 전문가 프로필 조회
@@ -274,6 +277,8 @@ const ExpertSearch = () => {
       } catch (error) {
         console.error('전문가 프로필 로드 실패:', error);
         setAllExperts([]);
+      } finally {
+        setIsLoadingExperts(false);
       }
     };
 
@@ -760,7 +765,8 @@ const ExpertSearch = () => {
                         GraduationCap,
                         Home,
                         Monitor,
-                        HeartIcon
+                        HeartIcon,
+                        Activity
                       };
                       return iconMap[iconName] || Target;
                     };
@@ -854,17 +860,23 @@ const ExpertSearch = () => {
         <div className="mb-6">
           <div className="flex items-center justify-between">
             <p className="text-gray-600">
-              총 <span className="font-semibold">{filteredExperts.length}</span>
-              명의 전문가를 찾았습니다
-              {filteredExperts.length > 0 && (
-                <span className="ml-2 text-sm">
-                  (페이지 {currentPage} / {totalPages})
-                </span>
+              {isLoadingExperts ? (
+                "전문가 목록을 불러오는 중..."
+              ) : (
+                <>
+                  총 <span className="font-semibold">{filteredExperts.length}</span>
+                  명의 전문가를 찾았습니다
+                  {filteredExperts.length > 0 && (
+                    <span className="ml-2 text-sm">
+                      (페이지 {currentPage} / {totalPages})
+                    </span>
+                  )}
+                </>
               )}
             </p>
 
             {/* 상단 페이징 */}
-            {filteredExperts.length > 0 && totalPages > 1 && (
+            {!isLoadingExperts && filteredExperts.length > 0 && totalPages > 1 && (
               <div className="flex items-center space-x-2">
                 <button
                   onClick={handlePrevPage}
@@ -894,24 +906,32 @@ const ExpertSearch = () => {
           </div>
         </div>
 
-        {/* 전문가 목록 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {currentExperts.map((expert: ExpertItem) => (
-            <ExpertCard
-              key={expert.id}
-              expert={expert}
-              mode="default"
-              showFavoriteButton={true}
-              isFavorite={favorites.includes(expert.id as number)}
-              onToggleFavorite={(id) => toggleFavorite(Number(id))}
-              showProfileButton={true}
-              onProfileView={() => handleProfileView(expert)}
-            />
-          ))}
-        </div>
+        {/* 로딩 상태 */}
+        {isLoadingExperts ? (
+          <div className="text-center py-16">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">전문가 목록을 불러오고 있습니다...</p>
+          </div>
+        ) : (
+          /* 전문가 목록 */
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            {currentExperts.map((expert: ExpertItem) => (
+              <ExpertCard
+                key={expert.id}
+                expert={expert}
+                mode="default"
+                showFavoriteButton={true}
+                isFavorite={favorites.includes(expert.id as number)}
+                onToggleFavorite={(id) => toggleFavorite(Number(id))}
+                showProfileButton={true}
+                onProfileView={() => handleProfileView(expert)}
+              />
+            ))}
+          </div>
+        )}
 
         {/* 하단 페이징 */}
-        {filteredExperts.length > 0 && totalPages > 1 && (
+        {!isLoadingExperts && filteredExperts.length > 0 && totalPages > 1 && (
           <div className="mt-6">
             <div className="flex items-center justify-center space-x-4">
               <button
@@ -944,7 +964,7 @@ const ExpertSearch = () => {
         )}
 
         {/* 검색 결과가 없을 때 */}
-        {filteredExperts.length === 0 && (
+        {!isLoadingExperts && filteredExperts.length === 0 && (
           <div className="text-center py-16 bg-white rounded-lg border border-gray-200 shadow-sm">
             <div className="max-w-md mx-auto">
               <Users className="h-20 w-20 text-gray-300 mx-auto mb-6" />

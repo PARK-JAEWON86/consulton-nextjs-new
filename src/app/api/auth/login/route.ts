@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { User, Expert } from '@/lib/db/models';
+import { User, Expert, UserCredits } from '@/lib/db/models';
 import { initializeDatabase } from '@/lib/db/init';
 import { 
   verifyPassword, 
@@ -14,6 +14,7 @@ export async function POST(request: NextRequest) {
     await initializeDatabase();
     
     const { email, password } = await request.json();
+    console.log('로그인 시도:', { email, passwordLength: password?.length });
 
     // 입력 검증
     if (!email || !password) {
@@ -45,15 +46,21 @@ export async function POST(request: NextRequest) {
     });
 
     if (!user) {
+      console.log('사용자를 찾을 수 없음:', email);
       return NextResponse.json(
         { error: '이메일 또는 비밀번호가 올바르지 않습니다.' },
         { status: 401 }
       );
     }
+    
+    console.log('사용자 찾음:', { id: user.id, email: user.email, role: user.role });
 
     // 비밀번호 검증
     const isPasswordValid = await verifyPassword(password, user.password);
+    console.log('비밀번호 검증 결과:', isPasswordValid);
+    
     if (!isPasswordValid) {
+      console.log('비밀번호 불일치:', email);
       return NextResponse.json(
         { error: '이메일 또는 비밀번호가 올바르지 않습니다.' },
         { status: 401 }
@@ -71,6 +78,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 사용자 크레딧 정보 조회
+    let userCredits = await UserCredits.findOne({
+      where: { userId: user.id }
+    });
+
+    // 사용자 크레딧이 없으면 새로 생성
+    if (!userCredits) {
+      userCredits = await UserCredits.create({
+        userId: user.id,
+        aiChatTotal: 7300, // 기본 AI 채팅 토큰
+        aiChatUsed: 0,
+        purchasedTotal: 0,
+        purchasedUsed: 0,
+        lastResetDate: null
+      });
+    }
+
     // 마지막 로그인 시간 업데이트
     await user.update({ lastLoginAt: new Date() });
 
@@ -85,20 +109,30 @@ export async function POST(request: NextRequest) {
 
     const token = await generateToken(authUser);
 
-    // 응답 생성
-    const response = NextResponse.json({
+    // 실제 크레딧 계산
+    const totalCredits = (userCredits.aiChatTotal + userCredits.purchasedTotal) - (userCredits.aiChatUsed + userCredits.purchasedUsed);
+
+    console.log('로그인 성공:', { userId: user.id, email: user.email, role: user.role, credits: totalCredits });
+    
+    // 응답 생성 - 클라이언트에서 사용할 수 있도록 토큰도 포함
+    const responseData = {
       success: true,
       message: '로그인 성공',
       user: {
-        id: user.id,
+        id: user.id.toString(), // string으로 변환
         email: user.email,
         name: user.name,
         role: user.role,
-        expertId: user.expert?.id,
+        credits: totalCredits, // 실제 크레딧 계산값
+        expertLevel: user.expert ? 'Tier 1 (Lv.1-99)' : null,
+        expertProfile: user.expert?.id ? { id: user.expert.id } : null,
         isEmailVerified: user.isEmailVerified,
         lastLoginAt: user.lastLoginAt
-      }
-    });
+      },
+      token: token // JWT 토큰을 응답에 포함
+    };
+
+    const response = NextResponse.json(responseData);
 
     // 쿠키에 토큰 설정
     response.cookies.set('auth-token', token, {

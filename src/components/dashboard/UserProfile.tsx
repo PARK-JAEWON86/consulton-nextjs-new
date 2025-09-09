@@ -36,6 +36,7 @@ interface User {
   totalConsultations?: number;
   favoriteExperts?: number;
   joinDate?: string;
+  createdAt?: string;
 }
 
 interface AppState {
@@ -60,9 +61,10 @@ interface UserData {
 interface UserProfileProps {
   userData?: UserData;
   onSave?: (data: UserData) => void;
+  readOnly?: boolean; // 읽기 전용 모드 (편집 기능 비활성화)
 }
 
-const UserProfile = ({ userData, onSave }: UserProfileProps) => {
+const UserProfile = ({ userData, onSave, readOnly = false }: UserProfileProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [saveStatus, setSaveStatus] = useState("idle");
   const [appState, setAppState] = useState<AppState>({
@@ -94,68 +96,76 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
     loadAppState();
   }, []);
 
+  // 사용자 프로필 데이터 로드 함수
+  const loadUserProfile = async () => {
+    if (appState.isAuthenticated && appState.user) {
+      try {
+        setIsLoadingProfile(true);
+        
+        // 실제 API에서 사용자 프로필 정보 가져오기
+        const response = await fetch('/api/profile');
+        if (!response.ok) {
+          throw new Error('프로필 정보를 가져올 수 없습니다.');
+        }
+        
+        const result = await response.json();
+        if (result.success && result.data) {
+          const profileData = result.data;
+          
+          // 사용자 통계 정보 가져오기
+          const statsResponse = await fetch('/api/user-stats');
+          let userStats = {
+            totalConsultations: 0,
+            favoriteExperts: 0
+          };
+          
+          if (statsResponse.ok) {
+            const statsResult = await statsResponse.json();
+            if (statsResult.success) {
+              userStats = statsResult.data;
+            }
+          }
+          
+          setProfileData({
+            name: profileData.firstName || appState.user.name,
+            email: profileData.email || appState.user.email,
+            phone: profileData.phone || "",
+            location: "", // location 필드가 API에 없으므로 빈 문자열
+            birthDate: "", // birthDate 필드가 API에 없으므로 빈 문자열
+            interests: profileData.interestedCategories || [],
+            bio: "", // bio 필드가 API에 없으므로 빈 문자열
+            profileImage: profileData.profileImage || null,
+            totalConsultations: userStats.totalConsultations || 0,
+            favoriteExperts: userStats.favoriteExperts || 0,
+            joinDate: appState.user.createdAt ? new Date(appState.user.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          });
+        } else {
+          throw new Error('프로필 정보가 없습니다.');
+        }
+      } catch (error) {
+        console.error('사용자 프로필 로드 실패:', error);
+        // 에러 시 기본 사용자 정보만 설정
+        setProfileData({
+          name: appState.user.name,
+          email: appState.user.email,
+          phone: "",
+          location: "",
+          birthDate: "",
+          interests: [],
+          bio: "",
+          profileImage: null,
+          totalConsultations: 0,
+          favoriteExperts: 0,
+          joinDate: appState.user.createdAt ? new Date(appState.user.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        });
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    }
+  };
+
   // 사용자 프로필 데이터 로드
   useEffect(() => {
-    const loadUserProfile = async () => {
-      if (appState.isAuthenticated && appState.user) {
-        try {
-          setIsLoadingProfile(true);
-          
-          // 더미데이터에서 김철수의 프로필 정보 가져오기
-          if (appState.user.name === "김철수") {
-            const dummyProfileData = {
-              name: "김철수",
-              email: "kimcheolsu@example.com",
-              phone: "010-1234-5678",
-              location: "서울특별시 강남구",
-              birthDate: "1990-05-15",
-              interests: ["진로상담", "심리상담", "재무상담"],
-              bio: "다양한 분야의 전문가들과 상담을 통해 성장하고 있습니다. 특히 진로와 심리 분야에 관심이 많습니다.",
-              profileImage: null,
-              totalConsultations: 12,
-              favoriteExperts: 5,
-              joinDate: "2024-01-15"
-            };
-            
-            setProfileData(dummyProfileData);
-          } else {
-            // 기본 사용자 정보만 설정
-            setProfileData({
-              name: appState.user.name,
-              email: appState.user.email,
-              phone: "",
-              location: "",
-              birthDate: "",
-              interests: [],
-              bio: "",
-              profileImage: null,
-              totalConsultations: 0,
-              favoriteExperts: 0,
-              joinDate: new Date().toISOString().split('T')[0],
-            });
-          }
-        } catch (error) {
-          console.error('사용자 프로필 로드 실패:', error);
-          // 에러 시 기본 사용자 정보만 설정
-          setProfileData({
-            name: appState.user.name,
-            email: appState.user.email,
-            phone: "",
-            location: "",
-            birthDate: "",
-            interests: [],
-            bio: "",
-            profileImage: null,
-            totalConsultations: 0,
-            favoriteExperts: 0,
-            joinDate: new Date().toISOString().split('T')[0],
-          });
-        } finally {
-          setIsLoadingProfile(false);
-        }
-      }
-    };
-
     loadUserProfile();
   }, [appState.isAuthenticated, appState.user]);
 
@@ -219,29 +229,33 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
   const handleSaveProfile = async () => {
     setSaveStatus("saving");
     try {
-      // 실제 API 호출
-      if (appState.user) {
-        const response = await fetch(`/api/users/${appState.user.id}/profile`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(profileData)
-        });
-        
-        if (!response.ok) {
-          throw new Error('프로필 저장 실패');
-        }
-        
-        const result = await response.json();
-        if (result.success) {
-          onSave?.(profileData);
-          setSaveStatus("success");
-          setIsEditing(false);
-          setTimeout(() => setSaveStatus("idle"), 2000);
-        } else {
-          throw new Error(result.message || '프로필 저장 실패');
-        }
+      // 실제 API 호출 - /api/profile 엔드포인트 사용
+      const response = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          displayName: profileData.name,
+          phone: profileData.phone,
+          interestedCategories: profileData.interests,
+          profileImage: profileData.profileImage
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || '프로필 저장 실패');
+      }
+      
+      const result = await response.json();
+      if (result.success) {
+        onSave?.(profileData);
+        setSaveStatus("success");
+        setIsEditing(false);
+        setTimeout(() => setSaveStatus("idle"), 2000);
+      } else {
+        throw new Error(result.message || '프로필 저장 실패');
       }
     } catch (error) {
       console.error('프로필 저장 실패:', error);
@@ -253,22 +267,9 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
   const handleCancel = () => {
     setIsEditing(false);
     setSaveStatus("idle");
-    // 원래 데이터로 복원 - 더미데이터 사용
-    if (appState.user && appState.user.name === "김철수") {
-      const dummyProfileData = {
-        name: "김철수",
-        email: "kimcheolsu@example.com",
-        phone: "010-1234-5678",
-        location: "서울특별시 강남구",
-        birthDate: "1990-05-15",
-        interests: ["진로상담", "심리상담", "재무상담"],
-        bio: "다양한 분야의 전문가들과 상담을 통해 개인적 성장을 추구합니다.",
-        profileImage: null,
-        totalConsultations: 12,
-        favoriteExperts: 5,
-        joinDate: "2024-01-15"
-      };
-      setProfileData(dummyProfileData);
+    // 원래 데이터로 복원 - API에서 다시 로드
+    if (appState.isAuthenticated && appState.user) {
+      loadUserProfile();
     }
   };
 
@@ -328,7 +329,7 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
             <User className="h-5 w-5 text-blue-600 mr-2" />
             사용자 프로필
           </h3>
-          {!isEditing ? (
+          {!readOnly && !isEditing && (
             <button
               onClick={() => setIsEditing(true)}
               className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -336,7 +337,8 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
               <Edit3 className="h-4 w-4" />
               <span>편집</span>
             </button>
-          ) : (
+          )}
+          {!readOnly && isEditing && (
             <div className="flex items-center space-x-2">
               <button
                 onClick={handleCancel}
@@ -399,7 +401,7 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
                     <User className="h-12 w-12 text-gray-400" />
                   )}
                 </div>
-                {isEditing && (
+                {!readOnly && isEditing && (
                   <button className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors">
                     <Camera className="h-4 w-4" />
                   </button>
@@ -407,7 +409,7 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
               </div>
 
               <div className="flex-1">
-                {isEditing ? (
+                {!readOnly && isEditing ? (
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -461,7 +463,7 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
                   <Mail className="h-4 w-4 inline mr-1" />
                   이메일
                 </label>
-                {isEditing ? (
+                {!readOnly && isEditing ? (
                   <input
                     type="email"
                     value={profileData.email || ""}
@@ -478,7 +480,7 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
                   <Phone className="h-4 w-4 inline mr-1" />
                   전화번호
                 </label>
-                {isEditing ? (
+                {!readOnly && isEditing ? (
                   <input
                     type="tel"
                     value={profileData.phone || ""}
@@ -495,7 +497,7 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
                   <MapPin className="h-4 w-4 inline mr-1" />
                   지역
                 </label>
-                {isEditing ? (
+                {!readOnly && isEditing ? (
                   <input
                     type="text"
                     value={profileData.location || ""}
@@ -514,7 +516,7 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
                   <Calendar className="h-4 w-4 inline mr-1" />
                   생년월일
                 </label>
-                {isEditing ? (
+                {!readOnly && isEditing ? (
                   <input
                     type="date"
                     value={profileData.birthDate || ""}
@@ -538,13 +540,13 @@ const UserProfile = ({ userData, onSave }: UserProfileProps) => {
                   <Target className="h-4 w-4 inline mr-1" />
                   관심 분야
                 </label>
-                {isEditing && (
+                {!readOnly && isEditing && (
                   <span className="text-sm text-gray-500">
                     {profileData.interests?.length || 0}/10 선택됨
                   </span>
                 )}
               </div>
-              {isEditing && (
+              {!readOnly && isEditing && (
                 <p className="text-xs text-gray-500 mb-3">
                   관심있는 상담 분야를 선택하면 맞춤형 전문가 추천을 받을 수 있습니다. (최대 10개)
                 </p>

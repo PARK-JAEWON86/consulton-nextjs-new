@@ -46,6 +46,7 @@ import {
   User,
   UserCheck,
   X,
+  Activity
 } from "lucide-react";
 // import { getExtendedAgeGroups, getExtendedDurations } from "@/data/dummy/categories"; // 더미 데이터 제거
 
@@ -70,211 +71,213 @@ export default function HomePage() {
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // 사용자 인증 상태 확인
+  // 페이지 로딩 및 에러 상태
+  const [isPageLoading, setIsPageLoading] = useState(true);
+  const [pageError, setPageError] = useState<string | null>(null);
+
+  // 초기 데이터 로드 (인증 상태, 전문가 프로필, 카테고리를 한 번에 처리)
   useEffect(() => {
-    const checkAuth = () => {
+    const initializePageData = async () => {
+      setIsPageLoading(true);
+      setPageError(null);
+      
       try {
-        // 로컬 스토리지에서 사용자 정보 확인
-        const storedUser = localStorage.getItem('consulton-user');
-        const storedAuth = localStorage.getItem('consulton-auth');
-        
-        if (storedUser && storedAuth) {
+        // 서비스 진입 상태 설정
+        fetch('/api/app-state', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'enterService', data: {} })
+        }).catch(error => console.warn('서비스 진입 상태 설정 실패:', error));
+
+        // 병렬로 필요한 데이터들을 모두 로드 (타임아웃 설정)
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('API 호출 시간 초과')), 10000)
+        );
+
+        const [authResult, expertsResult, categoriesResult] = await Promise.race([
+          Promise.allSettled([
+            // 인증 상태 확인
+            fetch('/api/app-state').then(res => res.json()),
+            // 전문가 프로필 로드
+            fetch('/api/expert-profiles').then(res => res.json()),
+            // 카테고리 로드
+            fetch('/api/categories?activeOnly=true').then(res => res.json())
+          ]),
+          timeoutPromise
+        ]) as any;
+
+        // 인증 상태 처리
+        if (authResult.status === 'fulfilled' && authResult.value.success) {
+          setIsAuthenticated(authResult.value.data.isAuthenticated);
+          setCurrentUserId(authResult.value.data.userId || "");
+        } else {
+          // API 실패 시 로컬 스토리지에서 확인
           try {
-            const user = JSON.parse(storedUser);
-            const isAuth = JSON.parse(storedAuth);
+            const storedUser = localStorage.getItem('consulton-user');
+            const storedAuth = localStorage.getItem('consulton-auth');
             
-            if (isAuth) {
-              setIsAuthenticated(true);
-              setCurrentUserId(user.id || user.email || "");
-              console.log('로컬 스토리지에서 인증 성공:', { userId: user.id || user.email, isAuth });
-              return;
+            if (storedUser && storedAuth) {
+              const user = JSON.parse(storedUser);
+              const isAuth = JSON.parse(storedAuth);
+              
+              if (isAuth) {
+                setIsAuthenticated(true);
+                setCurrentUserId(user.id || user.email || "");
+              }
             }
           } catch (error) {
             console.error('로컬 스토리지 파싱 오류:', error);
           }
         }
-        
-        // API에서 앱 상태 로드
-        fetch('/api/app-state')
-          .then(response => response.json())
-          .then(result => {
-            if (result.success) {
-              setIsAuthenticated(result.data.isAuthenticated);
-              setCurrentUserId(result.data.userId || "");
-              console.log('API에서 인증 상태 확인:', { isAuthenticated: result.data.isAuthenticated, userId: result.data.userId });
-            }
-          })
-          .catch(error => {
-            console.error('인증 상태 확인 실패:', error);
-          });
-      } catch (error) {
-        console.error('인증 상태 확인 실패:', error);
-      }
-    };
-    
-    checkAuth();
-  }, []);
 
-  // 전문가 프로필 데이터 로드
-  useEffect(() => {
-    const loadExpertProfiles = () => {
-      console.log('랜딩페이지: 전문가 프로필 로드 시작...');
-      
-      // 먼저 API 초기화 호출
-      console.log('랜딩페이지: API 초기화 호출 중...');
-      fetch('/api/expert-profiles', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'initializeProfiles'
-        })
-      })
-      .then(initResponse => initResponse.json())
-      .then(initResult => {
-        console.log('랜딩페이지: 초기화 결과:', initResult);
-        
-        // 그 다음 전문가 프로필 조회
-        console.log('랜딩페이지: 전문가 프로필 조회 중...');
-        return fetch('/api/expert-profiles');
-      })
-      .then(response => response.json())
-      .then(result => {
-        console.log('랜딩페이지: 전문가 프로필 조회 결과:', result);
-        
-        if (result.success) {
-          console.log('랜딩페이지: 전문가 데이터 설정:', result.data.profiles?.length || 0, '명');
-          
-          // API 응답을 ExpertProfile 타입으로 변환
-          const convertedExperts = result.data.profiles.map((apiExpert: any) => ({
-            id: parseInt(apiExpert.id),
-            name: apiExpert.fullName,
-            specialty: apiExpert.specialty,
-            experience: apiExpert.experienceYears,
-            description: apiExpert.bio,
-            education: [],
-            certifications: apiExpert.certifications?.map((cert: any) => cert.name) || [],
-            specialties: apiExpert.keywords || [],
-            specialtyAreas: apiExpert.keywords || [],
-            consultationTypes: apiExpert.consultationTypes || [],
-            languages: ['한국어'],
-            hourlyRate: 0,
-            pricePerMinute: 0,
-            totalSessions: 0,
-            avgRating: 4.5,
-            rating: 4.5,
-            reviewCount: 0,
-            completionRate: 95,
-            repeatClients: 0,
-            responseTime: '1시간 이내',
-            averageSessionDuration: 60,
-            cancellationPolicy: '24시간 전 취소 가능',
-            availability: apiExpert.availability || {},
-            weeklyAvailability: {},
-            holidayPolicy: undefined,
-            contactInfo: {
-              phone: '',
-              email: apiExpert.email || '',
+        // 전문가 프로필 처리
+        if (expertsResult.status === 'fulfilled' && expertsResult.value.success && expertsResult.value.data?.profiles) {
+          const convertedExperts = expertsResult.value.data.profiles.map((apiExpert: any) => {
+            // 안전한 데이터 변환을 위한 헬퍼 함수들
+            const safeParseInt = (value: any, defaultValue: number = 0) => {
+              const parsed = parseInt(value);
+              return isNaN(parsed) ? defaultValue : parsed;
+            };
+            
+            const safeParseFloat = (value: any, defaultValue: number = 0) => {
+              const parsed = parseFloat(value);
+              return isNaN(parsed) ? defaultValue : parsed;
+            };
+            
+            const safeParseJSON = (value: any, defaultValue: any) => {
+              try {
+                return value && typeof value === 'string' ? JSON.parse(value) : (value || defaultValue);
+              } catch {
+                return defaultValue;
+              }
+            };
+            
+            const safeDate = (value: any) => {
+              try {
+                return value ? new Date(value) : new Date();
+              } catch {
+                return new Date();
+              }
+            };
+            
+            return {
+              id: safeParseInt(apiExpert.id),
+              name: apiExpert.fullName || '이름 없음',
+              specialty: apiExpert.specialty || '전문 분야 미정',
+              experience: safeParseInt(apiExpert.experienceYears),
+              description: apiExpert.bio || '소개가 준비 중입니다.',
+              education: [],
+              certifications: Array.isArray(apiExpert.certifications) 
+                ? apiExpert.certifications.map((cert: any) => cert.name || cert) 
+                : [],
+              specialties: Array.isArray(apiExpert.keywords) ? apiExpert.keywords : [],
+              specialtyAreas: Array.isArray(apiExpert.keywords) ? apiExpert.keywords : [],
+              consultationTypes: safeParseJSON(apiExpert.consultationTypes, ['video', 'chat']),
+              languages: safeParseJSON(apiExpert.languages, ['한국어']),
+              hourlyRate: safeParseInt(apiExpert.hourlyRate),
+              pricePerMinute: safeParseInt(apiExpert.pricePerMinute),
+              totalSessions: safeParseInt(apiExpert.totalSessions),
+              avgRating: safeParseFloat(apiExpert.avgRating, 4.5),
+              rating: safeParseFloat(apiExpert.avgRating, 4.5),
+              reviewCount: safeParseInt(apiExpert.reviewCount),
+              completionRate: safeParseInt(apiExpert.completionRate, 95),
+              repeatClients: safeParseInt(apiExpert.repeatClients),
+              responseTime: apiExpert.responseTime || '1시간 이내',
+              averageSessionDuration: safeParseInt(apiExpert.averageSessionDuration, 60),
+              cancellationPolicy: apiExpert.cancellationPolicy || '24시간 전 취소 가능',
+              availability: safeParseJSON(apiExpert.availability, {}),
+              weeklyAvailability: {},
+              holidayPolicy: apiExpert.holidayPolicy || undefined,
+              contactInfo: {
+                phone: apiExpert.phone || '',
+                email: apiExpert.email || '',
+                location: apiExpert.location || '위치 미설정',
+                website: apiExpert.website || ''
+              },
               location: apiExpert.location || '위치 미설정',
-              website: ''
-            },
-            location: apiExpert.location || '위치 미설정',
-            timeZone: apiExpert.timeZone || 'UTC',
-            profileImage: apiExpert.profileImage || null,
-            portfolioFiles: [],
-            portfolioItems: [],
-            tags: apiExpert.keywords || [],
-            targetAudience: ['성인'],
-            isOnline: true,
-            isProfileComplete: true,
-            createdAt: new Date(apiExpert.createdAt),
-            updatedAt: new Date(apiExpert.updatedAt),
-            price: apiExpert.hourlyRate ? `₩${apiExpert.hourlyRate.toLocaleString()}` : '가격 문의',
-            image: apiExpert.profileImage || null,
-            consultationStyle: '체계적이고 전문적인 접근',
-            successStories: 50,
-            nextAvailableSlot: '2024-01-22T10:00:00',
-            profileViews: 500,
-            lastActiveAt: new Date(apiExpert.updatedAt),
-            joinedAt: new Date(apiExpert.createdAt),
-            socialProof: {
-              linkedIn: undefined,
-              website: undefined,
-              publications: []
-            },
-            pricingTiers: apiExpert.pricingTiers || [
-              { duration: 30, price: Math.round((apiExpert.hourlyRate || 50000) * 0.5), description: '기본 상담' },
-              { duration: 60, price: apiExpert.hourlyRate || 50000, description: '상세 상담' },
-              { duration: 90, price: Math.round((apiExpert.hourlyRate || 50000) * 1.5), description: '종합 상담' }
-            ],
-            reschedulePolicy: '12시간 전 일정 변경 가능'
-          }));
+              timeZone: apiExpert.timeZone || 'Asia/Seoul',
+              profileImage: apiExpert.profileImage || null,
+              portfolioFiles: [],
+              portfolioItems: safeParseJSON(apiExpert.portfolioItems, []),
+              tags: Array.isArray(apiExpert.keywords) ? apiExpert.keywords : [],
+              targetAudience: safeParseJSON(apiExpert.targetAudience, ['성인']),
+              isOnline: true,
+              isProfileComplete: true,
+              createdAt: safeDate(apiExpert.createdAt),
+              updatedAt: safeDate(apiExpert.updatedAt),
+              price: apiExpert.hourlyRate ? `₩${safeParseInt(apiExpert.hourlyRate).toLocaleString()}` : '가격 문의',
+              image: apiExpert.profileImage || null,
+              consultationStyle: apiExpert.consultationStyle || '체계적이고 전문적인 접근',
+              successStories: safeParseInt(apiExpert.successStories, 50),
+              nextAvailableSlot: apiExpert.nextAvailableSlot || '2024-01-22T10:00:00',
+              profileViews: safeParseInt(apiExpert.profileViews, 500),
+              lastActiveAt: safeDate(apiExpert.lastActiveAt || apiExpert.updatedAt),
+              joinedAt: safeDate(apiExpert.joinedAt || apiExpert.createdAt),
+              socialProof: safeParseJSON(apiExpert.socialProof, {
+                linkedIn: undefined,
+                website: undefined,
+                publications: []
+              }),
+              pricingTiers: safeParseJSON(apiExpert.pricingTiers, [
+                { duration: 30, price: Math.round(safeParseInt(apiExpert.hourlyRate, 50000) * 0.5), description: '기본 상담' },
+                { duration: 60, price: safeParseInt(apiExpert.hourlyRate, 50000), description: '상세 상담' },
+                { duration: 90, price: Math.round(safeParseInt(apiExpert.hourlyRate, 50000) * 1.5), description: '종합 상담' }
+              ]),
+              reschedulePolicy: apiExpert.reschedulePolicy || '12시간 전 일정 변경 가능'
+            };
+          });
           
-          console.log('랜딩페이지: 변환된 전문가 데이터:', convertedExperts.length, '명');
           setAllExperts(convertedExperts);
         } else {
-          console.error('랜딩페이지: API 응답 실패:', result);
-          // API 호출 실패 시 빈 배열 사용
+          console.error('전문가 프로필 로드 실패');
           setAllExperts([]);
         }
-      })
-      .catch(error => {
-        console.error('랜딩페이지: 전문가 프로필 로드 실패:', error);
-        // API 호출 실패 시 빈 배열 사용
-        setAllExperts([]);
-      });
-    };
 
-    loadExpertProfiles();
-  }, []);
-
-    // 카테고리 데이터 로드
-  useEffect(() => {
-    const loadCategories = () => {
-      setIsLoadingCategories(true);
-      fetch('/api/categories?activeOnly=true')
-        .then(response => response.json())
-        .then(result => {
-          if (result.success) {
-            // API 응답을 기존 형식에 맞게 변환
-            const transformedCategories = result.data.map((cat: any) => ({
-              id: cat.id,
-              name: cat.name,
-              icon: cat.icon,
-              description: cat.description
-            }));
-            setCategories(transformedCategories);
-          } else {
-            console.error('카테고리 로드 실패:', result.message);
-            // API 실패 시 기본 카테고리로 fallback
-            setCategories([
-              { id: "career", name: "진로상담", icon: "Target", description: "취업, 이직, 진로 탐색" },
-              { id: "psychology", name: "심리상담", icon: "Brain", description: "스트레스, 우울, 불안" },
-              { id: "finance", name: "재무상담", icon: "DollarSign", description: "투자, 자산관리, 세무" },
-              { id: "legal", name: "법률상담", icon: "Scale", description: "계약, 분쟁, 상속" },
-              { id: "education", name: "교육상담", icon: "BookOpen", description: "학습법, 입시, 유학" }
-            ]);
-          }
-        })
-        .catch(error => {
-          console.error('카테고리 로드 실패:', error);
-          // 네트워크 오류 시 기본 카테고리로 fallback
-          setCategories([
-            { id: "career", name: "진로상담", icon: "Target", description: "취업, 이직, 진로 탐색" },
-            { id: "psychology", name: "심리상담", icon: "Brain", description: "스트레스, 우울, 불안" },
-            { id: "finance", name: "재무상담", icon: "DollarSign", description: "투자, 자산관리, 세무" },
-            { id: "legal", name: "법률상담", icon: "Scale", description: "계약, 분쟁, 상속" },
-            { id: "education", name: "교육상담", icon: "BookOpen", description: "학습법, 입시, 유학" }
-          ]);
-        })
-        .finally(() => {
+        // 카테고리 처리
+        if (categoriesResult.status === 'fulfilled' && categoriesResult.value.success && Array.isArray(categoriesResult.value.data)) {
+          const transformedCategories = categoriesResult.value.data.map((cat: any) => ({
+            id: cat.id?.toString() || '',
+            name: cat.name || '이름 없음',
+            icon: cat.icon || 'Target',
+            description: cat.description || '설명 없음'
+          }));
+          setCategories(transformedCategories);
           setIsLoadingCategories(false);
-        });
+        } else {
+          console.error('카테고리 로드 실패');
+          // API 실패 시 기본 카테고리로 fallback
+          setCategories([
+            { id: "1", name: "프로그래밍/개발", icon: "Code", description: "IT 개발, 프로그래밍 언어, 소프트웨어 아키텍처 등" },
+            { id: "2", name: "디자인/크리에이티브", icon: "Palette", description: "UI/UX, 그래픽 디자인, 브랜딩, 영상 편집 등" },
+            { id: "3", name: "비즈니스/창업", icon: "Briefcase", description: "사업 전략, 창업, 경영 컨설팅, 마케팅 등" },
+            { id: "4", name: "재무/투자", icon: "DollarSign", description: "개인 재정 관리, 투자, 세무, 보험 등" },
+            { id: "5", name: "심리/상담", icon: "Heart", description: "심리 상담, 스트레스 관리, 인간관계 등" }
+          ]);
+          setIsLoadingCategories(false);
+        }
+
+      } catch (error) {
+        console.error('페이지 초기화 실패:', error);
+        setPageError(error instanceof Error ? error.message : '페이지 로드 중 오류가 발생했습니다.');
+        
+        // 에러 발생 시 기본값들로 설정
+        setAllExperts([]);
+        setCategories([
+          { id: "1", name: "프로그래밍/개발", icon: "Code", description: "IT 개발, 프로그래밍 언어, 소프트웨어 아키텍처 등" },
+          { id: "2", name: "디자인/크리에이티브", icon: "Palette", description: "UI/UX, 그래픽 디자인, 브랜딩, 영상 편집 등" },
+          { id: "3", name: "비즈니스/창업", icon: "Briefcase", description: "사업 전략, 창업, 경영 컨설팅, 마케팅 등" },
+          { id: "4", name: "재무/투자", icon: "DollarSign", description: "개인 재정 관리, 투자, 세무, 보험 등" },
+          { id: "5", name: "심리/상담", icon: "Heart", description: "심리 상담, 스트레스 관리, 인간관계 등" }
+        ]);
+        setIsLoadingCategories(false);
+      } finally {
+        setIsPageLoading(false);
+      }
     };
 
-    loadCategories();
+    initializePageData();
   }, []);
+
 
   // 상담 카테고리 옵션 (API에서 동적 로드)
   const [categories, setCategories] = useState<any[]>([]);
@@ -309,8 +312,8 @@ export default function HomePage() {
     console.log('선택된 카테고리:', selectedCategory);
     
     if (!selectedCategory) {
-      console.error('선택된 카테고리를 찾을 수 없습니다:', category);
-      return [];
+      console.warn('선택된 카테고리를 찾을 수 없습니다:', category, '- 모든 전문가를 반환합니다.');
+      return experts; // 카테고리가 없으면 모든 전문가 반환
     }
     
     const filteredResults = experts.filter(expert => {
@@ -410,70 +413,181 @@ export default function HomePage() {
     return filteredResults;
   };
 
-  // 검색 실행
-  const handleSearch = () => {
-    console.log('=== 검색 실행 시작 ===');
-    console.log('검색 조건:', {
-      searchCategory,
-      searchStartDate,
-      searchEndDate,
-      searchAgeGroup
-    });
-    console.log('사용 가능한 카테고리 수:', categories.length);
-    console.log('전체 전문가 수:', allExperts.length);
-
-    if (
-      !searchCategory ||
-      !searchStartDate ||
-      !searchEndDate ||
-      !searchAgeGroup
-    ) {
-      alert("모든 검색 조건을 선택해주세요.");
+  // 전문가 검색 실행 (API 기반으로 최적화된 검색 로직)
+  const handleSearch = async () => {
+    // 필수 검색 조건 검증 - 모든 필드가 선택되어야 함
+    if (!searchCategory || !searchStartDate || !searchEndDate || !searchAgeGroup) {
+      console.warn("검색 조건이 부족합니다. 모든 필드를 선택해 주세요.");
       return;
     }
 
     setIsSearching(true);
     setHasSearched(true);
     
-    // 실제로는 API 호출하여 전문가 검색
-    setTimeout(() => {
-      // 상태에서 전문가 데이터 가져오기
-      const currentExperts = allExperts;
-      console.log('현재 전문가 데이터:', currentExperts.length, '명');
+    try {
+      // API를 통한 서버 사이드 전문가 검색 (성능 최적화)
+      const searchParams = new URLSearchParams({
+        category: searchCategory,
+        startDate: searchStartDate,
+        endDate: searchEndDate,
+        ageGroup: searchAgeGroup,
+        limit: '20' // 최대 20명까지 검색하여 성능 최적화
+      });
+
+      const response = await fetch(`/api/expert-profiles/search?${searchParams}`);
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        const { exactMatches, relatedExperts, totalCount } = result.data;
+        
+        // 정확히 조건에 매칭되는 전문가 수 저장 (사용자 피드백용)
+        setExactMatchCount(exactMatches?.length || 0);
+        
+        // 검색 결과 조합: 정확한 매칭 우선, 관련 전문가 후순위
+        const allResults = [
+          ...(exactMatches || []),
+          ...(relatedExperts || [])
+        ].slice(0, 12); // UI 성능을 위해 최대 12명까지만 표시
+
+        setSearchResults(allResults);
+      } else {
+        // API 검색 실패 시 클라이언트 사이드 필터링으로 폴백 처리
+        console.warn('API 검색 실패, 클라이언트 필터링으로 대체');
+        const filteredExperts = filterExperts(
+          allExperts, 
+          searchCategory, 
+          searchStartDate, 
+          searchEndDate, 
+          searchAgeGroup
+        );
+        
+        setExactMatchCount(filteredExperts.length);
+        
+        // 검색 결과가 부족할 경우 관련 전문가도 추가 표시
+        let finalResults = [...filteredExperts];
+        if (filteredExperts.length < 3) {
+          const additionalExperts = allExperts
+            .filter((expert: any) => !filteredExperts.some((filtered: any) => filtered.id === expert.id))
+            .slice(0, 5 - filteredExperts.length);
+          finalResults = [...filteredExperts, ...additionalExperts];
+        }
+        
+        setSearchResults(finalResults);
+      }
+    } catch (error) {
+      console.error('검색 중 오류 발생:', error);
       
-      // 검색 조건에 맞는 전문가 필터링
+      // 네트워크 오류 등 예외 상황 시 클라이언트 필터링으로 대체
       const filteredExperts = filterExperts(
-        currentExperts, 
+        allExperts, 
         searchCategory, 
         searchStartDate, 
         searchEndDate, 
         searchAgeGroup
       );
       
-      console.log('필터링 결과:', filteredExperts.length, '명');
-      
-      // 정확한 매칭 수 저장
       setExactMatchCount(filteredExperts.length);
-      
-      // 결과가 적을 경우 더미 데이터 추가 (실제 서비스에서는 제거)
-      let finalResults = [...filteredExperts];
-      if (filteredExperts.length < 3) {
-        // 부족한 경우 다른 카테고리 전문가도 추가 (관련 전문가로 표시)
-        const additionalExperts = currentExperts
-          .filter((expert: any) => !filteredExperts.some((filtered: any) => filtered.id === expert.id))
-          .slice(0, 5 - filteredExperts.length);
-        finalResults = [...filteredExperts, ...additionalExperts];
-        console.log('추가 전문가:', additionalExperts.length, '명');
-      }
-      
-      console.log('최종 검색 결과:', finalResults.length, '명');
-      setSearchResults(finalResults);
+      setSearchResults(filteredExperts);
+    } finally {
+      // 검색 로딩 상태 해제
       setIsSearching(false);
-    }, 800);
+    }
   };
 
 
 
+
+  // 페이지 로딩 상태 처리
+  if (isPageLoading) {
+    return (
+      <div className="min-h-screen bg-white">
+        {/* 로딩 스켈레톤 UI */}
+        <section className="relative z-10 overflow-visible py-28 sm:py-40 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <div className="animate-pulse">
+              {/* 제목 스켈레톤 */}
+              <div className="h-8 bg-gray-200 rounded-md w-3/4 mx-auto mb-6"></div>
+              <div className="h-16 bg-gray-200 rounded-md w-1/2 mx-auto mb-6"></div>
+              <div className="h-6 bg-gray-200 rounded-md w-2/3 mx-auto mb-12"></div>
+              
+              {/* 검색 필드 스켈레톤 */}
+              <div className="flex flex-col md:flex-row gap-4 max-w-4xl mx-auto mb-16">
+                <div className="h-14 bg-gray-200 rounded-2xl flex-1"></div>
+                <div className="h-14 bg-gray-200 rounded-2xl flex-1"></div>
+                <div className="h-14 bg-gray-200 rounded-2xl flex-1"></div>
+                <div className="h-14 bg-gray-200 rounded-2xl flex-1"></div>
+                <div className="h-14 w-14 bg-gray-200 rounded-2xl"></div>
+              </div>
+              
+              {/* AI 채팅 버튼 스켈레톤 */}
+              <div className="h-12 bg-gray-200 rounded-lg w-48 mx-auto"></div>
+            </div>
+          </div>
+        </section>
+        
+        {/* 통계 섹션 스켈레톤 */}
+        <section className="py-24 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 animate-pulse">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="text-center">
+                  <div className="h-12 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-6 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+        
+        {/* 카테고리 섹션 스켈레톤 */}
+        <section className="py-24 bg-gray-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12 animate-pulse">
+              <div className="h-8 bg-gray-200 rounded w-1/3 mx-auto mb-4"></div>
+              <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div>
+            </div>
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-4 animate-pulse">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div key={index} className="bg-white rounded-xl p-4 min-h-[160px]">
+                  <div className="h-10 w-10 bg-gray-200 rounded-full mx-auto mb-3"></div>
+                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-3 bg-gray-200 rounded"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  // 에러 상태 처리
+  if (pageError) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <div className="mb-8">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <X className="w-8 h-8 text-red-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              페이지 로드 실패
+            </h2>
+            <p className="text-gray-600 mb-6">
+              {pageError}
+            </p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+            >
+              다시 시도
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">

@@ -46,14 +46,12 @@ export async function GET(request: NextRequest) {
     // 쿼리 조건 구성
     let whereClause: any = {};
     
-    // 사용자별 필터링 (본인의 상담 요약만 조회)
+    // 사용자별 필터링 (클라이언트는 본인이 받은 상담만, 전문가는 빈 목록)
     if (authUser.role === 'client') {
       whereClause['$consultation.userId$'] = authUser.id;
     } else if (authUser.role === 'expert') {
-      const expert = await Expert.findOne({ where: { userId: authUser.id } });
-      if (expert) {
-        whereClause['$consultation.expertId$'] = expert.id;
-      }
+      // 전문가 모드일 때는 상담받은 요약이 없으므로 빈 결과 반환
+      whereClause['$consultation.userId$'] = -1; // 존재하지 않는 사용자 ID로 빈 결과 생성
     }
     // 관리자는 모든 요약 조회 가능
 

@@ -50,6 +50,11 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith('/api/expert-profiles')) {
     return NextResponse.next();
   }
+  
+  // 전문가 통계 관련 API 공개 허용 (개발/관리 목적)
+  if (pathname.startsWith('/api/expert-stats') || pathname.startsWith('/api/expert-rankings')) {
+    return NextResponse.next();
+  }
 
   // 인증이 필요한 경로인지 확인
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));

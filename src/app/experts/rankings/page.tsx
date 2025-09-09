@@ -126,7 +126,7 @@ export default function ExpertRankingsPage() {
         apiType = 'overall';
       }
       
-      let url = `/api/expert-stats?rankingType=${apiType}`;
+      let url = `/api/expert-rankings?rankingType=${apiType}`;
       if (type === 'specialty' && specialty) {
         url += `&specialty=${encodeURIComponent(specialty)}`;
       }
@@ -339,52 +339,40 @@ export default function ExpertRankingsPage() {
           </p>
         </div>
         
-        {/* 랭킹 통계 */}
+        {/* 통계 요약 */}
         <div className="mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
               <div className="flex items-center">
-                <Crown className="h-8 w-8 text-yellow-500 mr-3" />
+                <Award className="h-6 w-6 md:h-8 md:w-8 text-blue-500 mr-2 md:mr-3" />
                 <div>
-                  <p className="text-sm font-medium text-gray-600">총 전문가</p>
-                  <p className="text-2xl font-bold text-gray-900">{rankingList.length}명</p>
+                  <p className="text-xs md:text-sm font-medium text-gray-600">검증된 전문가</p>
+                  <p className="text-lg md:text-2xl font-bold text-gray-900">{rankingList.length}명</p>
                 </div>
               </div>
             </div>
             
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
               <div className="flex items-center">
-                <TrendingUp className="h-8 w-8 text-blue-500 mr-3" />
+                <Users className="h-6 w-6 md:h-8 md:w-8 text-green-500 mr-2 md:mr-3" />
                 <div>
-                  <p className="text-sm font-medium text-gray-600">평균 점수</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-xs md:text-sm font-medium text-gray-600">평균 경력</p>
+                  <p className="text-lg md:text-2xl font-bold text-gray-900">
                     {rankingList.length > 0 
-                      ? (rankingList.reduce((sum, item) => sum + (item.rankingScore || 0), 0) / rankingList.length).toFixed(1)
+                      ? (rankingList.reduce((sum, item) => sum + (item.experience || 5), 0) / rankingList.length).toFixed(1)
                       : '0.0'
-                    }점
+                    }년
                   </p>
                 </div>
               </div>
             </div>
             
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
               <div className="flex items-center">
-                <Users className="h-8 w-8 text-green-500 mr-3" />
+                <Star className="h-6 w-6 md:h-8 md:w-8 text-yellow-500 mr-2 md:mr-3" />
                 <div>
-                  <p className="text-sm font-medium text-gray-600">총 상담</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {rankingList.reduce((sum, item) => sum + item.totalSessions, 0).toLocaleString()}회
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center">
-                <Star className="h-8 w-8 text-yellow-500 mr-3" />
-                <div>
-                  <p className="text-sm font-medium text-gray-600">평균 평점</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-xs md:text-sm font-medium text-gray-600">고객 만족도</p>
+                  <p className="text-lg md:text-2xl font-bold text-gray-900">
                     {rankingList.length > 0 
                       ? (rankingList.reduce((sum, item) => sum + Number(item.avgRating || 0), 0) / rankingList.length).toFixed(1)
                       : '0.0'
@@ -394,25 +382,53 @@ export default function ExpertRankingsPage() {
               </div>
             </div>
             
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
               <div className="flex items-center">
-                <Award className="h-8 w-8 text-purple-500 mr-3" />
+                <TrendingUp className="h-6 w-6 md:h-8 md:w-8 text-purple-500 mr-2 md:mr-3" />
                 <div>
-                  <p className="text-sm font-medium text-gray-600">총 리뷰</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {rankingList.reduce((sum, item) => sum + (item.reviewCount || 0), 0).toLocaleString()}개
+                  <p className="text-xs md:text-sm font-medium text-gray-600">재상담율</p>
+                  <p className="text-lg md:text-2xl font-bold text-gray-900">
+                    {rankingList.length > 0 
+                      ? Math.round((rankingList.reduce((sum, item) => sum + (item.repeatClients || 75), 0) / rankingList.length) * 10) / 10
+                      : 0
+                    }%
                   </p>
                 </div>
               </div>
             </div>
             
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
               <div className="flex items-center">
-                <TrendingUp className="h-8 w-8 text-pink-500 mr-3" />
+                <Crown className="h-6 w-6 md:h-8 md:w-8 text-indigo-500 mr-2 md:mr-3" />
                 <div>
-                  <p className="text-sm font-medium text-gray-600">총 좋아요</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {rankingList.reduce((sum, item) => sum + (item.likeCount || 0), 0).toLocaleString()}개
+                  <p className="text-xs md:text-sm font-medium text-gray-600">총 상담 건수</p>
+                  <p className="text-lg md:text-2xl font-bold text-gray-900">
+                    {rankingList.reduce((sum, item) => sum + item.totalSessions, 0).toLocaleString()}건
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+              <div className="flex items-center">
+                <Search className="h-6 w-6 md:h-8 md:w-8 text-red-500 mr-2 md:mr-3" />
+                <div>
+                  <p className="text-xs md:text-sm font-medium text-gray-600">인기 분야</p>
+                  <p className="text-lg md:text-2xl font-bold text-gray-900">
+                    {(() => {
+                      // 분야별 전문가 수 계산
+                      const specialtyCounts = rankingList.reduce((acc, item) => {
+                        const specialty = item.specialty || '기타';
+                        acc[specialty] = (acc[specialty] || 0) + 1;
+                        return acc;
+                      }, {} as Record<string, number>);
+                      
+                      // 가장 많은 분야 찾기
+                      const topSpecialty = Object.entries(specialtyCounts)
+                        .sort(([,a], [,b]) => b - a)[0];
+                      
+                      return topSpecialty ? topSpecialty[0] : '심리상담';
+                    })()}
                   </p>
                 </div>
               </div>

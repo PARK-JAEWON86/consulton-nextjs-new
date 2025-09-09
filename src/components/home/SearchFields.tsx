@@ -30,6 +30,7 @@ import {
   PawPrint,
   Building2,
   GraduationCap,
+  Activity,
   Clock,
   ChevronDown,
   Search,
@@ -99,7 +100,8 @@ const getIconComponent = (iconName: string | IconType) => {
       ChefHat,
       PawPrint,
       Building2,
-      GraduationCap
+      GraduationCap,
+      Activity
     };
     
     return iconMap[iconName] || Target;

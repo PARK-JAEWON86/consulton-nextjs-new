@@ -59,8 +59,8 @@ interface CategorySidebarProps {
   onMyCommentsClick?: () => void;
   isMyCommentsActive?: boolean;
   refreshStats?: number;
-  profileMode?: 'expert' | 'client';
-  onProfileModeChange?: (mode: 'expert' | 'client') => void;
+  viewMode?: 'user' | 'expert';
+  onViewModeChange?: (mode: 'user' | 'expert') => void;
 }
 
 const CategorySidebar = ({
@@ -78,8 +78,8 @@ const CategorySidebar = ({
   onMyCommentsClick,
   isMyCommentsActive = false,
   refreshStats = 0,
-  profileMode = 'client',
-  onProfileModeChange,
+  viewMode = 'user',
+  onViewModeChange,
 }: CategorySidebarProps) => {
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [appState, setAppState] = useState<AppState>({
@@ -163,9 +163,10 @@ const CategorySidebar = ({
         }
       } catch (error) {
         console.error('localStorage 변경 감지 시 파싱 오류:', error);
-        // 파싱 오류 시 localStorage 정리
+        // 파싱 오류 시 localStorage 정리 (JWT 토큰 포함)
         localStorage.removeItem('consulton-user');
         localStorage.removeItem('consulton-auth');
+        localStorage.removeItem('consulton-token');
         setAppState(prev => ({
           ...prev,
           isAuthenticated: false,
@@ -199,8 +200,8 @@ const CategorySidebar = ({
       
       try {
         setIsLoadingStats(true);
-        console.log('사용자 통계 로드 시도:', user.id, '프로필 모드:', profileMode);
-        const response = await fetch(`/api/user/stats?userId=${user.id}&profileMode=${profileMode}`);
+        console.log('사용자 통계 로드 시도:', user.id, '뷰 모드:', viewMode);
+        const response = await fetch(`/api/user/stats?userId=${user.id}&viewMode=${viewMode}`);
         console.log('사용자 통계 응답:', response.status);
         if (response.ok) {
           const data = await response.json();
@@ -218,7 +219,7 @@ const CategorySidebar = ({
     };
 
     loadUserStats();
-  }, [user?.id, refreshStats, profileMode]);
+  }, [user?.id, refreshStats, viewMode]);
   
   // 상위 7개 카테고리 (전체 포함)
   const visibleCategories = showAllCategories ? categories : categories.slice(0, 7);
@@ -228,7 +229,7 @@ const CategorySidebar = ({
     <div className="w-full lg:w-72 flex-shrink-0 space-y-4">
       {/* 개인 프로필 */}
       <div className={`rounded-lg shadow-sm border p-4 ${
-        profileMode === 'expert' 
+        viewMode === 'expert' 
           ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200' 
           : 'bg-white border-gray-200'
       }`}>
@@ -240,7 +241,7 @@ const CategorySidebar = ({
               </div>
               <div className="flex-1">
                 <h3 className="font-semibold text-gray-900">{user?.name || "사용자"}</h3>
-                {profileMode === 'expert' ? (
+                {viewMode === 'expert' ? (
                   <div className="text-sm text-gray-500">
                     <p className="font-medium text-blue-600">전문가</p>
                     {user?.expert ? (
@@ -253,16 +254,16 @@ const CategorySidebar = ({
                   <p className="text-sm text-gray-500">회원</p>
                 )}
               </div>
-              {user?.role === 'expert' && onProfileModeChange && (
+              {user?.role === 'expert' && onViewModeChange && (
                 <button
                   onClick={() => {
-                    const newMode = profileMode === 'expert' ? 'client' : 'expert';
-                    onProfileModeChange(newMode);
+                    const newMode = viewMode === 'expert' ? 'user' : 'expert';
+                    onViewModeChange(newMode);
                   }}
                   className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
-                  title={profileMode === 'expert' ? '사용자 모드로 전환' : '전문가 모드로 전환'}
+                  title={viewMode === 'expert' ? '사용자 모드로 전환' : '전문가 모드로 전환'}
                 >
-                  {profileMode === 'expert' ? (
+                  {viewMode === 'expert' ? (
                     <UserCheck className="h-4 w-4" />
                   ) : (
                     <Briefcase className="h-4 w-4" />
@@ -272,7 +273,7 @@ const CategorySidebar = ({
             </div>
             
             <div className={`flex items-center justify-center gap-2 mb-4 px-2 ${
-              profileMode === 'expert' 
+              viewMode === 'expert' 
                 ? 'bg-white/50 rounded-lg py-2' 
                 : ''
             }`}>
